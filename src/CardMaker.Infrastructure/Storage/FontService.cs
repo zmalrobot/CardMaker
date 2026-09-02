@@ -138,7 +138,7 @@ public sealed partial class FontService(
         return GetEmbeddedFontBytes(roleAlias);
     }
 
-    internal static byte[]? GetEmbeddedFontBytes(string roleAlias)
+    public static byte[]? GetEmbeddedFontBytes(string roleAlias)
     {
         var normalized = NormalizeAlias(roleAlias);
         if (normalized is null)
@@ -148,11 +148,19 @@ public sealed partial class FontService(
 
         var fileName = normalized switch
         {
+            // Yu-Gi-Oh!
             "card-name" or "atk-def-value" or "link-rating" or "pendulum-scale" or "rush-maximum-atk" => "Matrix-Bold.otf",
             "atk-def-label" => "MatrixBoldSmallCaps.ttf",
             "type-line" or "spell-trap-label" or "effect-bold" => "Stone Serif Semibold.ttf",
             "effect-italic" => "Stone Serif Italic.ttf",
             "rush-card-name" or "rush-section-label" or "rush-type-line" => "FOT-Rodin Pro M.ttf",
+
+            // Pokémon TCG
+            "pokemon-name" or "pokemon-attack-name" or "pokemon-stage" => "GillSansBold.ttf",
+            "pokemon-hp" or "pokemon-attack-damage" => "Futura-Bold.ttf",
+            "pokemon-flavor" => "GillSansItalic.ttf",
+            "pokemon-body" or "pokemon-small" or "pokemon-illustrator" or "pokemon-rule" => "GillSans.ttf",
+
             _ => "Stone Serif Regular.ttf",
         };
 

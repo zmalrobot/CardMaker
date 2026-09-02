@@ -77,6 +77,39 @@ public sealed class PlaceholderFrameGenerator
             AtkBox = new NormalizedRect(0.540, 0.950, 0.180, 0.028),
             DefBox = null,
         },
+        PlaceholderLayout.Pokemon => new PlaceholderRegions
+        {
+            LevelStrip = new NormalizedRect(0.075, 0.035, 0.120, 0.050),
+            NameBox = new NormalizedRect(0.200, 0.035, 0.430, 0.050),
+            DefBox = new NormalizedRect(0.630, 0.035, 0.190, 0.050),
+            AttributeBox = new NormalizedRect(0.835, 0.035, 0.090, 0.050),
+            ArtWindow = new NormalizedRect(0.075, 0.100, 0.850, 0.420),
+            TypeLineBox = new NormalizedRect(0.080, 0.525, 0.840, 0.026),
+            EffectBox = new NormalizedRect(0.075, 0.555, 0.850, 0.325),
+            AtkBox = new NormalizedRect(0.075, 0.885, 0.850, 0.045),
+        },
+        PlaceholderLayout.PokemonTrainer => new PlaceholderRegions
+        {
+            NameBox = new NormalizedRect(0.080, 0.040, 0.650, 0.050),
+            AttributeBox = new NormalizedRect(0.740, 0.040, 0.180, 0.045),
+            LevelStrip = new NormalizedRect(0.080, 0.095, 0.840, 0.030),
+            ArtWindow = new NormalizedRect(0.080, 0.130, 0.840, 0.440),
+            TypeLineBox = new NormalizedRect(0.080, 0.575, 0.840, 0.020),
+            EffectBox = new NormalizedRect(0.080, 0.600, 0.840, 0.285),
+            AtkBox = new NormalizedRect(0.080, 0.890, 0.840, 0.045),
+            DefBox = null,
+        },
+        PlaceholderLayout.PokemonEnergy => new PlaceholderRegions
+        {
+            NameBox = new NormalizedRect(0.080, 0.040, 0.700, 0.050),
+            AttributeBox = new NormalizedRect(0.800, 0.035, 0.120, 0.060),
+            LevelStrip = new NormalizedRect(0, 0, 0, 0),
+            ArtWindow = new NormalizedRect(0.150, 0.200, 0.700, 0.500),
+            TypeLineBox = new NormalizedRect(0, 0, 0, 0),
+            EffectBox = new NormalizedRect(0.080, 0.720, 0.840, 0.160),
+            AtkBox = new NormalizedRect(0, 0, 0, 0),
+            DefBox = null,
+        },
         _ => new PlaceholderRegions
         {
             NameBox = new NormalizedRect(0.070, 0.038, 0.720, 0.058),
@@ -117,6 +150,16 @@ public sealed class PlaceholderFrameGenerator
     private static void DrawBoxes(SKCanvas canvas, CardGeometry geometry, PlaceholderFrameSpec spec, PlaceholderRegions regions)
     {
         var frameColor = new SKColor(spec.FrameColor);
+
+        if (spec.Layout == PlaceholderLayout.Pokemon)
+        {
+            var headerRect = new NormalizedRect(0.060, 0.030, 0.880, 0.060);
+            DrawBox(canvas, geometry, headerRect, Lighten(frameColor, 0.25f));
+            DrawBox(canvas, geometry, regions.TypeLineBox, Parchment.WithAlpha(0xF0));
+            DrawBox(canvas, geometry, regions.EffectBox, Parchment);
+            DrawBox(canvas, geometry, regions.AtkBox, Lighten(frameColor, 0.20f));
+            return;
+        }
 
         DrawBox(canvas, geometry, regions.NameBox, Lighten(frameColor, 0.35f));
         DrawBox(canvas, geometry, regions.AttributeBox, Lighten(frameColor, 0.45f));

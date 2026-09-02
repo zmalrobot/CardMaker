@@ -12,4 +12,10 @@ public interface IPlaceholderSeeder
         bool showGuides = false,
         Guid? gameId = null,
         CancellationToken cancellationToken = default);
+
+    Task<PlaceholderSeedResult> SeedPokemonAsync(
+        string? userId = null,
+        bool showGuides = false,
+        Guid? gameId = null,
+        CancellationToken cancellationToken = default);
 }

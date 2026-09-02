@@ -8,6 +8,9 @@ public enum PlaceholderLayout
     MonsterPendulum,
     SpellTrap,
     Back,
+    Pokemon,
+    PokemonTrainer,
+    PokemonEnergy,
 }
 
 /// <summary>
@@ -45,6 +48,24 @@ public sealed record PlaceholderFrameSpec
         new() { Key = "rush-monster-effect", Label = "RUSH \u2014 EFFETTO", FrameColor = 0xFFE8663D },
         new() { Key = "rush-spell", Label = "RUSH \u2014 MAGIA", FrameColor = 0xFF16A085, Layout = PlaceholderLayout.SpellTrap, HasDefenseBox = false },
         new() { Key = "back-classic", Label = "RETRO", FrameColor = 0xFF7A4B2A, Layout = PlaceholderLayout.Back },
+    ];
+
+    public static IReadOnlyList<PlaceholderFrameSpec> PokemonSet() =>
+    [
+        new() { Key = "pokemon-frame-grass", Label = "POKÉMON ERBA", FrameColor = 0xFF5DBE62, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-fire", Label = "POKÉMON FUOCO", FrameColor = 0xFFE8553E, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-water", Label = "POKÉMON ACQUA", FrameColor = 0xFF4A90E2, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-lightning", Label = "POKÉMON LAMPO", FrameColor = 0xFFF5B025, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-psychic", Label = "POKÉMON PSICO", FrameColor = 0xFF8E44AD, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-fighting", Label = "POKÉMON LOTTA", FrameColor = 0xFFC0392B, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-darkness", Label = "POKÉMON OSCURITÀ", FrameColor = 0xFF34495E, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-metal", Label = "POKÉMON METALLO", FrameColor = 0xFF95A5A6, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-fairy", Label = "POKÉMON FOLLETTO", FrameColor = 0xFFE84393, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-dragon", Label = "POKÉMON DRAGO", FrameColor = 0xFFB7950B, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-colorless", Label = "POKÉMON INCOLORE", FrameColor = 0xFFBDC3C7, Layout = PlaceholderLayout.Pokemon },
+        new() { Key = "pokemon-frame-trainer", Label = "ALLENATORE", FrameColor = 0xFF00A8FF, Layout = PlaceholderLayout.PokemonTrainer },
+        new() { Key = "pokemon-frame-energy", Label = "ENERGIA", FrameColor = 0xFF2ECC71, Layout = PlaceholderLayout.PokemonEnergy },
+        new() { Key = "pokemon-back", Label = "POKÉMON RETRO", FrameColor = 0xFF0984E3, Layout = PlaceholderLayout.Back },
     ];
 }
 
