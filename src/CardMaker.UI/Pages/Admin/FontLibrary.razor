@@ -2,7 +2,9 @@
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
+@using CardMaker.Application.Admin
 @inject IFontCatalog Fonts
+@inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Ruoli Font — CardMaker</PageTitle>
@@ -12,7 +14,7 @@
         <h1 class="h3 mb-1">Ruoli Font</h1>
         <p class="text-muted mb-0">
             Ogni elemento di testo della carta ha il proprio font, identificato da un <em>alias di ruolo</em> (ADR-017).
-            Cambiare il font di tutti i nomi carta significa ricaricare un solo file. Elenco ruoli in <code>handover/06-asset-spec.md</code>.
+            I ruoli font sono configurabili per gioco o condivisi a livello globale.
         </p>
     </div>
 </div>
@@ -21,7 +23,17 @@
     <div class="card-header">Carica e Assegna un Font</div>
     <div class="card-body">
         <div class="row g-3">
-            <div class="col-md-4">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold" for="uploadGame">Gioco</label>
+                <select id="uploadGame" class="form-select" @bind="_uploadGameId">
+                    <option value="">(Condiviso / Globale)</option>
+                    @foreach (var g in _games)
+                    {
+                        <option value="@g.Id">@g.NameIt</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label small fw-semibold" for="alias">Alias di ruolo</label>
                 <input id="alias" class="form-control" list="role-suggestions" @bind="_alias"
                        placeholder="es. card-name" />
@@ -33,7 +45,7 @@
                 </datalist>
                 <div class="form-text small">Minuscolo, parole separate da trattino.</div>
             </div>
-            <div class="col-md-8">
+            <div class="col-md-6">
                 <label class="form-label small fw-semibold" for="font-license">Licenza / provenienza (obbligatoria)</label>
                 <input id="font-license" class="form-control" @bind="_licenseNote"
                        placeholder="Deve consentire l'incorporamento nel PDF" />
@@ -57,14 +69,24 @@
 
 <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Ruoli Assegnati (@_fonts.Count)</span>
+        <div class="d-flex align-items-center gap-3">
+            <span>Ruoli Assegnati (@_fonts.Count)</span>
+            <select class="form-select form-select-sm w-auto" @bind="_filterGameId" @bind:after="RefreshAsync">
+                <option value="">Tutti i giochi</option>
+                <option value="shared">Condivisi (nessun gioco)</option>
+                @foreach (var g in _games)
+                {
+                    <option value="@g.Id.ToString()">@g.NameIt</option>
+                }
+            </select>
+        </div>
         <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Aggiorna</button>
     </div>
     <div class="card-body p-0">
         @if (_fonts.Count == 0)
         {
             <div class="p-4 text-center text-muted">
-                Nessun font caricato: il motore userà il font di ripiego per ogni testo.
+                Nessun font caricato per i criteri selezionati: il motore userà il font di ripiego per ogni testo.
             </div>
         }
         else
@@ -74,6 +96,7 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">Alias Ruolo</th>
+                            <th>Gioco</th>
                             <th>Famiglia</th>
                             <th>Stile</th>
                             <th>Anteprima</th>
@@ -85,6 +108,11 @@
                         {
                             <tr>
                                 <td class="ps-3"><code>@font.Alias</code></td>
+                                <td>
+                                    <span class="badge @(font.GameId.HasValue ? "bg-primary-subtle text-primary-emphasis" : "bg-secondary-subtle text-secondary-emphasis")">
+                                        @GetGameName(font.GameId)
+                                    </span>
+                                </td>
                                 <td class="fw-medium">@font.FamilyName</td>
                                 <td>@font.StyleName (@font.Weight)</td>
                                 <td><img src="/fonts/@font.Id/preview.png" alt="Anteprima di @font.Alias" class="rounded border p-1" style="max-height:40px" /></td>
@@ -106,12 +134,42 @@
     private const long MaxFontBytes = 8L * 1024 * 1024;
 
     private IReadOnlyList<FontAsset> _fonts = [];
+    private IReadOnlyList<AdminGameDto> _games = [];
+    private Guid? _uploadGameId;
+    private string _filterGameId = string.Empty;
     private string _alias = string.Empty;
     private string _licenseNote = string.Empty;
     private string? _message;
     private bool _isError;
 
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _games = await ContentService.GetGamesAsync();
+        await RefreshAsync();
+    }
+
+    private string GetGameName(Guid? gameId)
+    {
+        if (!gameId.HasValue) return "Condiviso";
+        return _games.FirstOrDefault(g => g.Id == gameId.Value)?.NameIt ?? "Sconosciuto";
+    }
+
+    private async Task RefreshAsync()
+    {
+        if (Guid.TryParse(_filterGameId, out var gid))
+        {
+            _fonts = await Fonts.ListAsync(gid);
+        }
+        else if (_filterGameId == "shared")
+        {
+            var all = await Fonts.ListAsync();
+            _fonts = all.Where(f => !f.GameId.HasValue).ToList();
+        }
+        else
+        {
+            _fonts = await Fonts.ListAsync();
+        }
+    }
 
     private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
     {
@@ -124,6 +182,7 @@
             FileName = e.File.Name,
             Alias = _alias,
             LicenseNote = _licenseNote,
+            GameId = _uploadGameId,
             UploadedByUserId = userId,
         });
 
@@ -144,8 +203,6 @@
         await Fonts.RemoveAsync(id);
         await RefreshAsync();
     }
-
-    private async Task RefreshAsync() => _fonts = await Fonts.ListAsync();
 
     private void Show(string message, bool isError)
     {

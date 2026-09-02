@@ -92,11 +92,16 @@ public sealed class CardPreviewService(
 
         foreach (var key in assetKeys)
         {
-            // Chiave logica = nome del file senza estensione, es. "placeholder-monster-effect".
+            // Chiave logica: cerca prima il file esatto (es. "monster-effect.png"), poi il segnaposto ("placeholder-monster-effect.png")
             var fileName = key + ".png";
+            var placeholderName = key.StartsWith("placeholder-", StringComparison.Ordinal)
+                ? fileName
+                : "placeholder-" + key + ".png";
+
             var asset = await db.Assets.AsNoTracking()
-                .Where(a => a.OriginalFileName == fileName)
-                .OrderByDescending(a => a.CreatedAtUtc)
+                .Where(a => a.OriginalFileName == fileName || a.OriginalFileName == placeholderName)
+                .OrderBy(a => a.OriginalFileName == fileName ? 0 : 1)
+                .ThenByDescending(a => a.CreatedAtUtc)
                 .Select(a => new { a.Sha256 })
                 .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 

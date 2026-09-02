@@ -10,5 +10,6 @@ public interface IPlaceholderSeeder
     Task<PlaceholderSeedResult> SeedYuGiOhAsync(
         string? userId = null,
         bool showGuides = false,
+        Guid? gameId = null,
         CancellationToken cancellationToken = default);
 }

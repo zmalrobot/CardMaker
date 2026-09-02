@@ -2,45 +2,58 @@
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
+@using CardMaker.Application.Admin
 @inject IPlaceholderSeeder Seeder
 @inject IAssetCatalog Catalog
+@inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Segnaposto — CardMaker</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
     <div>
-        <h1 class="h3 mb-1">Frame Segnaposto</h1>
+        <h1 class="h3 mb-1">Frame e Simboli Segnaposto</h1>
         <p class="text-muted mb-0">
-            Genera frame provvisori con le misure esatte della specifica asset per collaudare il motore prima della grafica definitiva.
-            Quando arriveranno gli asset reali basterà ricaricarli al loro posto (ADR-010).
+            Genera frame provvisori e simboli procedurali con le misure esatte della specifica asset per collaudare il motore prima della grafica definitiva.
+            I segnaposto permettono di testare e comporre carte complete al 100% senza asset mancanti (ADR-010).
         </p>
     </div>
 </div>
 
 <div class="card shadow-sm mb-4">
-    <div class="card-header">Geometria Yu-Gi-Oh! (@Geometry.Dpi DPI)</div>
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <label class="form-label small fw-semibold mb-0" for="gameSelect">Gioco:</label>
+            <select id="gameSelect" class="form-select form-select-sm w-auto" @bind="_selectedGameId" @bind:after="OnGameChanged">
+                @foreach (var g in _games)
+                {
+                    <option value="@g.Id.ToString()">@g.NameIt</option>
+                }
+            </select>
+        </div>
+        <span class="badge bg-secondary-subtle text-secondary-emphasis">Geometria @(CurrentGeometry.Dpi) DPI</span>
+    </div>
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-4">
                 <div class="p-2 border rounded bg-surface-2">
                     <small class="text-muted d-block">Master Canvas</small>
-                    <strong>@Geometry.MasterWidthPx × @Geometry.MasterHeightPx px</strong>
-                    <span class="small text-muted d-block">(@(Geometry.WidthMm.ToString("0.#")) + bleed × @(Geometry.HeightMm.ToString("0.#")) mm)</span>
+                    <strong>@CurrentGeometry.MasterWidthPx × @CurrentGeometry.MasterHeightPx px</strong>
+                    <span class="small text-muted d-block">(@(CurrentGeometry.WidthMm.ToString("0.#")) + bleed × @(CurrentGeometry.HeightMm.ToString("0.#")) mm)</span>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-2 border rounded bg-surface-2">
                     <small class="text-muted d-block">Trim (Taglio)</small>
-                    <strong>@Geometry.TrimWidthPx × @Geometry.TrimHeightPx px</strong>
-                    <span class="small text-muted d-block">(offset @(Geometry.BleedPx), @(Geometry.BleedPx))</span>
+                    <strong>@CurrentGeometry.TrimWidthPx × @CurrentGeometry.TrimHeightPx px</strong>
+                    <span class="small text-muted d-block">(offset @(CurrentGeometry.BleedPx), @(CurrentGeometry.BleedPx))</span>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="p-2 border rounded bg-surface-2">
                     <small class="text-muted d-block">Safe Zone / Angoli</small>
-                    <strong>Safe: @Geometry.SafeZonePx px</strong>
-                    <span class="small text-muted d-block">Raggio: @Geometry.CornerRadiusPx px</span>
+                    <strong>Safe: @CurrentGeometry.SafeZonePx px</strong>
+                    <span class="small text-muted d-block">Raggio: @CurrentGeometry.CornerRadiusPx px</span>
                 </div>
             </div>
         </div>
@@ -48,17 +61,17 @@
         <div class="mt-3 d-flex align-items-center gap-3">
             <div class="form-check">
                 <input class="form-check-input" type="checkbox" id="guides" @bind="_showGuides" />
-                <label class="form-check-label small" for="guides">Disegna le guide di trim e safe zone</label>
+                <label class="form-check-label small" for="guides">Disegna le guide di trim e safe zone sui frame</label>
             </div>
             <button class="btn btn-primary ms-auto" @onclick="GenerateAsync" disabled="@_busy">
-                @(_busy ? "Generazione in corso..." : "Genera i segnaposto Yu-Gi-Oh!")
+                @(_busy ? "Generazione in corso..." : $"Genera segnaposto (Frame e Simboli) per {CurrentGameName}")
             </button>
         </div>
 
         @if (_result is not null)
         {
             <div class="alert alert-success mt-3 mb-0 shadow-sm">
-                Generati <strong>@_result.Keys.Count</strong> frame: @_result.Created nuovi, @_result.AlreadyPresent già presenti (deduplicati).
+                Generati <strong>@_result.Keys.Count</strong> asset segnaposto: @_result.Created nuovi, @_result.AlreadyPresent già presenti (deduplicati).
             </div>
         }
     </div>
@@ -66,13 +79,13 @@
 
 <div class="card shadow-sm">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Frame Segnaposto Generati (@_generated.Count)</span>
+        <span>Asset Segnaposto Generati per @CurrentGameName (@_generated.Count)</span>
         <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Aggiorna</button>
     </div>
     <div class="card-body">
         @if (_generated.Count == 0)
         {
-            <p class="text-muted text-center py-3 mb-0">Nessun segnaposto generato finora.</p>
+            <p class="text-muted text-center py-3 mb-0">Nessun segnaposto generato finora per questo gioco.</p>
         }
         else
         {
@@ -81,10 +94,11 @@
                 {
                     <div class="col-6 col-md-3 col-lg-2">
                         <div class="card h-100 shadow-sm">
-                            <img src="/assets/@asset.Id" class="card-img-top" alt="@asset.OriginalFileName" />
+                            <img src="/assets/@asset.Id" class="card-img-top p-1" style="height:150px; object-fit:contain;" alt="@asset.OriginalFileName" />
                             <div class="card-body p-2 text-center">
                                 <small class="d-block text-truncate fw-medium" title="@asset.OriginalFileName">@asset.OriginalFileName</small>
-                                <small class="text-muted">@asset.PixelWidth × @asset.PixelHeight px</small>
+                                <span class="badge bg-secondary-subtle text-secondary-emphasis">@asset.Category</span>
+                                <small class="text-muted d-block mt-1">@asset.PixelWidth × @asset.PixelHeight px</small>
                             </div>
                         </div>
                     </div>
@@ -95,14 +109,51 @@
 </div>
 
 @code {
-    private static readonly CardGeometry Geometry = CardGeometry.YuGiOh();
-
+    private IReadOnlyList<AdminGameDto> _games = [];
+    private string _selectedGameId = string.Empty;
     private IReadOnlyList<Asset> _generated = [];
     private PlaceholderSeedResult? _result;
     private bool _showGuides;
     private bool _busy;
 
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    private AdminGameDto? CurrentGame => _games.FirstOrDefault(g => g.Id.ToString() == _selectedGameId);
+    private string CurrentGameName => CurrentGame?.NameIt ?? "Gioco";
+
+    private CardGeometry CurrentGeometry
+    {
+        get
+        {
+            if (CurrentGame is not null)
+            {
+                return new CardGeometry
+                {
+                    WidthMm = (double)CurrentGame.WidthMm,
+                    HeightMm = (double)CurrentGame.HeightMm,
+                    BleedMm = (double)CurrentGame.BleedMm,
+                    CornerRadiusMm = (double)CurrentGame.CornerRadiusMm,
+                    SafeZoneMm = (double)CurrentGame.SafeZoneMm,
+                    Dpi = CurrentGame.DefaultDpi,
+                };
+            }
+            return CardGeometry.YuGiOh();
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _games = await ContentService.GetGamesAsync();
+        if (_games.Count > 0)
+        {
+            _selectedGameId = _games[0].Id.ToString();
+        }
+        await RefreshAsync();
+    }
+
+    private async Task OnGameChanged()
+    {
+        _result = null;
+        await RefreshAsync();
+    }
 
     private async Task GenerateAsync()
     {
@@ -111,8 +162,9 @@
         {
             var state = await AuthProvider.GetAuthenticationStateAsync();
             var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
 
-            _result = await Seeder.SeedYuGiOhAsync(userId, _showGuides);
+            _result = await Seeder.SeedYuGiOhAsync(userId, _showGuides, gameId);
             await RefreshAsync();
         }
         finally
@@ -123,9 +175,13 @@
 
     private async Task RefreshAsync()
     {
-        var all = await Catalog.ListAsync(null, 500);
+        Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
+        var all = await Catalog.ListAsync(gameId, 500);
         _generated = all
-            .Where(a => a.OriginalFileName.StartsWith("placeholder-", StringComparison.Ordinal))
+            .Where(a => a.OriginalFileName.StartsWith("placeholder-", StringComparison.Ordinal) ||
+                        a.Category == AssetCategory.Placeholder ||
+                        a.Category == AssetCategory.CardBack ||
+                        (a.Category == AssetCategory.Symbol && a.OriginalFileName.StartsWith("placeholder-symbol-", StringComparison.Ordinal)))
             .ToList();
     }
 }

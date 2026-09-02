@@ -2,7 +2,11 @@
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
+@using CardMaker.Application.Admin
 @inject ICardPreviewService Preview
+@inject IAssetCatalog Catalog
+@inject IAdminContentService ContentService
+@inject AuthenticationStateProvider AuthProvider
 
 <PageTitle>Prova Motore — CardMaker</PageTitle>
 
@@ -10,8 +14,8 @@
     <div>
         <h1 class="h3 mb-1">Prova del Motore di Rendering</h1>
         <p class="text-muted mb-0">
-            Renderizza un layout dimostrativo con lo stesso codice server-side usato per l'export.
-            Verifica auto-fit, compressione orizzontale, condizioni e risoluzione dei font.
+            Renderizza un layout con lo stesso codice server-side usato per l'export ad alta risoluzione.
+            Verifica auto-fit, compressione orizzontale, font di gioco, artwork e simboli.
         </p>
     </div>
 </div>
@@ -19,8 +23,32 @@
 <TwoColumnLayout>
     <FormContent>
         <div class="card shadow-sm mb-4">
-            <div class="card-header">Parametri Carta</div>
+            <div class="card-header fw-bold">Parametri Carta di Prova</div>
             <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="game">Gioco di Riferimento</label>
+                    <select id="game" class="form-select" @bind="_selectedGameId" @bind:after="OnGameChanged">
+                        @foreach (var g in _games)
+                        {
+                            <option value="@g.Id.ToString()">@g.NameIt</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Illustrazione (Artwork)</label>
+                    <InputFile OnChange="OnArtworkSelectedAsync" class="form-control" accept="image/*" />
+                    <div class="form-text small">Carica un'immagine per collaudare il ritaglio e la risoluzione dell'artwork.</div>
+                    @if (_artworkAssetId.HasValue)
+                    {
+                        <div class="d-flex align-items-center gap-2 mt-2 p-2 border rounded bg-surface-2">
+                            <img src="/assets/@_artworkAssetId.Value" class="rounded border" style="height:45px; width:45px; object-fit:cover;" />
+                            <span class="small text-success flex-grow-1 text-truncate">@_artworkFileName</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearArtwork">Rimuovi</button>
+                        </div>
+                    }
+                </div>
+
                 <div class="mb-3">
                     <label class="form-label small fw-semibold" for="name">Nome carta</label>
                     <input id="name" class="form-control" @bind="_name" @bind:event="oninput" />
@@ -29,7 +57,7 @@
 
                 <div class="mb-3">
                     <label class="form-label small fw-semibold" for="effect">Testo effetto</label>
-                    <textarea id="effect" class="form-control" rows="6" @bind="_effect" @bind:event="oninput"></textarea>
+                    <textarea id="effect" class="form-control" rows="5" @bind="_effect" @bind:event="oninput"></textarea>
                     <div class="form-text small">Aggiungi testo per osservare l'auto-fit ridurre corpo e interlinea.</div>
                 </div>
 
@@ -43,9 +71,9 @@
                         <input id="def" class="form-control" @bind="_def" @bind:event="oninput" />
                     </div>
                     <div class="col-4">
-                        <label class="form-label small fw-semibold" for="dpi">DPI</label>
+                        <label class="form-label small fw-semibold" for="dpi">Risoluzione DPI</label>
                         <select id="dpi" class="form-select" @bind="_dpi">
-                            <option value="96">96 DPI</option>
+                            <option value="96">96 DPI (Bozza)</option>
                             <option value="150">150 DPI (Anteprima)</option>
                             <option value="300">300 DPI</option>
                             <option value="600">600 DPI (Export)</option>
@@ -63,15 +91,23 @@
                         </select>
                     </div>
                     <div class="col-6 d-flex align-items-end">
-                        <div class="form-check">
+                        <div class="form-check mb-2">
                             <input class="form-check-input" type="checkbox" id="guides" @bind="_showGuides" />
                             <label class="form-check-label small" for="guides">Guide di trim e safe zone</label>
                         </div>
                     </div>
                 </div>
 
-                <button class="btn btn-primary w-100" @onclick="RenderAsync" disabled="@_busy">
-                    @(_busy ? "Render in corso..." : "Renderizza")
+                <button class="btn btn-primary w-100 py-2 fw-semibold" @onclick="RenderAsync" disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        <span>Render in corso...</span>
+                    }
+                    else
+                    {
+                        <span>Renderizza Carta</span>
+                    }
                 </button>
             </div>
         </div>
@@ -79,7 +115,7 @@
         @if (_errors.Count > 0)
         {
             <div class="alert alert-danger shadow-sm">
-                <strong>Layout non valido:</strong>
+                <strong>Attenzione:</strong>
                 <ul class="mb-0 ps-3">
                     @foreach (var error in _errors)
                     {
@@ -102,6 +138,12 @@
 </TwoColumnLayout>
 
 @code {
+    private IReadOnlyList<AdminGameDto> _games = [];
+    private string _selectedGameId = string.Empty;
+
+    private Guid? _artworkAssetId;
+    private string _artworkFileName = string.Empty;
+
     private string _name = "Drago Bianco Occhi Blu";
     private string _effect = DemoLayouts.SampleValues()["effectText"].AsText();
     private string _atk = "3000";
@@ -118,11 +160,83 @@
     private IReadOnlyList<PreviewWarning> _warnings = [];
     private IReadOnlyList<string> _errors = [];
 
-    protected override async Task OnInitializedAsync() => await RenderAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _games = await ContentService.GetGamesAsync();
+        if (_games.Count > 0)
+        {
+            _selectedGameId = _games[0].Id.ToString();
+        }
+
+        await RenderAsync();
+    }
+
+    private async Task OnGameChanged()
+    {
+        await RenderAsync();
+    }
+
+    private async Task OnArtworkSelectedAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        _busy = true;
+        _errors = [];
+        StateHasChanged();
+
+        try
+        {
+            var state = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
+
+            await using var stream = file.OpenReadStream(20L * 1024 * 1024);
+            var outcome = await Catalog.UploadAsync(stream, new AssetUploadRequest
+            {
+                FileName = file.Name,
+                Category = AssetCategory.Artwork,
+                LicenseNote = "Artwork di prova per test del motore di rendering.",
+                UploadedByUserId = userId,
+                GameId = gameId,
+                Kind = UploadKind.Image,
+            });
+
+            if (outcome.Succeeded && outcome.Asset is not null)
+            {
+                _artworkAssetId = outcome.Asset.Id;
+                _artworkFileName = file.Name;
+                await RenderAsync();
+            }
+            else
+            {
+                _errors = [$"Caricamento immagine fallito: {outcome.ErrorCode}"];
+            }
+        }
+        catch (Exception ex)
+        {
+            _errors = [$"Errore durante il caricamento dell'immagine: {ex.Message}"];
+        }
+        finally
+        {
+            _busy = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearArtwork()
+    {
+        _artworkAssetId = null;
+        _artworkFileName = string.Empty;
+        await RenderAsync();
+    }
 
     private async Task RenderAsync()
     {
         _busy = true;
+        _errors = [];
+        StateHasChanged();
+
         try
         {
             var values = DemoLayouts.SampleValues();
@@ -132,10 +246,18 @@
             values["def"] = CardValue.FromText(_def);
             values["summonMethod"] = CardValue.FromText(_summonMethod);
 
+            if (_artworkAssetId.HasValue)
+            {
+                values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+            }
+
+            Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
+
             var result = await Preview.RenderAsync(new CardPreviewRequest
             {
                 LayoutJson = LayoutSerializer.Serialize(DemoLayouts.YuGiOhMonster()),
                 Values = values,
+                GameId = gameId,
                 Dpi = _dpi,
                 ShowGuides = _showGuides,
             });
@@ -151,9 +273,14 @@
                 _elapsed = result.ElapsedMs;
             }
         }
+        catch (Exception ex)
+        {
+            _errors = [$"Errore durante il rendering: {ex.Message}"];
+        }
         finally
         {
             _busy = false;
+            StateHasChanged();
         }
     }
 }

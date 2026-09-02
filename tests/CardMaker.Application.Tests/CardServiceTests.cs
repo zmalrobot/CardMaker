@@ -48,7 +48,7 @@ public sealed class CardServiceTests : IDisposable
 
         Assert.NotEmpty(cardTypes);
         var normalMonster = cardTypes.First(ct => ct.Key == "monster-normal");
-        Assert.Equal("Normal Monster", normalMonster.Name);
+        Assert.True(normalMonster.Name is "Mostro Normale" or "Normal Monster");
         Assert.NotEmpty(normalMonster.Fields);
         Assert.NotEmpty(normalMonster.Templates);
     }

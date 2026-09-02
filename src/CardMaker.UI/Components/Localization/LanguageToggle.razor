@@ -1,0 +1,19 @@
+@using System.Globalization
+@inject NavigationManager Navigation
+
+<div class="btn-group btn-group-sm" role="group" aria-label="Selettore lingua / Language selector">
+    <a href="/SetCulture?culture=it&redirectUri=@Uri.EscapeDataString(Navigation.Uri)"
+       class="btn @(CurrentCulture == "it" ? "btn-primary" : "btn-outline-secondary")"
+       title="Italiano">
+        <span>IT</span>
+    </a>
+    <a href="/SetCulture?culture=en&redirectUri=@Uri.EscapeDataString(Navigation.Uri)"
+       class="btn @(CurrentCulture == "en" ? "btn-primary" : "btn-outline-secondary")"
+       title="English">
+        <span>EN</span>
+    </a>
+</div>
+
+@code {
+    private string CurrentCulture => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+}

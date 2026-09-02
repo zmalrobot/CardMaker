@@ -22,10 +22,10 @@ public static class YuGiOhSeedData
     public const string GameKey = "yugioh";
 
     private sealed record MonsterSpec(
-        string Key, string Label, string FrameKey, PlaceholderLayout Layout,
+        string Key, string LabelIt, string LabelEn, string FrameKey, PlaceholderLayout Layout,
         bool HasDefenseBox, bool HasStars, bool RankStyle, bool HasLinkArrows, bool HasPendulum, bool IsRush = false);
 
-    private sealed record PropertySpec(string Key, string Label, string FrameKey, string SymbolSetKey, bool IsRush = false);
+    private sealed record PropertySpec(string Key, string LabelIt, string LabelEn, string FrameKey, string SymbolSetKey, bool IsRush = false);
 
     public sealed record SeedGraph(
         Game Game,
@@ -36,32 +36,132 @@ public static class YuGiOhSeedData
 
     private static readonly MonsterSpec[] MonsterSpecs =
     [
-        new("monster-normal", "Normal Monster", "monster-normal", PlaceholderLayout.Monster, true, true, false, false, false),
-        new("monster-effect", "Effect Monster", "monster-effect", PlaceholderLayout.Monster, true, true, false, false, false),
-        new("monster-ritual", "Ritual Monster", "monster-ritual", PlaceholderLayout.Monster, true, true, false, false, false),
-        new("monster-fusion", "Fusion Monster", "monster-fusion", PlaceholderLayout.Monster, true, true, false, false, false),
-        new("monster-synchro", "Synchro Monster", "monster-synchro", PlaceholderLayout.Monster, true, true, false, false, false),
-        new("monster-xyz", "Xyz Monster", "monster-xyz", PlaceholderLayout.Monster, true, true, true, false, false),
-        new("monster-link", "Link Monster", "monster-link", PlaceholderLayout.Monster, false, false, false, true, false),
-        new("monster-pendulum-normal", "Pendulum Normal Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
-        new("monster-pendulum-effect", "Pendulum Effect Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
-        new("monster-pendulum-ritual", "Pendulum Ritual Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
-        new("monster-pendulum-fusion", "Pendulum Fusion Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
-        new("monster-pendulum-synchro", "Pendulum Synchro Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
-        new("monster-pendulum-xyz", "Pendulum Xyz Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, true, false, true),
-        new("rush-monster-normal", "Rush Normal Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
-        new("rush-monster-effect", "Rush Effect Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
-        new("rush-monster-ritual", "Rush Ritual Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
-        new("rush-monster-fusion", "Rush Fusion Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
-        new("rush-monster-synchro", "Rush Synchro Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
+        new("monster-normal", "Mostro Normale", "Normal Monster", "monster-normal", PlaceholderLayout.Monster, true, true, false, false, false),
+        new("monster-effect", "Mostro con Effetto", "Effect Monster", "monster-effect", PlaceholderLayout.Monster, true, true, false, false, false),
+        new("monster-ritual", "Mostro Rituale", "Ritual Monster", "monster-ritual", PlaceholderLayout.Monster, true, true, false, false, false),
+        new("monster-fusion", "Mostro Fusione", "Fusion Monster", "monster-fusion", PlaceholderLayout.Monster, true, true, false, false, false),
+        new("monster-synchro", "Mostro Synchro", "Synchro Monster", "monster-synchro", PlaceholderLayout.Monster, true, true, false, false, false),
+        new("monster-xyz", "Mostro Xyz", "Xyz Monster", "monster-xyz", PlaceholderLayout.Monster, true, true, true, false, false),
+        new("monster-link", "Mostro Link", "Link Monster", "monster-link", PlaceholderLayout.Monster, false, false, false, true, false),
+        new("monster-pendulum-normal", "Mostro Pendulum Normale", "Pendulum Normal Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
+        new("monster-pendulum-effect", "Mostro Pendulum Effetto", "Pendulum Effect Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
+        new("monster-pendulum-ritual", "Mostro Pendulum Rituale", "Pendulum Ritual Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
+        new("monster-pendulum-fusion", "Mostro Pendulum Fusione", "Pendulum Fusion Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
+        new("monster-pendulum-synchro", "Mostro Pendulum Synchro", "Pendulum Synchro Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, false, false, true),
+        new("monster-pendulum-xyz", "Mostro Pendulum Xyz", "Pendulum Xyz Monster", "pendulum-effect", PlaceholderLayout.MonsterPendulum, true, true, true, false, true),
+        new("rush-monster-normal", "Rush Mostro Normale", "Rush Normal Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
+        new("rush-monster-effect", "Rush Mostro con Effetto", "Rush Effect Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
+        new("rush-monster-ritual", "Rush Mostro Rituale", "Rush Ritual Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
+        new("rush-monster-fusion", "Rush Mostro Fusione", "Rush Fusion Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
+        new("rush-monster-synchro", "Rush Mostro Synchro", "Rush Synchro Monster", "rush-monster-effect", PlaceholderLayout.Monster, true, true, false, false, false, IsRush: true),
     ];
 
     private static readonly PropertySpec[] PropertySpecs =
     [
-        new("spell", "Spell Card", "spell", "spell-properties"),
-        new("trap", "Trap Card", "trap", "trap-properties"),
-        new("rush-spell", "Rush Spell Card", "rush-spell", "spell-properties", IsRush: true),
+        new("spell", "Carta Magia", "Spell Card", "spell", "spell-properties"),
+        new("trap", "Carta Trappola", "Trap Card", "trap", "trap-properties"),
+        new("rush-spell", "Rush Carta Magia", "Rush Spell Card", "rush-spell", "spell-properties", IsRush: true),
     ];
+
+    private static readonly Dictionary<string, (string It, string En)> AttributeTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["dark"] = ("Oscurità", "Dark"),
+        ["light"] = ("Luce", "Light"),
+        ["water"] = ("Acqua", "Water"),
+        ["fire"] = ("Fuoco", "Fire"),
+        ["earth"] = ("Terra", "Earth"),
+        ["wind"] = ("Vento", "Wind"),
+        ["divine"] = ("Divinità", "Divine"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> StarTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["level"] = ("Livello", "Level"),
+        ["rank"] = ("Rango", "Rank"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> LinkArrowTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["on"] = ("Attiva", "Active"),
+        ["off"] = ("Disattiva", "Inactive"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> SpellPropertyTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["normal"] = ("Normale", "Normal"),
+        ["quick-play"] = ("Rapida", "Quick-Play"),
+        ["continuous"] = ("Continua", "Continuous"),
+        ["equip"] = ("Equipaggiamento", "Equip"),
+        ["field"] = ("Terreno", "Field"),
+        ["ritual"] = ("Rituale", "Ritual"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> TrapPropertyTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["normal"] = ("Normale", "Normal"),
+        ["continuous"] = ("Continua", "Continuous"),
+        ["counter"] = ("Contro-Trappola", "Counter"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> RaceTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["dragon"] = ("Drago", "Dragon"),
+        ["spellcaster"] = ("Incantatore", "Spellcaster"),
+        ["warrior"] = ("Guerriero", "Warrior"),
+        ["zombie"] = ("Zombie", "Zombie"),
+        ["fiend"] = ("Demone", "Fiend"),
+        ["fairy"] = ("Fata", "Fairy"),
+        ["machine"] = ("Macchina", "Machine"),
+        ["aqua"] = ("Acqua", "Aqua"),
+        ["pyro"] = ("Piro", "Pyro"),
+        ["rock"] = ("Roccia", "Rock"),
+        ["winged-beast"] = ("Bestia Alata", "Winged Beast"),
+        ["plant"] = ("Pianta", "Plant"),
+        ["insect"] = ("Insetto", "Insect"),
+        ["thunder"] = ("Tuono", "Thunder"),
+        ["beast"] = ("Bestia", "Beast"),
+        ["beast-warrior"] = ("Guerriero-Bestia", "Beast-Warrior"),
+        ["psychic"] = ("Psichico", "Psychic"),
+        ["reptile"] = ("Rettile", "Reptile"),
+        ["sea-serpent"] = ("Serpente Marino", "Sea Serpent"),
+        ["dinosaur"] = ("Dinosauro", "Dinosaur"),
+        ["wyrm"] = ("Wyrm", "Wyrm"),
+        ["cyberse"] = ("Cyberse", "Cyberse"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> RarityTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["common"] = ("Comune", "Common"),
+        ["rare"] = ("Rara", "Rare"),
+        ["super-rare"] = ("Super Rara", "Super Rare"),
+        ["ultra-rare"] = ("Ultra Rara", "Ultra Rare"),
+        ["secret-rare"] = ("Rara Segreta", "Secret Rare"),
+        ["ghost-rare"] = ("Rara Ghost", "Ghost Rare"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> EditionTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["unlimited"] = ("Illimitata", "Unlimited"),
+        ["first-edition"] = ("1ª Edizione", "1st Edition"),
+        ["limited"] = ("Edizione Limitata", "Limited Edition"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> MaximumSliceTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["left"] = ("Sinistra [L]", "Left [L]"),
+        ["center"] = ("Centro", "Center"),
+        ["right"] = ("Destra [R]", "Right [R]"),
+    };
+
+    private static readonly Dictionary<string, (string It, string En)> TraitTranslations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["tuner"] = ("Tuner", "Tuner"),
+        ["flip"] = ("Scoperta", "Flip"),
+        ["union"] = ("Unione", "Union"),
+        ["toon"] = ("Toon", "Toon"),
+        ["spirit"] = ("Spirito", "Spirit"),
+        ["gemini"] = ("Gemello", "Gemini"),
+    };
 
     /// <summary>Le 8 posizioni delle frecce Link, in coordinate relative al layer (F2, ADR-022).</summary>
     private static readonly (string Key, NormalizedRect Rect)[] LinkArrowPositions =
@@ -97,8 +197,8 @@ public static class YuGiOhSeedData
         var game = new Game
         {
             Key = GameKey,
-            Name = LocalizedText.From("Yu-Gi-Oh!"),
-            Description = LocalizedText.From("Yu-Gi-Oh! classico e Rush Duel."),
+            Name = LocalizedText.From("Yu-Gi-Oh!", "Yu-Gi-Oh!"),
+            Description = LocalizedText.From("Yu-Gi-Oh! classico e Rush Duel.", "Classic Yu-Gi-Oh! and Rush Duel."),
             WidthMm = 59,
             HeightMm = 86,
             CornerRadiusMm = 2,
@@ -108,19 +208,23 @@ public static class YuGiOhSeedData
             IsPublished = false,
         };
 
-        var attributes = BuildSymbolSet(game, "attributes", "Attributi", AttributeKeys);
-        var stars = BuildSymbolSet(game, "stars", "Stelle", StarKeys);
-        var linkArrows = BuildSymbolSet(game, "link-arrows", "Frecce Link", LinkArrowSymbolKeys);
-        var spellProperties = BuildSymbolSet(game, "spell-properties", "Proprieta' Magia", SpellPropertyKeys);
-        var trapProperties = BuildSymbolSet(game, "trap-properties", "Proprieta' Trappola", TrapPropertyKeys);
+        var attributes = BuildSymbolSet(game, "attributes", "Attributi", "Attributes", AttributeKeys, AttributeTranslations);
+        var stars = BuildSymbolSet(game, "stars", "Stelle", "Stars", StarKeys, StarTranslations);
+        var linkArrows = BuildSymbolSet(game, "link-arrows", "Frecce Link", "Link Arrows", LinkArrowSymbolKeys, LinkArrowTranslations);
+        var spellProperties = BuildSymbolSet(game, "spell-properties", "Proprietà Magia", "Spell Properties", SpellPropertyKeys, SpellPropertyTranslations);
+        var trapProperties = BuildSymbolSet(game, "trap-properties", "Proprietà Trappola", "Trap Properties", TrapPropertyKeys, TrapPropertyTranslations);
 
-        var races = BuildOptionList(game, "races", "Razze", RaceKeys);
-        var rarities = BuildOptionList(game, "rarities", "Rarita'", RarityKeys);
-        var editions = BuildOptionList(game, "editions", "Edizioni", EditionKeys);
-        var maximumSlice = BuildOptionList(game, "maximum-slice", "Fetta Maximum", MaximumSliceKeys);
+        var races = BuildOptionList(game, "races", "Tipi / Razze", "Monster Types / Races", RaceKeys, RaceTranslations);
+        var rarities = BuildOptionList(game, "rarities", "Rarità", "Rarities", RarityKeys, RarityTranslations);
+        var editions = BuildOptionList(game, "editions", "Edizioni", "Editions", EditionKeys, EditionTranslations);
+        var maximumSlice = BuildOptionList(game, "maximum-slice", "Fetta Maximum", "Maximum Slice", MaximumSliceKeys, MaximumSliceTranslations);
 
         var traits = TraitKeys
-            .Select((key, i) => new Trait { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(Capitalize(key)), Group = "ability", SortOrder = i })
+            .Select((key, i) =>
+            {
+                var (it, en) = TraitTranslations.TryGetValue(key, out var t) ? t : (Capitalize(key), Capitalize(key));
+                return new Trait { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(it, en), Group = "ability", SortOrder = i };
+            })
             .ToList();
 
         var cardTypes = new List<CardType>();
@@ -139,8 +243,8 @@ public static class YuGiOhSeedData
         cardTypes.Add(BuildTokenCardType(game));
         cardTypes.Add(BuildMaximumCardType(game, attributes, races, rarities, editions, maximumSlice));
         cardTypes.Add(BuildSkillCardType(game));
-        cardTypes.Add(BuildBackCardType(game, "card-back-classic", "Retro classico", "back-classic"));
-        cardTypes.Add(BuildBackCardType(game, "rush-back", "Retro Rush Duel", "back-classic"));
+        cardTypes.Add(BuildBackCardType(game, "card-back-classic", "Retro Classico", "Classic Card Back", "back-classic"));
+        cardTypes.Add(BuildBackCardType(game, "rush-back", "Retro Rush Duel", "Rush Duel Card Back", "back-classic"));
 
         return new SeedGraph(
             game,
@@ -156,83 +260,83 @@ public static class YuGiOhSeedData
         Game game, MonsterSpec spec, SymbolSet attributes, SymbolSet linkArrows,
         OptionList races, OptionList rarities, OptionList editions, IReadOnlyList<Trait> traits)
     {
-        var cardType = new CardType { GameId = game.Id, Game = game, Key = spec.Key, Name = LocalizedText.From(spec.Label) };
+        var cardType = new CardType { GameId = game.Id, Game = game, Key = spec.Key, Name = LocalizedText.From(spec.LabelIt, spec.LabelEn) };
         var fields = new List<FieldDefinition>();
         var order = 0;
 
-        fields.Add(TextField(cardType, "name", "Nome", order++));
-        fields.Add(ImageField(cardType, "artwork", "Illustrazione", order++));
-        fields.Add(SymbolField(cardType, "attribute", "Attributo", attributes, order++));
-        fields.Add(EnumField(cardType, "race", "Razza/Tipo", races, order++));
+        fields.Add(TextField(cardType, "name", "Nome carta", "Card name", order++));
+        fields.Add(ImageField(cardType, "artwork", "Illustrazione", "Artwork", order++));
+        fields.Add(SymbolField(cardType, "attribute", "Attributo", "Attribute", attributes, order++));
+        fields.Add(EnumField(cardType, "race", "Tipo/Razza", "Monster Type/Race", races, order++));
 
         if (spec.HasStars)
         {
-            fields.Add(IntegerField(cardType, spec.RankStyle ? "rank" : "level", spec.RankStyle ? "Rank" : "Livello", order++));
+            fields.Add(IntegerField(cardType, spec.RankStyle ? "rank" : "level", spec.RankStyle ? "Rango" : "Livello", spec.RankStyle ? "Rank" : "Level", order++));
         }
 
         if (spec.HasPendulum)
         {
-            fields.Add(IntegerField(cardType, "pendulumScale", "Scala Pendulum", order++));
-            fields.Add(RichTextField(cardType, "pendulumEffectText", "Testo Pendulum", order++));
+            fields.Add(IntegerField(cardType, "pendulumScale", "Scala Pendulum", "Pendulum Scale", order++));
+            fields.Add(RichTextField(cardType, "pendulumEffectText", "Testo Pendulum", "Pendulum Effect Text", order++));
         }
 
-        fields.Add(RichTextField(cardType, "effectText", "Testo effetto", order++));
-        fields.Add(IntegerField(cardType, "atk", "ATK", order++));
+        fields.Add(RichTextField(cardType, "effectText", "Testo effetto", "Effect Text", order++));
+        fields.Add(IntegerField(cardType, "atk", "ATK", "ATK", order++));
 
         if (spec.HasDefenseBox)
         {
-            fields.Add(IntegerField(cardType, "def", "DEF", order++));
+            fields.Add(IntegerField(cardType, "def", "DEF", "DEF", order++));
         }
 
         if (spec.HasLinkArrows)
         {
-            fields.Add(ToggleSetField(cardType, "linkArrows", "Frecce Link", linkArrows, order++));
+            fields.Add(ToggleSetField(cardType, "linkArrows", "Frecce Link", "Link Arrows", linkArrows, order++));
         }
 
-        fields.Add(TextField(cardType, "setCode", "Codice set", order++));
-        fields.Add(EnumField(cardType, "rarity", "Rarita'", rarities, order++));
-        fields.Add(EnumField(cardType, "edition", "Edizione", editions, order++));
+        fields.Add(TextField(cardType, "setCode", "Codice set", "Set Code", order++));
+        fields.Add(EnumField(cardType, "rarity", "Rarità", "Rarity", rarities, order++));
+        fields.Add(EnumField(cardType, "edition", "Edizione", "Edition", editions, order++));
         cardType.Fields = fields;
         cardType.AllowedTraits = [.. traits.Select(t => new CardTypeTrait { CardTypeId = cardType.Id, CardType = cardType, TraitId = t.Id, Trait = t })];
 
         var regions = PlaceholderFrameGenerator.GetRegions(spec.Layout);
         var layout = BuildMonsterLayout(regions, spec);
-        cardType.Templates = [SingleTemplate(cardType, spec.Key, spec.Label, CardFace.Front, layout)];
+        cardType.Templates = [SingleTemplate(cardType, spec.Key, spec.LabelIt, spec.LabelEn, CardFace.Front, layout)];
 
         return cardType;
     }
 
     private static CardType BuildPropertyCardType(Game game, PropertySpec spec, SymbolSet propertySet, OptionList rarities, OptionList editions)
     {
-        var cardType = new CardType { GameId = game.Id, Game = game, Key = spec.Key, Name = LocalizedText.From(spec.Label) };
+        var cardType = new CardType { GameId = game.Id, Game = game, Key = spec.Key, Name = LocalizedText.From(spec.LabelIt, spec.LabelEn) };
         cardType.Fields =
         [
-            TextField(cardType, "name", "Nome", 0),
-            ImageField(cardType, "artwork", "Illustrazione", 1),
-            SymbolField(cardType, "property", "Proprieta'", propertySet, 2),
-            RichTextField(cardType, "effectText", "Testo effetto", 3),
-            TextField(cardType, "setCode", "Codice set", 4),
-            EnumField(cardType, "rarity", "Rarita'", rarities, 5),
-            EnumField(cardType, "edition", "Edizione", editions, 6),
+            TextField(cardType, "name", "Nome carta", "Card name", 0),
+            ImageField(cardType, "artwork", "Illustrazione", "Artwork", 1),
+            SymbolField(cardType, "property", "Proprietà", "Property", propertySet, 2),
+            RichTextField(cardType, "effectText", "Testo effetto", "Effect Text", 3),
+            TextField(cardType, "setCode", "Codice set", "Set Code", 4),
+            EnumField(cardType, "rarity", "Rarità", "Rarity", rarities, 5),
+            EnumField(cardType, "edition", "Edizione", "Edition", editions, 6),
         ];
 
         var regions = PlaceholderFrameGenerator.GetRegions(PlaceholderLayout.SpellTrap);
         var layout = BuildPropertyLayout(regions, spec);
-        cardType.Templates = [SingleTemplate(cardType, spec.Key, spec.Label, CardFace.Front, layout)];
+        cardType.Templates = [SingleTemplate(cardType, spec.Key, spec.LabelIt, spec.LabelEn, CardFace.Front, layout)];
 
         return cardType;
     }
 
     private static CardType BuildTokenCardType(Game game)
     {
-        var cardType = new CardType { GameId = game.Id, Game = game, Key = "token", Name = LocalizedText.From("Token") };
+        var cardType = new CardType { GameId = game.Id, Game = game, Key = "token", Name = LocalizedText.From("Carta Segnaposto (Token)", "Token Card") };
         cardType.Fields =
         [
-            TextField(cardType, "name", "Nome", 0),
-            ImageField(cardType, "artwork", "Illustrazione", 1),
-            RichTextField(cardType, "description", "Descrizione", 2),
-            IntegerField(cardType, "atk", "ATK", 3),
-            IntegerField(cardType, "def", "DEF", 4),
+            TextField(cardType, "name", "Nome carta", "Card name", 0),
+            ImageField(cardType, "artwork", "Illustrazione", "Artwork", 1),
+            RichTextField(cardType, "description", "Descrizione", "Description", 2),
+            IntegerField(cardType, "atk", "ATK", "ATK", 3),
+            IntegerField(cardType, "def", "DEF", "DEF", 4),
         ];
 
         var regions = PlaceholderFrameGenerator.GetRegions(PlaceholderLayout.Monster);
@@ -252,18 +356,18 @@ public static class YuGiOhSeedData
             ],
         };
 
-        cardType.Templates = [SingleTemplate(cardType, "token", "Token", CardFace.Front, layout)];
+        cardType.Templates = [SingleTemplate(cardType, "token", "Carta Segnaposto (Token)", "Token Card", CardFace.Front, layout)];
         return cardType;
     }
 
     private static CardType BuildSkillCardType(Game game)
     {
-        var cardType = new CardType { GameId = game.Id, Game = game, Key = "rush-skill", Name = LocalizedText.From("Rush Skill Card") };
+        var cardType = new CardType { GameId = game.Id, Game = game, Key = "rush-skill", Name = LocalizedText.From("Carta Abilità / Skill", "Skill Card") };
         cardType.Fields =
         [
-            TextField(cardType, "name", "Nome", 0),
-            ImageField(cardType, "artwork", "Illustrazione", 1),
-            RichTextField(cardType, "effectText", "Testo effetto", 2),
+            TextField(cardType, "name", "Nome carta", "Card name", 0),
+            ImageField(cardType, "artwork", "Illustrazione", "Artwork", 1),
+            RichTextField(cardType, "effectText", "Testo effetto", "Effect Text", 2),
         ];
 
         var regions = PlaceholderFrameGenerator.GetRegions(PlaceholderLayout.SpellTrap);
@@ -281,13 +385,13 @@ public static class YuGiOhSeedData
             ],
         };
 
-        cardType.Templates = [SingleTemplate(cardType, "rush-skill", "Rush Skill Card", CardFace.Front, layout)];
+        cardType.Templates = [SingleTemplate(cardType, "rush-skill", "Carta Abilità / Skill", "Skill Card", CardFace.Front, layout)];
         return cardType;
     }
 
-    private static CardType BuildBackCardType(Game game, string key, string label, string frameKey)
+    private static CardType BuildBackCardType(Game game, string key, string labelIt, string labelEn, string frameKey)
     {
-        var cardType = new CardType { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(label) };
+        var cardType = new CardType { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(labelIt, labelEn) };
         cardType.Fields = [];
 
         var layout = new CardLayout
@@ -296,7 +400,7 @@ public static class YuGiOhSeedData
             Layers = [new StaticImageLayer { Id = "back", Name = "Retro", Z = 0, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = frameKey, Fit = ImageFit.Stretch }],
         };
 
-        cardType.Templates = [SingleTemplate(cardType, key, label, CardFace.Back, layout)];
+        cardType.Templates = [SingleTemplate(cardType, key, labelIt, labelEn, CardFace.Back, layout)];
         return cardType;
     }
 
@@ -307,20 +411,20 @@ public static class YuGiOhSeedData
     /// </summary>
     private static CardType BuildMaximumCardType(Game game, SymbolSet attributes, OptionList races, OptionList rarities, OptionList editions, OptionList maximumSlice)
     {
-        var cardType = new CardType { GameId = game.Id, Game = game, Key = "rush-monster-maximum", Name = LocalizedText.From("Rush Maximum Monster") };
+        var cardType = new CardType { GameId = game.Id, Game = game, Key = "rush-monster-maximum", Name = LocalizedText.From("Rush Mostro Maximum", "Rush Maximum Monster") };
         cardType.Fields =
         [
-            TextField(cardType, "name", "Nome", 0),
-            ImageField(cardType, "artwork", "Illustrazione panoramica", 1),
-            SymbolField(cardType, "attribute", "Attributo", attributes, 2),
-            EnumField(cardType, "race", "Razza/Tipo", races, 3),
-            IntegerField(cardType, "level", "Livello", 4),
-            RichTextField(cardType, "effectText", "Testo effetto", 5),
-            IntegerField(cardType, "maximumAtk", "Maximum ATK", 6),
-            EnumField(cardType, "maximumSlice", "Fetta da mostrare", maximumSlice, 7),
-            TextField(cardType, "setCode", "Codice set", 8),
-            EnumField(cardType, "rarity", "Rarita'", rarities, 9),
-            EnumField(cardType, "edition", "Edizione", editions, 10),
+            TextField(cardType, "name", "Nome carta", "Card name", 0),
+            ImageField(cardType, "artwork", "Illustrazione panoramica", "Panoramic Artwork", 1),
+            SymbolField(cardType, "attribute", "Attributo", "Attribute", attributes, 2),
+            EnumField(cardType, "race", "Tipo/Razza", "Monster Type/Race", races, 3),
+            IntegerField(cardType, "level", "Livello", "Level", 4),
+            RichTextField(cardType, "effectText", "Testo effetto", "Effect Text", 5),
+            IntegerField(cardType, "maximumAtk", "Maximum ATK", "Maximum ATK", 6),
+            EnumField(cardType, "maximumSlice", "Fetta da mostrare", "Slice to display", maximumSlice, 7),
+            TextField(cardType, "setCode", "Codice set", "Set Code", 8),
+            EnumField(cardType, "rarity", "Rarità", "Rarity", rarities, 9),
+            EnumField(cardType, "edition", "Edizione", "Edition", editions, 10),
         ];
 
         var regions = PlaceholderFrameGenerator.GetRegions(PlaceholderLayout.Monster);
@@ -354,7 +458,7 @@ public static class YuGiOhSeedData
                 CardTypeId = cardType.Id,
                 CardType = cardType,
                 Key = $"rush-monster-maximum-{sliceNames[i]}-v1",
-                Name = LocalizedText.From($"Rush Maximum Monster ({sliceNames[i]})"),
+                Name = LocalizedText.From($"Rush Mostro Maximum ({sliceNames[i]})", $"Rush Maximum Monster ({sliceNames[i]})"),
                 Face = CardFace.Front,
                 IsDefault = i == 1,
                 SortOrder = i,
@@ -449,7 +553,7 @@ public static class YuGiOhSeedData
             [
                 new ImageSlotLayer { Id = "artwork", Name = "Illustrazione", Z = 0, Rect = regions.ArtWindow, FieldKey = "artwork", Fit = ImageFit.Cover },
                 new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = spec.FrameKey, Fit = ImageFit.Stretch },
-                new SymbolSlotLayer { Id = "property", Name = "Proprieta'", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = spec.SymbolSetKey, FieldKey = "property" },
+                new SymbolSlotLayer { Id = "property", Name = "Proprietà", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = spec.SymbolSetKey, FieldKey = "property" },
                 new TextLayer { Id = "name", Name = "Nome", Z = 2, Rect = regions.NameBox, Source = "{{name}}", Style = "cardName" },
                 new RichTextLayer { Id = "effect", Name = "Testo effetto", Z = 2, Rect = regions.EffectBox, Source = "{{effectText}}", Style = "effectText" },
                 new TextLayer { Id = "set-code", Name = "Codice set", Z = 2, Rect = new NormalizedRect(0.640, 0.163, 0.245, 0.020), Source = "{{setCode}}", Style = "smallPrint" },
@@ -476,37 +580,37 @@ public static class YuGiOhSeedData
 
     // ---- Field factories ----
 
-    private static FieldDefinition TextField(CardType ct, string key, string label, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.Text, SortOrder = order };
+    private static FieldDefinition TextField(CardType ct, string key, string labelIt, string labelEn, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.Text, SortOrder = order };
 
-    private static FieldDefinition ImageField(CardType ct, string key, string label, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.Image, SortOrder = order };
+    private static FieldDefinition ImageField(CardType ct, string key, string labelIt, string labelEn, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.Image, SortOrder = order };
 
-    private static FieldDefinition IntegerField(CardType ct, string key, string label, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.Integer, SortOrder = order };
+    private static FieldDefinition IntegerField(CardType ct, string key, string labelIt, string labelEn, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.Integer, SortOrder = order };
 
-    private static FieldDefinition RichTextField(CardType ct, string key, string label, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.RichText, SortOrder = order };
+    private static FieldDefinition RichTextField(CardType ct, string key, string labelIt, string labelEn, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.RichText, SortOrder = order };
 
-    private static FieldDefinition SymbolField(CardType ct, string key, string label, SymbolSet set, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.SymbolRef, SymbolSetId = set.Id, SymbolSet = set, SortOrder = order };
+    private static FieldDefinition SymbolField(CardType ct, string key, string labelIt, string labelEn, SymbolSet set, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.SymbolRef, SymbolSetId = set.Id, SymbolSet = set, SortOrder = order };
 
-    private static FieldDefinition ToggleSetField(CardType ct, string key, string label, SymbolSet set, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.ToggleSet, SymbolSetId = set.Id, SymbolSet = set, SortOrder = order };
+    private static FieldDefinition ToggleSetField(CardType ct, string key, string labelIt, string labelEn, SymbolSet set, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.ToggleSet, SymbolSetId = set.Id, SymbolSet = set, SortOrder = order };
 
-    private static FieldDefinition EnumField(CardType ct, string key, string label, OptionList list, int order) => new()
-    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(label), Kind = FieldKind.Enum, OptionListId = list.Id, OptionList = list, SortOrder = order };
+    private static FieldDefinition EnumField(CardType ct, string key, string labelIt, string labelEn, OptionList list, int order) => new()
+    { CardTypeId = ct.Id, CardType = ct, Key = key, Label = LocalizedText.From(labelIt, labelEn), Kind = FieldKind.Enum, OptionListId = list.Id, OptionList = list, SortOrder = order };
 
     // ---- Template / helpers ----
 
-    private static Template SingleTemplate(CardType cardType, string key, string label, CardFace face, CardLayout layout)
+    private static Template SingleTemplate(CardType cardType, string key, string labelIt, string labelEn, CardFace face, CardLayout layout)
     {
         var template = new Template
         {
             CardTypeId = cardType.Id,
             CardType = cardType,
             Key = key + "-v1",
-            Name = LocalizedText.From(label),
+            Name = LocalizedText.From(labelIt, labelEn),
             Face = face,
             IsDefault = true,
         };
@@ -524,31 +628,41 @@ public static class YuGiOhSeedData
         PublishedAtUtc = DateTimeOffset.UtcNow,
     };
 
-    private static SymbolSet BuildSymbolSet(Game game, string key, string name, IReadOnlyList<string> symbolKeys)
+    private static SymbolSet BuildSymbolSet(
+        Game game, string key, string nameIt, string nameEn, IReadOnlyList<string> symbolKeys, Dictionary<string, (string It, string En)> translations)
     {
-        var set = new SymbolSet { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(name) };
-        set.Symbols = [.. symbolKeys.Select((k, i) => new Symbol
+        var set = new SymbolSet { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(nameIt, nameEn) };
+        set.Symbols = [.. symbolKeys.Select((k, i) =>
         {
-            SymbolSetId = set.Id,
-            SymbolSet = set,
-            Key = k,
-            Name = LocalizedText.From(Capitalize(k)),
-            InlineToken = $"{{sym:{key}.{k}}}",
-            SortOrder = i,
+            var (it, en) = translations.TryGetValue(k, out var t) ? t : (Capitalize(k), Capitalize(k));
+            return new Symbol
+            {
+                SymbolSetId = set.Id,
+                SymbolSet = set,
+                Key = k,
+                Name = LocalizedText.From(it, en),
+                InlineToken = $"{{sym:{key}.{k}}}",
+                SortOrder = i,
+            };
         })];
         return set;
     }
 
-    private static OptionList BuildOptionList(Game game, string key, string name, IReadOnlyList<string> itemKeys)
+    private static OptionList BuildOptionList(
+        Game game, string key, string nameIt, string nameEn, IReadOnlyList<string> itemKeys, Dictionary<string, (string It, string En)> translations)
     {
-        var list = new OptionList { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(name) };
-        list.Items = [.. itemKeys.Select((k, i) => new OptionItem
+        var list = new OptionList { GameId = game.Id, Game = game, Key = key, Name = LocalizedText.From(nameIt, nameEn) };
+        list.Items = [.. itemKeys.Select((k, i) =>
         {
-            OptionListId = list.Id,
-            OptionList = list,
-            Key = k,
-            Label = LocalizedText.From(Capitalize(k.Replace('-', ' '))),
-            SortOrder = i,
+            var (it, en) = translations.TryGetValue(k, out var t) ? t : (Capitalize(k.Replace('-', ' ')), Capitalize(k.Replace('-', ' ')));
+            return new OptionItem
+            {
+                OptionListId = list.Id,
+                OptionList = list,
+                Key = k,
+                Label = LocalizedText.From(it, en),
+                SortOrder = i,
+            };
         })];
         return list;
     }

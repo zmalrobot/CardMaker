@@ -18,6 +18,7 @@ public sealed class DatabaseInitializer(
     RoleManager<IdentityRole> roleManager,
     CardMaker.Application.Assets.IPlaceholderSeeder placeholderSeeder,
     CardMaker.Application.Content.IYuGiOhContentSeeder yugiohSeeder,
+    CardMaker.Application.Assets.IYuGiOhFontSeeder fontSeeder,
     IConfiguration configuration,
     ILogger<DatabaseInitializer> logger)
 {
@@ -36,15 +37,16 @@ public sealed class DatabaseInitializer(
 
         await EnsureBootstrapAdminAsync().ConfigureAwait(false);
 
-        // Assicura che i template e i frame di default di Yu-Gi-Oh siano sempre presenti al primo avvio
+        // Assicura che i template, i frame e i font di default di Yu-Gi-Oh siano sempre presenti al primo avvio
         try
         {
             await placeholderSeeder.SeedYuGiOhAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             await yugiohSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+            await fontSeeder.SeedDefaultFontsAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Errore durante il seeding iniziale dei template di gioco");
+            logger.LogWarning(ex, "Errore durante il seeding iniziale dei template e dei font di gioco");
         }
     }
 

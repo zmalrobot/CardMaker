@@ -23,6 +23,7 @@ if (string.Equals(builder.Configuration["AppMode"], "Desktop", StringComparison.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddLocalization();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
@@ -103,6 +104,14 @@ else
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
+
+var supportedCultures = new[] { "it", "en" };
+var localizationOptions = new RequestLocalizationOptions()
+    .SetDefaultCulture("it")
+    .AddSupportedCultures(supportedCultures)
+    .AddSupportedUICultures(supportedCultures);
+app.UseRequestLocalization(localizationOptions);
+
 app.UseRateLimiter();
 
 app.UseAntiforgery();
@@ -117,5 +126,18 @@ app.MapHealthChecks("/healthz");
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 app.MapAssetEndpoints();
+
+app.MapGet("/SetCulture", (string culture, string? redirectUri, HttpContext context) =>
+{
+    if (culture is "it" or "en")
+    {
+        context.Response.Cookies.Append(
+            Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.DefaultCookieName,
+            Microsoft.AspNetCore.Localization.CookieRequestCultureProvider.MakeCookieValue(new Microsoft.AspNetCore.Localization.RequestCulture(culture)),
+            new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1), IsEssential = true, SameSite = SameSiteMode.Lax });
+    }
+
+    return Results.LocalRedirect(string.IsNullOrEmpty(redirectUri) ? "/" : redirectUri);
+});
 
 app.Run();

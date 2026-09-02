@@ -45,14 +45,18 @@ public sealed class LocalizedText
     /// </summary>
     public string Get(string? culture = null)
     {
-        if (!string.IsNullOrWhiteSpace(culture))
+        var targetCulture = !string.IsNullOrWhiteSpace(culture)
+            ? culture
+            : System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+
+        if (!string.IsNullOrWhiteSpace(targetCulture))
         {
-            if (_values.TryGetValue(culture, out var exact))
+            if (_values.TryGetValue(targetCulture, out var exact))
             {
                 return exact;
             }
 
-            var neutral = culture.Split('-')[0];
+            var neutral = targetCulture.Split('-')[0];
             if (_values.TryGetValue(neutral, out var neutralMatch))
             {
                 return neutralMatch;

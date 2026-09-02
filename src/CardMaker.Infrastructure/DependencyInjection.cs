@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddSingleton<IImageProcessor, SkiaImageProcessor>();
         services.AddSingleton<IFontProcessor, SkiaFontProcessor>();
         services.AddSingleton<PlaceholderFrameGenerator>();
+        services.AddSingleton<PlaceholderSymbolGenerator>();
         services.AddSingleton<FontPreviewRenderer>();
         services.AddSingleton<TextEngine>();
         services.AddSingleton<CardRenderer>();
@@ -52,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IFontCatalog, FontService>();
         services.AddScoped<ICardPreviewService, CardPreviewService>();
         services.AddScoped<IPlaceholderSeeder, PlaceholderSeeder>();
+        services.AddScoped<IYuGiOhFontSeeder, YuGiOhFontSeeder>();
         services.AddScoped<CardMaker.Application.Content.IYuGiOhContentSeeder, CardMaker.Infrastructure.Content.YuGiOhContentSeeder>();
         services.AddScoped<CardMaker.Application.Content.IGamePackageService, CardMaker.Infrastructure.Content.GamePackageService>();
         services.AddScoped<CardMaker.Application.Content.ITemplateSelector, CardMaker.Application.Content.TemplateSelector>();

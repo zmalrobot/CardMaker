@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Admin")]
 @rendermode InteractiveServer
 
+@using CardMaker.Domain.Games
 @inject IAssetCatalog Catalog
 @inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
@@ -23,6 +24,16 @@
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-3">
+                <label class="form-label small fw-semibold" for="uploadGame">Gioco</label>
+                <select id="uploadGame" class="form-select" @bind="_uploadGameId">
+                    <option value="">(Condiviso / Tutti i giochi)</option>
+                    @foreach (var g in _games)
+                    {
+                        <option value="@g.Id">@g.NameIt</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
                 <label class="form-label small fw-semibold" for="category">Categoria</label>
                 <select id="category" class="form-select" @bind="_category">
                     @foreach (var value in Enum.GetValues<AssetCategory>())
@@ -31,14 +42,14 @@
                     }
                 </select>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-semibold" for="kind">Tipo di file</label>
                 <select id="kind" class="form-select" @bind="_kind">
                     <option value="@UploadKind.Image">Immagine</option>
                     <option value="@UploadKind.Font">Font</option>
                 </select>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
                 <label class="form-label small fw-semibold" for="license">Licenza / provenienza (obbligatoria)</label>
                 <input id="license" class="form-control" @bind="_licenseNote" placeholder="Es. realizzato su commissione, uso interno" />
             </div>
@@ -60,6 +71,14 @@
         <div class="d-flex align-items-center gap-3">
             <span class="fw-bold">Asset presenti (@FilteredAssets.Count())</span>
             <input type="text" class="form-control form-control-sm w-auto" placeholder="Cerca per nome..." @bind="_searchQuery" @bind:event="oninput" />
+            <select class="form-select form-select-sm w-auto" @bind="_filterGameId">
+                <option value="">Tutti i giochi</option>
+                <option value="shared">Condivisi (nessun gioco)</option>
+                @foreach (var g in _games)
+                {
+                    <option value="@g.Id.ToString()">@g.NameIt</option>
+                }
+            </select>
             <select class="form-select form-select-sm w-auto" @bind="_filterCategory">
                 <option value="">Tutte le categorie</option>
                 @foreach (var value in Enum.GetValues<AssetCategory>())
@@ -85,6 +104,7 @@
                         <tr>
                             <th class="ps-3">Anteprima</th>
                             <th>Nome</th>
+                            <th>Gioco</th>
                             <th>Categoria</th>
                             <th>Dimensioni</th>
                             <th>Peso</th>
@@ -103,6 +123,11 @@
                                     }
                                 </td>
                                 <td><a href="/assets/@asset.Id" target="_blank" class="fw-medium">@asset.OriginalFileName</a></td>
+                                <td>
+                                    <span class="badge @(asset.GameId.HasValue ? "bg-primary-subtle text-primary-emphasis" : "bg-secondary-subtle text-secondary-emphasis")">
+                                        @GetGameName(asset.GameId)
+                                    </span>
+                                </td>
                                 <td><span class="badge bg-secondary-subtle text-secondary-emphasis">@asset.Category</span></td>
                                 <td>@(asset.PixelWidth > 0 ? $"{asset.PixelWidth} × {asset.PixelHeight} px" : "-")</td>
                                 <td>@FormatSize(asset.ByteSize)</td>
@@ -151,6 +176,9 @@
     private const long MaxUploadBytes = 20L * 1024 * 1024;
 
     private IReadOnlyList<Asset> _assets = [];
+    private IReadOnlyList<AdminGameDto> _games = [];
+    private Guid? _uploadGameId;
+    private string _filterGameId = string.Empty;
     private AssetCategory _category = AssetCategory.Frame;
     private UploadKind _kind = UploadKind.Image;
     private string _licenseNote = string.Empty;
@@ -164,9 +192,21 @@
 
     private IEnumerable<Asset> FilteredAssets => _assets
         .Where(a => string.IsNullOrWhiteSpace(_searchQuery) || a.OriginalFileName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
-        .Where(a => string.IsNullOrWhiteSpace(_filterCategory) || a.Category.ToString() == _filterCategory);
+        .Where(a => string.IsNullOrWhiteSpace(_filterCategory) || a.Category.ToString() == _filterCategory)
+        .Where(a => string.IsNullOrWhiteSpace(_filterGameId) || 
+                    (_filterGameId == "shared" ? !a.GameId.HasValue : a.GameId.HasValue && a.GameId.Value.ToString() == _filterGameId));
 
-    protected override async Task OnInitializedAsync() => await RefreshAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _games = await ContentService.GetGamesAsync();
+        await RefreshAsync();
+    }
+
+    private string GetGameName(Guid? gameId)
+    {
+        if (!gameId.HasValue) return "Condiviso";
+        return _games.FirstOrDefault(g => g.Id == gameId.Value)?.NameIt ?? "Sconosciuto";
+    }
 
     private async Task OnFilesSelectedAsync(InputFileChangeEventArgs e)
     {
@@ -194,6 +234,7 @@
                 Category = _category,
                 LicenseNote = _licenseNote,
                 Kind = _kind,
+                GameId = _uploadGameId,
                 UploadedByUserId = userId,
             });
 
@@ -261,7 +302,7 @@
         }
     }
 
-    private async Task RefreshAsync() => _assets = await Catalog.ListAsync();
+    private async Task RefreshAsync() => _assets = await Catalog.ListAsync(take: 1000);
 
     private void Show(string message, bool isError)
     {
