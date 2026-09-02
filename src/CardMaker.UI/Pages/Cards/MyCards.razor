@@ -1,0 +1,159 @@
+@page "/cards"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@inject ICardService CardService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Le mie Carte — CardMaker</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Le mie Carte</h1>
+        <p class="text-muted mb-0">Gestisci la tua collezione di carte personalizzate, esporta e duplica i tuoi progetti.</p>
+    </div>
+    <div>
+        <a href="cards/create" class="btn btn-primary shadow-sm">
+            <span>+ Crea Nuova Carta</span>
+        </a>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="p-5 text-center">
+        <LoadingSpinner Text="Caricamento della tua collezione..." />
+    </div>
+}
+else if (Cards.Count == 0)
+{
+    <div class="card shadow-sm text-center p-5 my-4">
+        <div class="display-5 mb-3 text-muted">🃏</div>
+        <h4 class="fw-bold mb-2">Nessuna carta creata finora</h4>
+        <p class="text-muted mb-4">Inizia subito a comporre carte per Yu-Gi-Oh! classico o Rush Duel.</p>
+        <div>
+            <a href="cards/create" class="btn btn-primary">
+                Crea la tua prima carta
+            </a>
+        </div>
+    </div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-6 col-lg-4">
+            <input type="text" class="form-control form-control-sm" placeholder="Cerca tra le tue carte..." @bind="SearchQuery" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <div class="row g-3">
+        @foreach (var card in FilteredCards)
+        {
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <div class="card h-100 shadow-sm position-relative">
+                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-2">
+                        <span class="badge bg-primary-subtle text-primary-emphasis small">@card.GameName</span>
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis small">@card.CardTypeName</span>
+                    </div>
+                    <div class="card-body text-center p-3">
+                        <div class="cm-checkerboard rounded border mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 140px; height: 200px; overflow: hidden;">
+                            @if (card.ThumbnailAssetId.HasValue)
+                            {
+                                <img src="/assets/@card.ThumbnailAssetId.Value" alt="@card.Title" class="img-fluid" style="max-height: 100%; object-fit: contain;" />
+                            }
+                            else
+                            {
+                                <div class="text-muted small">
+                                    <div class="h3 mb-1">🃏</div>
+                                    <span>Anteprima</span>
+                                </div>
+                            }
+                        </div>
+
+                        <h5 class="card-title text-truncate fw-bold mb-1" title="@card.Title">@card.Title</h5>
+                        <small class="text-muted d-block mb-3">
+                            Modificata il @card.UpdatedAtUtc.LocalDateTime.ToString("dd/MM/yyyy HH:mm")
+                        </small>
+
+                        <div class="btn-group btn-group-sm w-100">
+                            <a href="cards/edit/@card.Id" class="btn btn-outline-primary">Modifica</a>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => DuplicateAsync(card.Id)">Duplica</button>
+                            <button type="button" class="btn btn-outline-secondary" @onclick="() => OpenExportModal(card.Id)">Esporta</button>
+                            <button type="button" class="btn btn-outline-danger" @onclick="() => ConfirmDeleteAsync(card.Id, card.Title)">Elimina</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@if (SelectedCardIdForExport.HasValue)
+{
+    <ExportModal @bind-IsOpen="ShowExportModal" CardId="@SelectedCardIdForExport.Value" />
+}
+
+@code {
+    private IReadOnlyList<CardSummaryDto> Cards = [];
+    private bool IsLoading = true;
+    private string SearchQuery = string.Empty;
+
+    private bool ShowExportModal;
+    private Guid? SelectedCardIdForExport;
+
+    private IEnumerable<CardSummaryDto> FilteredCards => string.IsNullOrWhiteSpace(SearchQuery)
+        ? Cards
+        : Cards.Where(c => c.Title.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                           c.CardTypeName.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCardsAsync();
+    }
+
+    private async Task LoadCardsAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (!string.IsNullOrEmpty(userId))
+            {
+                Cards = await CardService.GetUserCardsAsync(userId);
+            }
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task DuplicateAsync(Guid cardId)
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return;
+
+        await CardService.DuplicateCardAsync(cardId, userId);
+        await LoadCardsAsync();
+    }
+
+    private async Task ConfirmDeleteAsync(Guid cardId, string title)
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId)) return;
+
+        await CardService.DeleteCardAsync(cardId, userId);
+        await LoadCardsAsync();
+    }
+
+    private void OpenExportModal(Guid cardId)
+    {
+        SelectedCardIdForExport = cardId;
+        ShowExportModal = true;
+    }
+}
+

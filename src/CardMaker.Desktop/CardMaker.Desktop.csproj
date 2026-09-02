@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>CardMaker.Desktop</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Photino.Blazor" Version="3.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CardMaker.Domain\CardMaker.Domain.csproj" />
+    <ProjectReference Include="..\CardMaker.Contracts\CardMaker.Contracts.csproj" />
+    <ProjectReference Include="..\CardMaker.Application\CardMaker.Application.csproj" />
+    <ProjectReference Include="..\CardMaker.Rendering\CardMaker.Rendering.csproj" />
+    <ProjectReference Include="..\CardMaker.Infrastructure\CardMaker.Infrastructure.csproj" />
+    <ProjectReference Include="..\CardMaker.UI\CardMaker.UI.csproj" />
+  </ItemGroup>
+
+</Project>

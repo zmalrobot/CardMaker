@@ -1,0 +1,58 @@
+@page "/Account/ConfirmEmail"
+
+@using System.Text
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using CardMaker.Infrastructure.Identity
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Conferma Email — CardMaker</PageTitle>
+
+<div class="row justify-content-center py-4">
+    <div class="col-lg-5">
+        <div class="card border shadow-sm p-4 text-center">
+            <h2 class="h4 fw-bold mb-3">Conferma Indirizzo Email</h2>
+            <StatusMessage Message="@statusMessage" />
+            <div class="mt-3">
+                <a href="Account/Login" class="btn btn-primary">Accedi al tuo Account</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? statusMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? UserId { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? Code { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (UserId is null || Code is null)
+        {
+            RedirectManager.RedirectTo("");
+            return;
+        }
+
+        var user = await UserManager.FindByIdAsync(UserId);
+        if (user is null)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            statusMessage = $"Errore: Impossibile trovare l'utente con ID {UserId}";
+        }
+        else
+        {
+            var code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(Code));
+            var result = await UserManager.ConfirmEmailAsync(user, code);
+            statusMessage = result.Succeeded ? "Grazie! Il tuo indirizzo email è stato confermato con successo." : "Errore durante la conferma dell'indirizzo email.";
+        }
+    }
+}

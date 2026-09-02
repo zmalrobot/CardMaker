@@ -1,0 +1,159 @@
+@page "/admin/render-test"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject ICardPreviewService Preview
+
+<PageTitle>Prova Motore — CardMaker</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Prova del Motore di Rendering</h1>
+        <p class="text-muted mb-0">
+            Renderizza un layout dimostrativo con lo stesso codice server-side usato per l'export.
+            Verifica auto-fit, compressione orizzontale, condizioni e risoluzione dei font.
+        </p>
+    </div>
+</div>
+
+<TwoColumnLayout>
+    <FormContent>
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">Parametri Carta</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="name">Nome carta</label>
+                    <input id="name" class="form-control" @bind="_name" @bind:event="oninput" />
+                    <div class="form-text small">Allunga il nome per osservare la compressione orizzontale automatica.</div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold" for="effect">Testo effetto</label>
+                    <textarea id="effect" class="form-control" rows="6" @bind="_effect" @bind:event="oninput"></textarea>
+                    <div class="form-text small">Aggiungi testo per osservare l'auto-fit ridurre corpo e interlinea.</div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label class="form-label small fw-semibold" for="atk">ATK</label>
+                        <input id="atk" class="form-control" @bind="_atk" @bind:event="oninput" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small fw-semibold" for="def">DEF</label>
+                        <input id="def" class="form-control" @bind="_def" @bind:event="oninput" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small fw-semibold" for="dpi">DPI</label>
+                        <select id="dpi" class="form-select" @bind="_dpi">
+                            <option value="96">96 DPI</option>
+                            <option value="150">150 DPI (Anteprima)</option>
+                            <option value="300">300 DPI</option>
+                            <option value="600">600 DPI (Export)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold" for="summon">Metodo evocazione</label>
+                        <select id="summon" class="form-select" @bind="_summonMethod">
+                            <option value="">(Nessuno)</option>
+                            <option value="Synchro">Synchro</option>
+                            <option value="Link">Link (Nasconde DEF)</option>
+                        </select>
+                    </div>
+                    <div class="col-6 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="guides" @bind="_showGuides" />
+                            <label class="form-check-label small" for="guides">Guide di trim e safe zone</label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary w-100" @onclick="RenderAsync" disabled="@_busy">
+                    @(_busy ? "Render in corso..." : "Renderizza")
+                </button>
+            </div>
+        </div>
+
+        @if (_errors.Count > 0)
+        {
+            <div class="alert alert-danger shadow-sm">
+                <strong>Layout non valido:</strong>
+                <ul class="mb-0 ps-3">
+                    @foreach (var error in _errors)
+                    {
+                        <li>@error</li>
+                    }
+                </ul>
+            </div>
+        }
+    </FormContent>
+
+    <PreviewContent>
+        <CardPreview ImageSrc="@_imageData"
+                     IsLoading="@_busy"
+                     Warnings="@_warnings"
+                     WidthPx="@_width"
+                     HeightPx="@_height"
+                     Dpi="@_dpi"
+                     Duration="@(TimeSpan.FromMilliseconds(_elapsed))" />
+    </PreviewContent>
+</TwoColumnLayout>
+
+@code {
+    private string _name = "Drago Bianco Occhi Blu";
+    private string _effect = DemoLayouts.SampleValues()["effectText"].AsText();
+    private string _atk = "3000";
+    private string _def = "2500";
+    private string _summonMethod = string.Empty;
+    private int _dpi = 150;
+    private bool _showGuides;
+    private bool _busy;
+
+    private string? _imageData;
+    private int _width;
+    private int _height;
+    private double _elapsed;
+    private IReadOnlyList<PreviewWarning> _warnings = [];
+    private IReadOnlyList<string> _errors = [];
+
+    protected override async Task OnInitializedAsync() => await RenderAsync();
+
+    private async Task RenderAsync()
+    {
+        _busy = true;
+        try
+        {
+            var values = DemoLayouts.SampleValues();
+            values["name"] = CardValue.FromText(_name);
+            values["effectText"] = CardValue.FromText(_effect);
+            values["atk"] = CardValue.FromText(_atk);
+            values["def"] = CardValue.FromText(_def);
+            values["summonMethod"] = CardValue.FromText(_summonMethod);
+
+            var result = await Preview.RenderAsync(new CardPreviewRequest
+            {
+                LayoutJson = LayoutSerializer.Serialize(DemoLayouts.YuGiOhMonster()),
+                Values = values,
+                Dpi = _dpi,
+                ShowGuides = _showGuides,
+            });
+
+            _errors = result.Errors;
+            _warnings = result.Warnings;
+
+            if (result.Succeeded && result.Content is not null)
+            {
+                _imageData = $"data:{result.ContentType};base64,{Convert.ToBase64String(result.Content)}";
+                _width = result.WidthPx;
+                _height = result.HeightPx;
+                _elapsed = result.ElapsedMs;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

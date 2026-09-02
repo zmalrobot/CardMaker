@@ -1,0 +1,218 @@
+@page "/admin/invitations"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@using CardMaker.Application.Identity
+@inject IInvitationService InvitationService
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JS
+
+<PageTitle>Gestione Inviti — CardMaker Admin</PageTitle>
+
+<div class="container-fluid py-3">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">🎟️ Gestione Inviti</h1>
+            <p class="text-muted mb-0">Genera e gestisci gli inviti a scadenza per i nuovi utenti (self-signup disabilitato).</p>
+        </div>
+        <button class="btn btn-primary" @onclick="OpenCreateModal">
+            <span>➕</span>
+            <span>Genera Nuovo Invito</span>
+        </button>
+    </div>
+
+    @if (CreatedInvitation != null)
+    {
+        <div class="alert alert-success shadow-sm mb-4">
+            <h5 class="alert-heading fw-bold">🎉 Invito Creato con Successo!</h5>
+            <p class="mb-2">Invia questo link univoco all'utente invitato (<strong>@CreatedInvitation.Email</strong>):</p>
+            <div class="input-group">
+                <input type="text" class="form-control font-monospace" readonly value="@GetInvitationUrl(CreatedInvitation.Token)" />
+                <button class="btn btn-outline-success" @onclick="() => CopyToClipboard(GetInvitationUrl(CreatedInvitation.Token))">
+                    <span>📋 Copia Link</span>
+                </button>
+            </div>
+            <small class="text-muted d-block mt-2">Scadenza: @CreatedInvitation.ExpiresAtUtc.ToString("g") UTC</small>
+        </div>
+    }
+
+    <div class="card border shadow-sm">
+        <div class="card-header bg-surface-1 py-3">
+            <h5 class="card-title mb-0 fw-semibold">Storico Inviti</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Email</th>
+                        <th>Stato</th>
+                        <th>Creato il (UTC)</th>
+                        <th>Scadenza (UTC)</th>
+                        <th>Utilizzato il (UTC)</th>
+                        <th class="text-end">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Invitations.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                Nessun invito generato finora.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var inv in Invitations)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@inv.Email</td>
+                                <td>
+                                    @if (inv.IsRevoked)
+                                    {
+                                        <span class="badge bg-danger">Revocato</span>
+                                    }
+                                    else if (inv.UsedAtUtc.HasValue)
+                                    {
+                                        <span class="badge bg-success">Utilizzato</span>
+                                    }
+                                    else if (inv.ExpiresAtUtc <= DateTimeOffset.UtcNow)
+                                    {
+                                        <span class="badge bg-secondary">Scaduto</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-primary">Attivo</span>
+                                    }
+                                </td>
+                                <td>@inv.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@inv.ExpiresAtUtc.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@(inv.UsedAtUtc?.ToString("yyyy-MM-dd HH:mm") ?? "—")</td>
+                                <td class="text-end">
+                                    @if (inv.IsValid)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => RevokeInvitation(inv.Id)">
+                                            Revoca
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted small">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@if (ShowModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Genera Invito Utente</h5>
+                    <button type="button" class="btn-close" @onclick="CloseModal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email Invitato</label>
+                        <input type="email" class="form-control" placeholder="es. user@example.com" @bind="NewEmail" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Validità Invito (giorni)</label>
+                        <input type="number" class="form-control" min="1" max="90" @bind="NewExpiresDays" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseModal">Annulla</button>
+                    <button type="button" class="btn btn-primary" disabled="@(string.IsNullOrWhiteSpace(NewEmail))" @onclick="CreateInvitation">
+                        Genera Invito
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private List<InvitationDto> Invitations = [];
+    private InvitationDto? CreatedInvitation;
+    private bool ShowModal;
+    private string NewEmail = "";
+    private int NewExpiresDays = 7;
+    private string? CurrentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var authState = await AuthStateTask;
+            CurrentUserId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        await LoadInvitations();
+    }
+
+    private async Task LoadInvitations()
+    {
+        var list = await InvitationService.ListInvitationsAsync();
+        Invitations = list.ToList();
+    }
+
+    private void OpenCreateModal()
+    {
+        NewEmail = "";
+        NewExpiresDays = 7;
+        ShowModal = true;
+    }
+
+    private void CloseModal()
+    {
+        ShowModal = false;
+    }
+
+    private async Task CreateInvitation()
+    {
+        if (string.IsNullOrWhiteSpace(NewEmail)) return;
+
+        CreatedInvitation = await InvitationService.CreateInvitationAsync(new CreateInvitationRequest
+        {
+            Email = NewEmail,
+            ExpiresInDays = NewExpiresDays
+        }, CurrentUserId);
+
+        ShowModal = false;
+        await LoadInvitations();
+    }
+
+    private async Task RevokeInvitation(Guid id)
+    {
+        await InvitationService.RevokeInvitationAsync(id, CurrentUserId);
+        await LoadInvitations();
+    }
+
+    private string GetInvitationUrl(string token)
+    {
+        var baseUri = NavigationManager.BaseUri;
+        return $"{baseUri}Account/Register?token={token}";
+    }
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("cardMaker.copyToClipboard", text);
+        }
+        catch
+        {
+            // Fallback gracefully
+        }
+    }
+}

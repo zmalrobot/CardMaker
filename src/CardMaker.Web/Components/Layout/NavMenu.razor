@@ -1,0 +1,118 @@
+@implements IDisposable
+@inject NavigationManager NavigationManager
+
+<div class="cm-sidebar-header">
+    <a class="cm-brand" href="">
+        <span>CardMaker</span>
+        <span class="cm-brand-badge">v1</span>
+    </a>
+</div>
+
+<div class="cm-nav-group">
+    <div class="cm-nav-heading">Navigazione</div>
+    <NavLink class="cm-nav-link" href="" Match="NavLinkMatch.All">
+        <span class="cm-nav-icon">🏠</span>
+        <span>Home</span>
+    </NavLink>
+    <AuthorizeView>
+        <Authorized>
+            <NavLink class="cm-nav-link" href="cards">
+                <span class="cm-nav-icon">🃏</span>
+                <span>Le mie Carte</span>
+            </NavLink>
+            <NavLink class="cm-nav-link" href="cards/create">
+                <span class="cm-nav-icon">✨</span>
+                <span>Nuova Carta</span>
+            </NavLink>
+        </Authorized>
+    </AuthorizeView>
+    <NavLink class="cm-nav-link" href="design">
+        <span class="cm-nav-icon">🎨</span>
+        <span>Galleria Design</span>
+    </NavLink>
+
+    <AuthorizeView Roles="Admin">
+        <div class="cm-nav-heading mt-3">Amministrazione</div>
+        <NavLink class="cm-nav-link" href="admin/content">
+            <span class="cm-nav-icon">🗂️</span>
+            <span>Gestione Contenuti</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/assets">
+            <span class="cm-nav-icon">🖼️</span>
+            <span>Libreria Asset</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/fonts">
+            <span class="cm-nav-icon">🔤</span>
+            <span>Ruoli Font</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/placeholders">
+            <span class="cm-nav-icon">🧩</span>
+            <span>Segnaposto</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/render-test">
+            <span class="cm-nav-icon">⚡</span>
+            <span>Prova Motore</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/invitations">
+            <span class="cm-nav-icon">🎟️</span>
+            <span>Inviti Utente</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/backups">
+            <span class="cm-nav-icon">💾</span>
+            <span>Backup & Integrità</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/audit">
+            <span class="cm-nav-icon">📜</span>
+            <span>Registro Audit</span>
+        </NavLink>
+    </AuthorizeView>
+
+    <div class="cm-nav-heading mt-3">Account</div>
+    <AuthorizeView>
+        <Authorized>
+            <NavLink class="cm-nav-link" href="Account/Manage">
+                <span class="cm-nav-icon">👤</span>
+                <span class="text-truncate">@context.User.Identity?.Name</span>
+            </NavLink>
+            <form action="Account/Logout" method="post" class="mt-1">
+                <AntiforgeryToken />
+                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+                <button type="submit" class="cm-nav-link w-100 border-0 bg-transparent text-start">
+                    <span class="cm-nav-icon">🚪</span>
+                    <span>Disconnetti</span>
+                </button>
+            </form>
+        </Authorized>
+        <NotAuthorized>
+            <NavLink class="cm-nav-link" href="Account/Login">
+                <span class="cm-nav-icon">🔑</span>
+                <span>Accedi</span>
+            </NavLink>
+            <NavLink class="cm-nav-link" href="Account/Register">
+                <span class="cm-nav-icon">📝</span>
+                <span>Registrati</span>
+            </NavLink>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>
+
+@code {
+    private string? currentUrl;
+
+    protected override void OnInitialized()
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+    }
+}

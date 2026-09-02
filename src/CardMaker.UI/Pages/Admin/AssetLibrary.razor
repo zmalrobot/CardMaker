@@ -1,0 +1,278 @@
+@page "/admin/assets"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject IAssetCatalog Catalog
+@inject IAdminContentService ContentService
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>Libreria Asset — CardMaker</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Libreria Asset</h1>
+        <p class="text-muted mb-0">
+            Tutti gli asset grafici sono caricati dall'amministratore (ADR-010).
+            Le misure di riferimento sono in <code>handover/06-asset-spec.md</code>.
+        </p>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header fw-bold">Caricamento Asset (Supporto Singolo e Multiplo)</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold" for="category">Categoria</label>
+                <select id="category" class="form-select" @bind="_category">
+                    @foreach (var value in Enum.GetValues<AssetCategory>())
+                    {
+                        <option value="@value">@value</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold" for="kind">Tipo di file</label>
+                <select id="kind" class="form-select" @bind="_kind">
+                    <option value="@UploadKind.Image">Immagine</option>
+                    <option value="@UploadKind.Font">Font</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small fw-semibold" for="license">Licenza / provenienza (obbligatoria)</label>
+                <input id="license" class="form-control" @bind="_licenseNote" placeholder="Es. realizzato su commissione, uso interno" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small fw-semibold">Seleziona File (anche multipli)</label>
+                <InputFile OnChange="OnFilesSelectedAsync" multiple class="form-control" accept=".png,.jpg,.jpeg,.webp,.ttf,.otf,.woff2" />
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3 mb-0 shadow-sm">@_message</div>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <span class="fw-bold">Asset presenti (@FilteredAssets.Count())</span>
+            <input type="text" class="form-control form-control-sm w-auto" placeholder="Cerca per nome..." @bind="_searchQuery" @bind:event="oninput" />
+            <select class="form-select form-select-sm w-auto" @bind="_filterCategory">
+                <option value="">Tutte le categorie</option>
+                @foreach (var value in Enum.GetValues<AssetCategory>())
+                {
+                    <option value="@value">@value</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Aggiorna</button>
+    </div>
+    <div class="card-body p-0">
+        @if (!FilteredAssets.Any())
+        {
+            <div class="p-4 text-center text-muted">
+                Nessun asset corrispondente ai criteri di ricerca.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Anteprima</th>
+                            <th>Nome</th>
+                            <th>Categoria</th>
+                            <th>Dimensioni</th>
+                            <th>Peso</th>
+                            <th>SHA-256</th>
+                            <th class="text-end pe-3">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var asset in FilteredAssets)
+                        {
+                            <tr>
+                                <td class="ps-3">
+                                    @if (asset.ContentType.StartsWith("image/", StringComparison.Ordinal))
+                                    {
+                                        <img src="/assets/@asset.Id" alt="@asset.OriginalFileName" class="rounded border" style="height:45px; width:45px; object-fit:contain;" />
+                                    }
+                                </td>
+                                <td><a href="/assets/@asset.Id" target="_blank" class="fw-medium">@asset.OriginalFileName</a></td>
+                                <td><span class="badge bg-secondary-subtle text-secondary-emphasis">@asset.Category</span></td>
+                                <td>@(asset.PixelWidth > 0 ? $"{asset.PixelWidth} × {asset.PixelHeight} px" : "-")</td>
+                                <td>@FormatSize(asset.ByteSize)</td>
+                                <td><code>@asset.Sha256[..12]</code></td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-outline-primary btn-sm py-0 px-2 me-1" @onclick="() => OpenReplaceModal(asset)">Sostituisci</button>
+                                    <button class="btn btn-outline-danger btn-sm py-0 px-2" @onclick="() => SafeDeleteAsync(asset.Id)">Elimina</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modale Sostituzione Asset -->
+@if (_replacingAsset is not null)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Sostituisci Asset: @_replacingAsset.OriginalFileName</h5>
+                    <button type="button" class="btn-close" @onclick="() => _replacingAsset = null"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">
+                        La sostituzione aggiornerà il file conservando lo stesso ID univoco. Tutti i template e le carte che referenziano questo asset utilizzeranno immediatamente la nuova grafica.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Nuovo File</label>
+                        <InputFile OnChange="OnReplacementFileSelected" class="form-control form-control-sm" accept=".png,.jpg,.jpeg,.webp,.ttf,.otf,.woff2" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => _replacingAsset = null">Annulla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private const long MaxUploadBytes = 20L * 1024 * 1024;
+
+    private IReadOnlyList<Asset> _assets = [];
+    private AssetCategory _category = AssetCategory.Frame;
+    private UploadKind _kind = UploadKind.Image;
+    private string _licenseNote = string.Empty;
+    private string? _message;
+    private bool _isError;
+
+    private string _searchQuery = string.Empty;
+    private string _filterCategory = string.Empty;
+
+    private Asset? _replacingAsset;
+
+    private IEnumerable<Asset> FilteredAssets => _assets
+        .Where(a => string.IsNullOrWhiteSpace(_searchQuery) || a.OriginalFileName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
+        .Where(a => string.IsNullOrWhiteSpace(_filterCategory) || a.Category.ToString() == _filterCategory);
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task OnFilesSelectedAsync(InputFileChangeEventArgs e)
+    {
+        _message = null;
+        _isError = false;
+
+        if (string.IsNullOrWhiteSpace(_licenseNote))
+        {
+            Show("Indica licenza o provenienza prima di caricare.", isError: true);
+            return;
+        }
+
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        var files = e.GetMultipleFiles(50);
+        int successCount = 0;
+
+        foreach (var file in files)
+        {
+            await using var stream = file.OpenReadStream(MaxUploadBytes);
+            var outcome = await Catalog.UploadAsync(stream, new AssetUploadRequest
+            {
+                FileName = file.Name,
+                Category = _category,
+                LicenseNote = _licenseNote,
+                Kind = _kind,
+                UploadedByUserId = userId,
+            });
+
+            if (outcome.Succeeded)
+            {
+                successCount++;
+            }
+        }
+
+        if (successCount == files.Count)
+        {
+            Show($"Caricati con successo {successCount} file.", isError: false);
+        }
+        else
+        {
+            Show($"Caricati {successCount} su {files.Count} file.", isError: true);
+        }
+
+        await RefreshAsync();
+    }
+
+    private void OpenReplaceModal(Asset asset)
+    {
+        _replacingAsset = asset;
+    }
+
+    private async Task OnReplacementFileSelected(InputFileChangeEventArgs e)
+    {
+        if (_replacingAsset is null) return;
+        var file = e.File;
+        if (file is null) return;
+
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await using var stream = file.OpenReadStream(MaxUploadBytes);
+        var result = await ContentService.ReplaceAssetBlobAsync(_replacingAsset.Id, stream, file.Name, userId);
+
+        if (result.Succeeded)
+        {
+            Show($"Asset '{_replacingAsset.OriginalFileName}' sostituito con successo!", isError: false);
+            _replacingAsset = null;
+            await RefreshAsync();
+        }
+        else
+        {
+            Show(result.ErrorMessage ?? "Errore durante la sostituzione.", isError: true);
+        }
+    }
+
+    private async Task SafeDeleteAsync(Guid assetId)
+    {
+        try
+        {
+            var state = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SafeDeleteAssetAsync(assetId, userId);
+            Show("Asset eliminato con successo.", isError: false);
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            Show(ex.Message, isError: true);
+        }
+    }
+
+    private async Task RefreshAsync() => _assets = await Catalog.ListAsync();
+
+    private void Show(string message, bool isError)
+    {
+        _message = message;
+        _isError = isError;
+    }
+
+    private static string FormatSize(long bytes) => bytes switch
+    {
+        _ when bytes < 1024 => $"{bytes} B",
+        _ when bytes < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
+        _ => $"{bytes / (1024.0 * 1024):F1} MB",
+    };
+}

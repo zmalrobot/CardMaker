@@ -1,0 +1,68 @@
+@inject NavigationManager NavigationManager
+
+<div class="cm-sidebar-header">
+    <a class="cm-brand" href="">
+        <span>CardMaker</span>
+        <span class="cm-brand-badge bg-primary">Desktop</span>
+    </a>
+</div>
+
+<div class="cm-nav-group">
+    <div class="cm-nav-heading">Navigazione</div>
+    <NavLink class="cm-nav-link" href="" Match="NavLinkMatch.All">
+        <span class="cm-nav-icon">🃏</span>
+        <span>Le mie Carte</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="cards/create">
+        <span class="cm-nav-icon">✨</span>
+        <span>Nuova Carta</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="design">
+        <span class="cm-nav-icon">🎨</span>
+        <span>Galleria Design</span>
+    </NavLink>
+
+    <div class="cm-nav-heading mt-3">Amministrazione Locale</div>
+    <NavLink class="cm-nav-link" href="admin/content">
+        <span class="cm-nav-icon">🗂️</span>
+        <span>Gestione Contenuti</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/assets">
+        <span class="cm-nav-icon">🖼️</span>
+        <span>Libreria Asset</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/fonts">
+        <span class="cm-nav-icon">🔤</span>
+        <span>Ruoli Font</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/placeholders">
+        <span class="cm-nav-icon">🧩</span>
+        <span>Segnaposto</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/render-test">
+        <span class="cm-nav-icon">⚡</span>
+        <span>Prova Motore</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/invitations">
+        <span class="cm-nav-icon">🎟️</span>
+        <span>Inviti Utente</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/backups">
+        <span class="cm-nav-icon">💾</span>
+        <span>Backup & Integrità</span>
+    </NavLink>
+    <NavLink class="cm-nav-link" href="admin/audit">
+        <span class="cm-nav-icon">📜</span>
+        <span>Registro Audit</span>
+    </NavLink>
+
+    <div class="cm-nav-heading mt-3">Stato</div>
+    <div class="p-2 small text-muted bg-surface-2 border rounded m-2">
+        <div class="d-flex align-items-center gap-1 text-success fw-semibold">
+            <span>●</span>
+            <span>Offline / In-Process</span>
+        </div>
+        <div class="very-small text-muted mt-1">Admin locale bypass attivo</div>
+    </div>
+</div>
+

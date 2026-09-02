@@ -1,0 +1,166 @@
+@page "/admin/fonts"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject IFontCatalog Fonts
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>Ruoli Font — CardMaker</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Ruoli Font</h1>
+        <p class="text-muted mb-0">
+            Ogni elemento di testo della carta ha il proprio font, identificato da un <em>alias di ruolo</em> (ADR-017).
+            Cambiare il font di tutti i nomi carta significa ricaricare un solo file. Elenco ruoli in <code>handover/06-asset-spec.md</code>.
+        </p>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header">Carica e Assegna un Font</div>
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold" for="alias">Alias di ruolo</label>
+                <input id="alias" class="form-control" list="role-suggestions" @bind="_alias"
+                       placeholder="es. card-name" />
+                <datalist id="role-suggestions">
+                    @foreach (var role in FontRoleSuggestions.YuGiOh)
+                    {
+                        <option value="@role"></option>
+                    }
+                </datalist>
+                <div class="form-text small">Minuscolo, parole separate da trattino.</div>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label small fw-semibold" for="font-license">Licenza / provenienza (obbligatoria)</label>
+                <input id="font-license" class="form-control" @bind="_licenseNote"
+                       placeholder="Deve consentire l'incorporamento nel PDF" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small fw-semibold">File Font</label>
+                <InputFile OnChange="OnFileSelectedAsync" class="form-control" accept=".ttf,.otf" />
+                <div class="form-text small">
+                    Formati leggibili dal motore: <strong>.ttf</strong> e <strong>.otf</strong>.
+                    I <code>.woff2</code> vengono rifiutati perché il renderer non li può aprire.
+                </div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_message))
+        {
+            <div class="alert @(_isError ? "alert-danger" : "alert-success") mt-3 mb-0 shadow-sm">@_message</div>
+        }
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Ruoli Assegnati (@_fonts.Count)</span>
+        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Aggiorna</button>
+    </div>
+    <div class="card-body p-0">
+        @if (_fonts.Count == 0)
+        {
+            <div class="p-4 text-center text-muted">
+                Nessun font caricato: il motore userà il font di ripiego per ogni testo.
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Alias Ruolo</th>
+                            <th>Famiglia</th>
+                            <th>Stile</th>
+                            <th>Anteprima</th>
+                            <th class="text-end pe-3">Azione</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var font in _fonts)
+                        {
+                            <tr>
+                                <td class="ps-3"><code>@font.Alias</code></td>
+                                <td class="fw-medium">@font.FamilyName</td>
+                                <td>@font.StyleName (@font.Weight)</td>
+                                <td><img src="/fonts/@font.Id/preview.png" alt="Anteprima di @font.Alias" class="rounded border p-1" style="max-height:40px" /></td>
+                                <td class="text-end pe-3">
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveAsync(font.Id)">
+                                        Rimuovi
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private const long MaxFontBytes = 8L * 1024 * 1024;
+
+    private IReadOnlyList<FontAsset> _fonts = [];
+    private string _alias = string.Empty;
+    private string _licenseNote = string.Empty;
+    private string? _message;
+    private bool _isError;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await using var stream = e.File.OpenReadStream(MaxFontBytes);
+        var outcome = await Fonts.RegisterAsync(stream, new FontRegistrationRequest
+        {
+            FileName = e.File.Name,
+            Alias = _alias,
+            LicenseNote = _licenseNote,
+            UploadedByUserId = userId,
+        });
+
+        if (outcome.Succeeded)
+        {
+            Show($"Font '{outcome.Font!.FamilyName}' assegnato al ruolo '{outcome.Font.Alias}'.", isError: false);
+            _alias = string.Empty;
+            await RefreshAsync();
+        }
+        else
+        {
+            Show(Describe(outcome.ErrorCode!), isError: true);
+        }
+    }
+
+    private async Task RemoveAsync(Guid id)
+    {
+        await Fonts.RemoveAsync(id);
+        await RefreshAsync();
+    }
+
+    private async Task RefreshAsync() => _fonts = await Fonts.ListAsync();
+
+    private void Show(string message, bool isError)
+    {
+        _message = message;
+        _isError = isError;
+    }
+
+    private static string Describe(string errorCode) => errorCode switch
+    {
+        "font.invalidAlias" => "Alias non valido: usa solo minuscole, cifre e trattini (es. card-name).",
+        "font.aliasAlreadyUsed" => "Questo alias è già assegnato a un altro font: rimuovilo prima di sostituirlo.",
+        "font.notReadableByRenderer" => "Il motore di rendering non riesce ad aprire questo file: usa .ttf o .otf.",
+        "asset.licenseRequired" => "Indica licenza o provenienza del font.",
+        "upload.unsupportedFontFormat" => "Formato non riconosciuto: sono ammessi .ttf e .otf.",
+        "upload.tooLarge" => "File troppo grande (massimo 8 MB).",
+        _ => $"Caricamento rifiutato ({errorCode}).",
+    };
+}

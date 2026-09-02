@@ -1,0 +1,15 @@
+<div class="cm-two-column @CssClass">
+    <div class="cm-column-form">
+        @FormContent
+    </div>
+    <div class="cm-column-preview">
+        @PreviewContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? FormContent { get; set; }
+    [Parameter] public RenderFragment? PreviewContent { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+}
+

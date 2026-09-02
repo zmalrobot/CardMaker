@@ -1,0 +1,173 @@
+using System.Text.RegularExpressions;
+using CardMaker.Application.Abstractions;
+using CardMaker.Application.Assets;
+using CardMaker.Domain.Assets;
+using CardMaker.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace CardMaker.Infrastructure.Storage;
+
+public sealed partial class FontService(
+    CardMakerDbContext db,
+    IAssetCatalog assets,
+    IAssetStore store,
+    IFontProcessor fontProcessor) : IFontCatalog
+{
+    public async Task<FontRegistrationOutcome> RegisterAsync(
+        Stream content,
+        FontRegistrationRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var alias = NormalizeAlias(request.Alias);
+        if (alias is null)
+        {
+            return FontRegistrationOutcome.Fail("font.invalidAlias");
+        }
+
+        var duplicate = await db.FontAssets
+            .AnyAsync(f => f.GameId == request.GameId && f.Alias == alias, cancellationToken)
+            .ConfigureAwait(false);
+        if (duplicate)
+        {
+            return FontRegistrationOutcome.Fail("font.aliasAlreadyUsed");
+        }
+
+        var upload = await assets.UploadAsync(
+            content,
+            new AssetUploadRequest
+            {
+                FileName = request.FileName,
+                Category = AssetCategory.Font,
+                LicenseNote = request.LicenseNote,
+                GameId = request.GameId,
+                UploadedByUserId = request.UploadedByUserId,
+                Kind = UploadKind.Font,
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        if (!upload.Succeeded)
+        {
+            return FontRegistrationOutcome.Fail(upload.ErrorCode!);
+        }
+
+        var bytes = await ReadAssetAsync(upload.Asset!.Sha256, cancellationToken).ConfigureAwait(false);
+        var info = bytes is null ? null : fontProcessor.Probe(bytes);
+        if (info is null)
+        {
+            // SkiaSharp non sa aprire il file: sarebbe illeggibile anche in fase di render.
+            return FontRegistrationOutcome.Fail("font.notReadableByRenderer");
+        }
+
+        var font = new FontAsset
+        {
+            AssetId = upload.Asset.Id,
+            GameId = request.GameId,
+            Alias = alias,
+            FamilyName = info.FamilyName,
+            StyleName = info.StyleName,
+            Weight = info.Weight,
+            IsItalic = info.IsItalic,
+            LicenseNote = request.LicenseNote,
+        };
+
+        db.FontAssets.Add(font);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        font.Asset = upload.Asset;
+        return FontRegistrationOutcome.Ok(font);
+    }
+
+    public async Task<IReadOnlyList<FontAsset>> ListAsync(
+        Guid? gameId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await db.FontAssets.AsNoTracking()
+            .Include(f => f.Asset)
+            .Where(f => gameId == null || f.GameId == gameId)
+            .OrderBy(f => f.Alias)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<FontAsset?> FindByAliasAsync(
+        Guid? gameId,
+        string roleAlias,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = NormalizeAlias(roleAlias);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        return await db.FontAssets.AsNoTracking()
+            .Include(f => f.Asset)
+            .FirstOrDefaultAsync(f => f.GameId == gameId && f.Alias == normalized, cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    public async Task<byte[]?> GetBytesAsync(Guid fontAssetId, CancellationToken cancellationToken = default)
+    {
+        var font = await db.FontAssets.AsNoTracking()
+            .Include(f => f.Asset)
+            .FirstOrDefaultAsync(f => f.Id == fontAssetId, cancellationToken)
+            .ConfigureAwait(false);
+
+        return font is null ? null : await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<byte[]?> GetBytesByAliasAsync(
+        Guid? gameId,
+        string roleAlias,
+        CancellationToken cancellationToken = default)
+    {
+        var font = await FindByAliasAsync(gameId, roleAlias, cancellationToken).ConfigureAwait(false);
+        return font is null ? null : await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> RemoveAsync(Guid fontAssetId, CancellationToken cancellationToken = default)
+    {
+        var font = await db.FontAssets.FirstOrDefaultAsync(f => f.Id == fontAssetId, cancellationToken)
+            .ConfigureAwait(false);
+        if (font is null)
+        {
+            return false;
+        }
+
+        db.FontAssets.Remove(font);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task<byte[]?> ReadAssetAsync(string sha256, CancellationToken cancellationToken)
+    {
+        var stream = await store.OpenReadAsync(sha256, cancellationToken).ConfigureAwait(false);
+        if (stream is null)
+        {
+            return null;
+        }
+
+        await using (stream.ConfigureAwait(false))
+        {
+            using var buffer = new MemoryStream();
+            await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+            return buffer.ToArray();
+        }
+    }
+
+    internal static string? NormalizeAlias(string? alias)
+    {
+        if (string.IsNullOrWhiteSpace(alias))
+        {
+            return null;
+        }
+
+        var trimmed = alias.Trim().ToLowerInvariant();
+        return AliasPattern().IsMatch(trimmed) ? trimmed : null;
+    }
+
+    [GeneratedRegex("^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.CultureInvariant)]
+    private static partial Regex AliasPattern();
+}

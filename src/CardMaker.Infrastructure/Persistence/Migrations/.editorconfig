@@ -1,0 +1,7 @@
+# Le migrazioni sono generate da EF Core: non applicare le regole di stile e qualita' del progetto.
+[*.cs]
+generated_code = true
+dotnet_analyzer_diagnostic.severity = none
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1062.severity = none

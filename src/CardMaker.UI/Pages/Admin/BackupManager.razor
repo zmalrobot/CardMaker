@@ -1,0 +1,175 @@
+@page "/admin/backups"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+@inject IBackupService BackupService
+
+<PageTitle>Backup & Integrità — CardMaker Admin</PageTitle>
+
+<div class="container-fluid py-3">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">💾 Backup & Integrità SQLite</h1>
+            <p class="text-muted mb-0">Gestione snapshot atomici online via <code>VACUUM INTO</code> e test periodico di integrità del database.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" @onclick="VerifyIntegrity" disabled="@IsProcessing">
+                <span>🔍 Verifica Integrità</span>
+            </button>
+            <button class="btn btn-primary" @onclick="TakeSnapshot" disabled="@IsProcessing">
+                <span>📸 Esegui Snapshot Database</span>
+            </button>
+        </div>
+    </div>
+
+    @if (SuccessMessage != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <span>@SuccessMessage</span>
+            <button type="button" class="btn-close" @onclick="() => SuccessMessage = null"></button>
+        </div>
+    }
+
+    @if (IntegrityReport != null)
+    {
+        <div class="card border shadow-sm mb-4">
+            <div class="card-header bg-surface-1 py-3 d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0 fw-semibold">Rapporto Integrità SQLite (PRAGMA integrity_check)</h5>
+                <span class="badge @(IntegrityReport.IsHealthy ? "bg-success" : "bg-danger") fs-6">
+                    @(IntegrityReport.IsHealthy ? "Database Integro" : "Attenzione: Problemi Rilevati")
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="fs-1">@(IntegrityReport.IsHealthy ? "✅" : "⚠️")</span>
+                    <div>
+                        <div class="fw-semibold">Esito Verifica: <code>@IntegrityReport.CheckResult</code></div>
+                        <small class="text-muted">Eseguito il: @IntegrityReport.CheckedAtUtc.ToString("yyyy-MM-dd HH:mm:ss") UTC</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <div class="card border shadow-sm">
+        <div class="card-header bg-surface-1 py-3">
+            <h5 class="card-title mb-0 fw-semibold">Snapshot Salvati</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome File Snapshot</th>
+                        <th>Dimensione</th>
+                        <th>Data Creazione (UTC)</th>
+                        <th class="text-end">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Backups.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="4" class="text-center py-4 text-muted">
+                                Nessuno snapshot presente nella cartella dati.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        @foreach (var b in Backups)
+                        {
+                            <tr>
+                                <td class="fw-semibold font-monospace">@b.FileName</td>
+                                <td>@FormatBytes(b.SizeBytes)</td>
+                                <td>@b.CreatedAtUtc.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteBackup(b.FileName)" disabled="@IsProcessing">
+                                        Elimina
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
+    private List<BackupFileInfo> Backups = [];
+    private BackupIntegrityReport? IntegrityReport;
+    private string? SuccessMessage;
+    private bool IsProcessing;
+    private string? CurrentUserId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (AuthStateTask != null)
+        {
+            var auth = await AuthStateTask;
+            CurrentUserId = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        await LoadBackups();
+    }
+
+    private async Task LoadBackups()
+    {
+        var list = await BackupService.ListBackupsAsync();
+        Backups = list.ToList();
+    }
+
+    private async Task TakeSnapshot()
+    {
+        IsProcessing = true;
+        try
+        {
+            var info = await BackupService.CreateBackupAsync(CurrentUserId);
+            SuccessMessage = $"Snapshot creato con successo: {info.FileName} ({FormatBytes(info.SizeBytes)}).";
+            await LoadBackups();
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task VerifyIntegrity()
+    {
+        IsProcessing = true;
+        try
+        {
+            IntegrityReport = await BackupService.VerifyDatabaseIntegrityAsync();
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private async Task DeleteBackup(string fileName)
+    {
+        IsProcessing = true;
+        try
+        {
+            await BackupService.DeleteBackupAsync(fileName, CurrentUserId);
+            SuccessMessage = $"Snapshot {fileName} eliminato.";
+            await LoadBackups();
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes / (1024.0 * 1024.0):F2} MB";
+    }
+}
+

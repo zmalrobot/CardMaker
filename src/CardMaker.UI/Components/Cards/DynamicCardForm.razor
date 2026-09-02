@@ -1,0 +1,312 @@
+@using System.Text.Json
+@using CardMaker.Rendering.Pipeline
+@inject IAssetCatalog AssetCatalog
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="cm-dynamic-form">
+    @foreach (var group in GetGroupedFields())
+    {
+        <div class="card shadow-sm mb-3">
+            @if (!string.IsNullOrWhiteSpace(group.Key))
+            {
+                <div class="card-header py-2 fw-semibold">@group.Key</div>
+            }
+            <div class="card-body">
+                <div class="row g-3">
+                    @foreach (var field in group.Value)
+                    {
+                        @if (IsFieldVisible(field))
+                        {
+                            <div class="@GetColumnClass(field)">
+                                @switch (field.Kind)
+                                {
+                                    case FieldKind.Text:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <input type="text" 
+                                                   class="form-control form-control-sm" 
+                                                   value="@GetTextValue(field.Key)" 
+                                                   @oninput="@(e => SetTextValueAsync(field.Key, e.Value?.ToString()))" />
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.MultilineText:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <textarea class="form-control form-control-sm" 
+                                                      rows="3" 
+                                                      value="@GetTextValue(field.Key)" 
+                                                      @oninput="@(e => SetTextValueAsync(field.Key, e.Value?.ToString()))"></textarea>
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.RichText:
+                                        <RichTextEditor Value="@GetTextValue(field.Key)"
+                                                        ValueChanged="@(val => SetTextValueAsync(field.Key, val))"
+                                                        Label="@field.Label"
+                                                        HelpText="@field.HelpText"
+                                                        Symbols="@field.Symbols" />
+                                        break;
+
+                                    case FieldKind.Integer:
+                                    case FieldKind.Decimal:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <input type="number" 
+                                                   class="form-control form-control-sm" 
+                                                   value="@GetTextValue(field.Key)" 
+                                                   @oninput="@(e => SetTextValueAsync(field.Key, e.Value?.ToString()))" />
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.Boolean:
+                                        <div class="form-check form-switch mt-2 mb-2">
+                                            <input class="form-check-input" 
+                                                   type="checkbox" 
+                                                   id="@($"switch-{field.Key}")" 
+                                                   checked="@GetBoolValue(field.Key)"
+                                                   @onchange="@(e => SetBoolValueAsync(field.Key, (bool)(e.Value ?? false)))" />
+                                            <label class="form-check-label small fw-semibold" for="@($"switch-{field.Key}")">
+                                                @field.Label
+                                            </label>
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.Enum:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <select class="form-select form-select-sm" 
+                                                    value="@GetTextValue(field.Key)" 
+                                                    @onchange="@(e => SetTextValueAsync(field.Key, e.Value?.ToString()))">
+                                                <option value="">-- Seleziona --</option>
+                                                @foreach (var opt in field.Options)
+                                                {
+                                                    <option value="@opt.Key">@opt.Label</option>
+                                                }
+                                            </select>
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.SymbolRef:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <select class="form-select form-select-sm" 
+                                                    value="@GetTextValue(field.Key)" 
+                                                    @onchange="@(e => SetTextValueAsync(field.Key, e.Value?.ToString()))">
+                                                <option value="">-- Seleziona --</option>
+                                                @foreach (var sym in field.Symbols)
+                                                {
+                                                    <option value="@sym.Key">@sym.Name</option>
+                                                }
+                                            </select>
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.ToggleSet:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold d-block">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <div class="d-inline-grid gap-1 p-2 bg-surface-2 border rounded" style="grid-template-columns: repeat(3, 40px); grid-template-rows: repeat(3, 40px);">
+                                                @RenderToggleItem(field.Key, "TL", "↖")
+                                                @RenderToggleItem(field.Key, "T", "↑")
+                                                @RenderToggleItem(field.Key, "TR", "↗")
+                                                @RenderToggleItem(field.Key, "L", "←")
+                                                <div class="d-flex align-items-center justify-content-center text-muted small">LINK</div>
+                                                @RenderToggleItem(field.Key, "R", "→")
+                                                @RenderToggleItem(field.Key, "BL", "↙")
+                                                @RenderToggleItem(field.Key, "B", "↓")
+                                                @RenderToggleItem(field.Key, "BR", "↘")
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+
+                                    case FieldKind.Image:
+                                        <div class="mb-2">
+                                            <label class="form-label small fw-semibold">
+                                                @field.Label
+                                                @if (field.IsRequired) { <span class="text-danger">*</span> }
+                                            </label>
+                                            <InputFile OnChange="@(e => HandleImageUploadAsync(field.Key, e))" 
+                                                       class="form-control form-control-sm" 
+                                                       accept="image/png,image/jpeg,image/webp" />
+                                            @if (!string.IsNullOrWhiteSpace(GetTextValue(field.Key)))
+                                            {
+                                                <div class="small text-success mt-1">✓ Artwork caricato</div>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text small">@field.HelpText</div>
+                                            }
+                                        </div>
+                                        break;
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<FieldDefinitionDto> Fields { get; set; } = [];
+    [Parameter] public Dictionary<string, CardValue> Values { get; set; } = [];
+    [Parameter] public EventCallback OnValuesChanged { get; set; }
+
+    private IEnumerable<KeyValuePair<string, List<FieldDefinitionDto>>> GetGroupedFields()
+    {
+        return Fields
+            .GroupBy(f => f.GroupName ?? "Informazioni Principali")
+            .Select(g => new KeyValuePair<string, List<FieldDefinitionDto>>(g.Key, g.OrderBy(f => f.SortOrder).ToList()));
+    }
+
+    private string GetColumnClass(FieldDefinitionDto field) => field.Kind switch
+    {
+        FieldKind.RichText or FieldKind.MultilineText => "col-12",
+        FieldKind.ToggleSet or FieldKind.Image => "col-12",
+        FieldKind.Boolean => "col-6 col-md-4",
+        _ => "col-12 col-md-6"
+    };
+
+    private string GetTextValue(string key)
+    {
+        return Values.TryGetValue(key, out var val) ? val.AsText() : string.Empty;
+    }
+
+    private bool GetBoolValue(string key)
+    {
+        return Values.TryGetValue(key, out var val) && (val.Flag == true || string.Equals(val.Text, "true", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task SetTextValueAsync(string key, string? value)
+    {
+        Values[key] = CardValue.FromText(value ?? string.Empty);
+        await OnValuesChanged.InvokeAsync();
+    }
+
+    private async Task SetBoolValueAsync(string key, bool value)
+    {
+        Values[key] = CardValue.FromFlag(value);
+        await OnValuesChanged.InvokeAsync();
+    }
+
+    private async Task ToggleArrayItemAsync(string key, string item)
+    {
+        var current = Values.TryGetValue(key, out var val) ? val.AsList().ToList() : [];
+        if (current.Contains(item))
+        {
+            current.Remove(item);
+        }
+        else
+        {
+            current.Add(item);
+        }
+
+        Values[key] = CardValue.FromList(current);
+        await OnValuesChanged.InvokeAsync();
+    }
+
+    private RenderFragment RenderToggleItem(string fieldKey, string itemKey, string symbol) => __builder =>
+    {
+        var current = Values.TryGetValue(fieldKey, out var val) ? val.AsList() : [];
+        var isActive = current.Contains(itemKey);
+        <button type="button" 
+                class="btn btn-sm p-0 d-flex align-items-center justify-content-center @(isActive ? "btn-danger fw-bold shadow-sm" : "btn-outline-secondary")"
+                @onclick="() => ToggleArrayItemAsync(fieldKey, itemKey)">
+            @symbol
+        </button>
+    };
+
+    private async Task HandleImageUploadAsync(string fieldKey, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null) return;
+
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await using var stream = file.OpenReadStream(20L * 1024 * 1024);
+        var result = await AssetCatalog.UploadAsync(stream, new AssetUploadRequest
+        {
+            FileName = file.Name,
+            Category = Domain.Assets.AssetCategory.Artwork,
+            LicenseNote = "Artwork utente",
+            UploadedByUserId = userId,
+        });
+
+        if (result.Succeeded && result.Asset is not null)
+        {
+            Values[fieldKey] = CardValue.FromText(result.Asset.Id.ToString());
+            await OnValuesChanged.InvokeAsync();
+        }
+    }
+
+    private bool IsFieldVisible(FieldDefinitionDto field)
+    {
+        if (string.IsNullOrWhiteSpace(field.VisibleWhenJson))
+        {
+            return true;
+        }
+
+        try
+        {
+            var condition = JsonSerializer.Deserialize<Condition>(field.VisibleWhenJson, LayoutSerializer.Options);
+            if (condition is null) return true;
+
+            var binder = new ValueBinder(Values, []);
+            var evaluator = new ConditionEvaluator(binder);
+            return evaluator.IsSatisfied(condition);
+        }
+        catch
+        {
+            return true;
+        }
+    }
+}
+

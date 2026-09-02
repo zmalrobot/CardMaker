@@ -1,0 +1,131 @@
+@using System.Text.Json
+@using CardMaker.Contracts.Layout
+
+<div class="card bg-surface-2 border p-2 mb-2">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <label class="form-label small fw-semibold mb-0">Regola Condizionale (VisibleWhen)</label>
+        @if (Condition is not null)
+        {
+            <button type="button" class="btn btn-link text-danger p-0 small" @onclick="ClearCondition">Rimuovi Regola</button>
+        }
+    </div>
+
+    @if (Condition is null)
+    {
+        <button type="button" class="btn btn-sm btn-outline-secondary w-100" @onclick="InitCondition">
+            + Aggiungi Condizione di Visibilità
+        </button>
+    }
+    else
+    {
+        <div class="row g-2 align-items-center">
+            <div class="col-4">
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       placeholder="Campo (es. isPendulum)" 
+                       value="@_field" 
+                       @oninput="OnFieldChanged" />
+            </div>
+            <div class="col-3">
+                <select class="form-select form-select-sm" value="@_op" @onchange="OnOpChanged">
+                    <option value="@ConditionOps.Equal">== (Uguale)</option>
+                    <option value="@ConditionOps.NotEqual">!= (Diverso)</option>
+                    <option value="@ConditionOps.GreaterThan">&gt; (Maggiore)</option>
+                    <option value="@ConditionOps.LessThan">&lt; (Minore)</option>
+                    <option value="@ConditionOps.In">in (In lista)</option>
+                    <option value="@ConditionOps.NotEmpty">non vuoto</option>
+                    <option value="@ConditionOps.IsTrue">è vero (true)</option>
+                </select>
+            </div>
+            <div class="col-5">
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       placeholder="Valore (es. true o Dark)" 
+                       value="@_val" 
+                       @oninput="OnValChanged" />
+            </div>
+        </div>
+
+        <div class="mt-2">
+            <code class="small text-muted d-block text-truncate">@GetConditionJson()</code>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Condition? Condition { get; set; }
+    [Parameter] public EventCallback<Condition?> ConditionChanged { get; set; }
+
+    private string _field = "";
+    private string _op = ConditionOps.Equal;
+    private string _val = "true";
+
+    protected override void OnParametersSet()
+    {
+        if (Condition is not null)
+        {
+            _field = Condition.Field ?? "";
+            _op = Condition.Op;
+            _val = Condition.Value ?? (Condition.Values is not null ? string.Join(",", Condition.Values) : "");
+        }
+    }
+
+    private void InitCondition()
+    {
+        _field = "isPendulum";
+        _op = ConditionOps.Equal;
+        _val = "true";
+        UpdateCondition();
+    }
+
+    private void ClearCondition()
+    {
+        Condition = null;
+        _ = ConditionChanged.InvokeAsync(null);
+    }
+
+    private void OnFieldChanged(ChangeEventArgs e)
+    {
+        _field = e.Value?.ToString() ?? "";
+        UpdateCondition();
+    }
+
+    private void OnOpChanged(ChangeEventArgs e)
+    {
+        _op = e.Value?.ToString() ?? ConditionOps.Equal;
+        UpdateCondition();
+    }
+
+    private void OnValChanged(ChangeEventArgs e)
+    {
+        _val = e.Value?.ToString() ?? "";
+        UpdateCondition();
+    }
+
+    private void UpdateCondition()
+    {
+        if (string.IsNullOrWhiteSpace(_field))
+        {
+            Condition = null;
+        }
+        else
+        {
+            Condition = new Condition
+            {
+                Field = _field,
+                Op = _op,
+                Value = string.IsNullOrWhiteSpace(_val) ? null : _val,
+            };
+        }
+
+        _ = ConditionChanged.InvokeAsync(Condition);
+    }
+
+    private string GetConditionJson()
+    {
+        return Condition is not null 
+            ? JsonSerializer.Serialize(Condition, LayoutSerializer.Options) 
+            : "Nessuna condizione";
+    }
+}
+

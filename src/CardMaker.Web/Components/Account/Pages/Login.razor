@@ -1,0 +1,132 @@
+@page "/Account/Login"
+
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Identity
+@using CardMaker.Infrastructure.Identity
+
+@inject UserManager<ApplicationUser> UserManager
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Accedi — CardMaker</PageTitle>
+
+<div class="row justify-content-center py-4">
+    <div class="col-lg-5">
+        <div class="card border shadow-sm p-4">
+            <h2 class="h4 fw-bold mb-2">Accesso Utente</h2>
+            <p class="text-muted small mb-3">Inserisci le tue credenziali per accedere al tuo account CardMaker.</p>
+            
+            <StatusMessage Message="@errorMessage" />
+            
+            <EditForm EditContext="editContext" method="post" OnSubmit="LoginUser" FormName="login">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert" />
+                
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="username webauthn" aria-required="true" placeholder="nome@example.com" />
+                    <label for="Input.Email" class="form-label">Email</label>
+                    <ValidationMessage For="() => Input.Email" class="text-danger" />
+                </div>
+                
+                <div class="form-floating mb-3">
+                    <InputText type="password" @bind-Value="Input.Password" id="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="Password" />
+                    <label for="Input.Password" class="form-label">Password</label>
+                    <ValidationMessage For="() => Input.Password" class="text-danger" />
+                </div>
+                
+                <div class="form-check mb-3">
+                    <InputCheckbox @bind-Value="Input.RememberMe" id="rememberMe" class="form-check-input" />
+                    <label class="form-check-label small" for="rememberMe">
+                        Resta connesso
+                    </label>
+                </div>
+                
+                <button type="submit" class="w-100 btn btn-primary fw-semibold py-2">Accedi</button>
+                
+                <div class="mt-3 pt-3 border-top small text-muted">
+                    <div class="d-flex justify-content-between mb-2">
+                        <a href="Account/ForgotPassword" class="text-decoration-none">Password dimenticata?</a>
+                        <a href="disclaimer" class="text-decoration-none">Note legali</a>
+                    </div>
+                    <div class="text-center pt-2 border-top">
+                        <span>Non hai ancora un account?</span>
+                        <a href="Account/Register" class="fw-semibold text-decoration-none ms-1">Registrati qui</a>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? errorMessage;
+    private EditContext editContext = default!;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Input ??= new();
+        editContext = new EditContext(Input);
+
+        if (HttpMethods.IsGet(HttpContext.Request.Method))
+        {
+            await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
+        }
+    }
+
+    public async Task LoginUser()
+    {
+        if (!editContext.Validate())
+        {
+            return;
+        }
+
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("Utente {Email} autenticato con successo.", Input.Email);
+            RedirectManager.RedirectTo(ReturnUrl);
+        }
+        else if (result.RequiresTwoFactor)
+        {
+            RedirectManager.RedirectTo(
+                "Account/LoginWith2fa",
+                new() { ["returnUrl"] = ReturnUrl, ["rememberMe"] = Input.RememberMe });
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("Account {Email} bloccato temporaneamente.", Input.Email);
+            RedirectManager.RedirectTo("Account/Lockout");
+        }
+        else
+        {
+            errorMessage = "Errore: Credenziali non valide.";
+        }
+    }
+
+    private sealed class InputModel
+    {
+        [Required(ErrorMessage = "L'indirizzo email è obbligatorio.")]
+        [EmailAddress(ErrorMessage = "Formato email non valido.")]
+        public string Email { get; set; } = "";
+
+        [Required(ErrorMessage = "La password è obbligatoria.")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = "";
+
+        [Display(Name = "Resta connesso")]
+        public bool RememberMe { get; set; }
+    }
+}

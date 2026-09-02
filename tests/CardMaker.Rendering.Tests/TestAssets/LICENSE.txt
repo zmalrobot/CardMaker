@@ -1,0 +1,5 @@
+Roboto-Regular.ttf is part of the Roboto font family by Google, licensed under the
+Apache License, Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+Used here solely as a deterministic font for unit tests, so text metrics do not
+vary across the developer machines and CI runners that this test project runs on.
+It is not shipped with the application.

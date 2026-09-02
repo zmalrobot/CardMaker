@@ -1,0 +1,22 @@
+@page "/"
+@rendermode InteractiveServer
+
+<PageTitle>CardMaker Studio</PageTitle>
+
+<AuthorizeView>
+    <Authorized>
+        <CardMaker.UI.Pages.Cards.MyCards />
+    </Authorized>
+    <NotAuthorized>
+        <div class="py-5 text-center">
+            <div class="display-4 fw-bold mb-3">CardMaker Studio</div>
+            <p class="lead text-muted mx-auto mb-4" style="max-width: 600px;">
+                Generatore professionale di carte da gioco personalizzate data-driven con rendering tipografico SkiaSharp e supporto Yu-Gi-Oh! e Rush Duel.
+            </p>
+            <div class="d-flex justify-content-center gap-3">
+                <a href="Account/Login" class="btn btn-primary btn-lg shadow-sm px-4">Accedi</a>
+                <a href="Account/Register" class="btn btn-outline-secondary btn-lg px-4">Registrati</a>
+            </div>
+        </div>
+    </NotAuthorized>
+</AuthorizeView>

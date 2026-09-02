@@ -1,0 +1,428 @@
+/* ==========================================================================
+   CardMaker Design System & Themes
+   Palette: Blue primary, Azure/Cyan accent, Neutral checkerboard for previews
+   WCAG AA Contrast Compliant
+   ========================================================================== */
+
+:root,
+[data-bs-theme="light"] {
+    --cm-bg: #F6F9FF;
+    --cm-surface: #FFFFFF;
+    --cm-surface-2: #EDF3FF;
+    --cm-border: #D6E2F7;
+    --cm-text: #0F1B2D;
+    --cm-text-muted: #52627A;
+    --cm-primary: #1D5FD8;
+    --cm-primary-hover: #1A54C0;
+    --cm-primary-subtle: #E1ECFF;
+    --cm-accent: #29A9E8;
+    --cm-accent-hover: #1F92CB;
+    --cm-accent-subtle: #E1F5FE;
+    --cm-success: #1E9E6A;
+    --cm-warning: #C77700;
+    --cm-danger: #C8382F;
+    --cm-focus-ring: 0 0 0 0.25rem rgba(29, 95, 216, 0.25);
+
+    /* Neutral preview canvas: NEVER BLUE to preserve true card color perception */
+    --cm-preview-bg: #EAEAEA;
+    --cm-checkerboard-1: #E0E0E0;
+    --cm-checkerboard-2: #F2F2F2;
+
+    /* Bootstrap theme mapping */
+    --bs-body-bg: var(--cm-bg);
+    --bs-body-color: var(--cm-text);
+    --bs-primary: var(--cm-primary);
+    --bs-primary-rgb: 29, 95, 216;
+    --bs-secondary-color: var(--cm-text-muted);
+    --bs-border-color: var(--cm-border);
+    --bs-card-bg: var(--cm-surface);
+    --bs-card-border-color: var(--cm-border);
+    --bs-tertiary-bg: var(--cm-surface-2);
+}
+
+[data-bs-theme="dark"] {
+    --cm-bg: #0A1020;
+    --cm-surface: #121A2C;
+    --cm-surface-2: #1A2438;
+    --cm-border: #26324A;
+    --cm-text: #E8EEF9;
+    --cm-text-muted: #9AA9C0;
+    --cm-primary: #4C8DFF;
+    --cm-primary-hover: #6BA1FF;
+    --cm-primary-subtle: #192744;
+    --cm-accent: #4FC3F7;
+    --cm-accent-hover: #81D4FA;
+    --cm-accent-subtle: #13283E;
+    --cm-success: #35C08A;
+    --cm-warning: #E0A030;
+    --cm-danger: #F2645A;
+    --cm-focus-ring: 0 0 0 0.25rem rgba(76, 141, 255, 0.35);
+
+    /* Neutral preview canvas: NEVER BLUE to preserve true card color perception */
+    --cm-preview-bg: #1A1A1A;
+    --cm-checkerboard-1: #1E1E1E;
+    --cm-checkerboard-2: #2B2B2B;
+
+    /* Bootstrap theme mapping */
+    --bs-body-bg: var(--cm-bg);
+    --bs-body-color: var(--cm-text);
+    --bs-primary: var(--cm-primary);
+    --bs-primary-rgb: 76, 141, 255;
+    --bs-secondary-color: var(--cm-text-muted);
+    --bs-border-color: var(--cm-border);
+    --bs-card-bg: var(--cm-surface);
+    --bs-card-border-color: var(--cm-border);
+    --bs-tertiary-bg: var(--cm-surface-2);
+}
+
+/* ==========================================================================
+   Global Base Typography & Layout
+   ========================================================================== */
+html, body {
+    background-color: var(--cm-bg);
+    color: var(--cm-text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: var(--cm-primary);
+    text-decoration: none;
+    transition: color 0.15s ease-in-out;
+}
+
+a:hover {
+    color: var(--cm-primary-hover);
+}
+
+/* Focus styles for accessibility (WCAG) */
+:focus-visible,
+.form-control:focus,
+.form-select:focus,
+.btn:focus-visible {
+    outline: none;
+    box-shadow: var(--cm-focus-ring) !important;
+    border-color: var(--cm-primary) !important;
+}
+
+/* ==========================================================================
+   App Shell (Sidebar + Topbar + Main Content)
+   ========================================================================== */
+.cm-app-layout {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.cm-sidebar {
+    width: 260px;
+    background-color: var(--cm-surface);
+    border-right: 1px solid var(--cm-border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    transition: transform 0.2s ease-in-out, width 0.2s ease-in-out;
+    z-index: 1040;
+}
+
+.cm-sidebar-header {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    padding: 0 1.25rem;
+    border-bottom: 1px solid var(--cm-border);
+}
+
+.cm-brand {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--cm-text);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cm-brand-badge {
+    background: linear-gradient(135deg, var(--cm-primary), var(--cm-accent));
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+}
+
+.cm-nav-group {
+    padding: 0.75rem 0.5rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.cm-nav-heading {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--cm-text-muted);
+    padding: 0.75rem 0.75rem 0.25rem;
+}
+
+.cm-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    color: var(--cm-text);
+    border-radius: 6px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cm-nav-link:hover {
+    background-color: var(--cm-surface-2);
+    color: var(--cm-primary);
+}
+
+.cm-nav-link.active {
+    background-color: var(--cm-primary-subtle);
+    color: var(--cm-primary);
+    font-weight: 600;
+}
+
+.cm-nav-icon {
+    width: 20px;
+    height: 20px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.85;
+}
+
+.cm-main-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.cm-topbar {
+    height: 64px;
+    background-color: var(--cm-surface);
+    border-bottom: 1px solid var(--cm-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1.5rem;
+    z-index: 1020;
+}
+
+.cm-content {
+    flex: 1;
+    padding: 1.5rem;
+}
+
+@media (max-width: 991.98px) {
+    .cm-sidebar {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        transform: translateX(-100%);
+    }
+
+    .cm-sidebar.show {
+        transform: translateX(0);
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+    }
+}
+
+/* ==========================================================================
+   Two-Column Layout (Form Left / Preview Right)
+   ========================================================================== */
+.cm-two-column {
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.cm-column-form {
+    min-width: 0;
+}
+
+.cm-column-preview {
+    position: sticky;
+    top: 1.5rem;
+}
+
+@media (max-width: 1200px) {
+    .cm-two-column {
+        grid-template-columns: 1fr 400px;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .cm-two-column {
+        grid-template-columns: 1fr;
+    }
+
+    .cm-column-preview {
+        position: static;
+    }
+}
+
+/* ==========================================================================
+   Card Preview Component (Checkered Canvas, Zoom, Warnings)
+   ========================================================================== */
+.cm-preview-wrapper {
+    background-color: var(--cm-surface);
+    border: 1px solid var(--cm-border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.cm-preview-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.85rem;
+    background-color: var(--cm-surface-2);
+    border-bottom: 1px solid var(--cm-border);
+    gap: 0.5rem;
+}
+
+.cm-preview-canvas-container {
+    padding: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: auto;
+    min-height: 440px;
+    background-color: var(--cm-preview-bg);
+    position: relative;
+}
+
+/* Checkerboard pattern for transparency: Neutral only */
+.cm-checkerboard {
+    background-image: linear-gradient(45deg, var(--cm-checkerboard-1) 25%, transparent 25%),
+                      linear-gradient(-45deg, var(--cm-checkerboard-1) 25%, transparent 25%),
+                      linear-gradient(45deg, transparent 75%, var(--cm-checkerboard-1) 75%),
+                      linear-gradient(-45deg, transparent 75%, var(--cm-checkerboard-1) 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: var(--cm-checkerboard-2);
+}
+
+.cm-card-image {
+    max-width: 100%;
+    height: auto;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    transition: transform 0.15s ease-out;
+    border-radius: 6px;
+}
+
+.cm-preview-warnings {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--cm-border);
+    background-color: var(--cm-surface);
+    font-size: 0.85rem;
+}
+
+/* ==========================================================================
+   Buttons & UI Elements
+   ========================================================================== */
+.btn-primary {
+    background-color: var(--cm-primary);
+    border-color: var(--cm-primary);
+    color: #FFFFFF;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--cm-primary-hover);
+    border-color: var(--cm-primary-hover);
+    color: #FFFFFF;
+}
+
+.btn-accent {
+    background-color: var(--cm-accent);
+    border-color: var(--cm-accent);
+    color: #FFFFFF;
+}
+
+.btn-accent:hover {
+    background-color: var(--cm-accent-hover);
+    border-color: var(--cm-accent-hover);
+    color: #FFFFFF;
+}
+
+.btn-outline-primary {
+    color: var(--cm-primary);
+    border-color: var(--cm-primary);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--cm-primary);
+    border-color: var(--cm-primary);
+    color: #FFFFFF;
+}
+
+.card {
+    background-color: var(--cm-surface);
+    border: 1px solid var(--cm-border);
+    border-radius: 8px;
+}
+
+.card-header {
+    background-color: var(--cm-surface-2);
+    border-bottom: 1px solid var(--cm-border);
+    font-weight: 600;
+}
+
+/* Table styles */
+.table {
+    --bs-table-bg: var(--cm-surface);
+    --bs-table-color: var(--cm-text);
+    --bs-table-border-color: var(--cm-border);
+}
+
+.table th {
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--cm-text-muted);
+}
+
+/* ==========================================================================
+   Skeleton Loaders & Animations
+   ========================================================================== */
+.cm-skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--cm-surface-2) 25%,
+        var(--cm-border) 50%,
+        var(--cm-surface-2) 75%
+    );
+    background-size: 200% 100%;
+    animation: cm-shimmer 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes cm-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cm-skeleton {
+        animation: none;
+        background: var(--cm-surface-2);
+    }
+}
+

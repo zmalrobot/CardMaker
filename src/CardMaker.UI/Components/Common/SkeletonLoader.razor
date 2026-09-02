@@ -1,0 +1,11 @@
+<div class="cm-skeleton @CssClass" style="@Style"></div>
+
+@code {
+    [Parameter] public string Width { get; set; } = "100%";
+    [Parameter] public string Height { get; set; } = "1rem";
+    [Parameter] public string Radius { get; set; } = "4px";
+    [Parameter] public string? CssClass { get; set; }
+
+    private string Style => $"width: {Width}; height: {Height}; border-radius: {Radius};";
+}
+

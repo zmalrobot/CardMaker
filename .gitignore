@@ -1,0 +1,24 @@
+## .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+.vs/
+
+## Dati locali dell'applicazione (mai versionati)
+data/
+*.db
+*.db-shm
+*.db-wal
+
+## Test
+TestResults/
+tests/**/actual/
+
+## Editor
+.idea/
+*.swp
+.DS_Store

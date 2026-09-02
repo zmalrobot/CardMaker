@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CardMaker.Application/CardMaker.Application.csproj" />
+    <Project Path="src/CardMaker.Contracts/CardMaker.Contracts.csproj" />
+    <Project Path="src/CardMaker.Domain/CardMaker.Domain.csproj" />
+    <Project Path="src/CardMaker.Infrastructure/CardMaker.Infrastructure.csproj" />
+    <Project Path="src/CardMaker.Rendering/CardMaker.Rendering.csproj" />
+    <Project Path="src/CardMaker.UI/CardMaker.UI.csproj" />
+    <Project Path="src/CardMaker.Web/CardMaker.Web.csproj" />
+    <Project Path="src/CardMaker.Desktop/CardMaker.Desktop.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CardMaker.Application.Tests/CardMaker.Application.Tests.csproj" />
+    <Project Path="tests/CardMaker.Rendering.Tests/CardMaker.Rendering.Tests.csproj" />
+  </Folder>
+</Solution>

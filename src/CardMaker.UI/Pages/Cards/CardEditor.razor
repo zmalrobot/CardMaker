@@ -1,0 +1,494 @@
+@page "/cards/create"
+@page "/cards/edit/{Id:guid}"
+@attribute [Authorize]
+@rendermode InteractiveServer
+
+@using CardMaker.Application.Assets
+@using CardMaker.Domain.Assets
+
+@inject ICardService CardService
+@inject ICardPreviewService PreviewService
+@inject IAssetCatalog AssetCatalog
+@inject ITemplateSelector TemplateSelector
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsNew ? "Nuova Carta" : $"Modifica {CardTitle}") — CardMaker</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">@(IsNew ? "Crea una Nuova Carta" : $"Modifica: {CardTitle}")</h1>
+        <p class="text-muted mb-0">
+            @(CurrentCardType is not null ? $"{CurrentCardType.Name} ({CurrentGameKey})" : "Seleziona il tipo di carta per iniziare.")
+        </p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="GoBack">
+            ← Le mie carte
+        </button>
+        @if (!IsNew && Id.HasValue)
+        {
+            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="DuplicateAsync" disabled="@IsSaving">
+                Duplica
+            </button>
+            <button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => ShowExportModal = true">
+                Esporta
+            </button>
+        }
+        <button type="button" class="btn btn-primary btn-sm" @onclick="SaveAsync" disabled="@IsSaving">
+            @if (IsSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                <span>Salvataggio...</span>
+            }
+            else
+            {
+                <span>Salva Carta</span>
+            }
+        </button>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="p-5 text-center">
+        <LoadingSpinner Text="Caricamento carta e template in corso..." />
+    </div>
+}
+else if (IsWizardStep && IsNew)
+{
+    <!-- Step 1: Wizard selezione Gioco e Tipo Carta -->
+    <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+        <div class="card-header fw-bold">1. Scegli il Gioco e la Tipologia di Carta</div>
+        <div class="card-body">
+            <div class="mb-4">
+                <label class="form-label small fw-semibold">Gioco</label>
+                <select class="form-select" @bind="CurrentGameKey" @bind:after="OnGameChangedAsync">
+                    <option value="yugioh">Yu-Gi-Oh! (Classico & Rush Duel)</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label small fw-semibold">Tipo di Carta</label>
+                <div class="row g-2">
+                    @foreach (var ct in AvailableCardTypes)
+                    {
+                        <div class="col-6 col-md-4">
+                            <div class="p-2 border rounded cursor-pointer @(SelectedCardTypeId == ct.Id ? "border-primary bg-primary-subtle fw-bold" : "bg-surface-2")"
+                                 style="cursor: pointer;"
+                                 @onclick="() => SelectCardType(ct)">
+                                <div class="small">@ct.Name</div>
+                                <code class="small text-muted">@ct.Key</code>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (CurrentCardType?.AllowedTraits.Count > 0)
+            {
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold">Tratti Speciali (Opzionali)</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var trait in CurrentCardType.AllowedTraits)
+                        {
+                            var isSelected = SelectedTraits.Contains(trait.Key);
+                            <button type="button" 
+                                    class="btn btn-sm @(isSelected ? "btn-primary" : "btn-outline-secondary")"
+                                    @onclick="() => ToggleTrait(trait.Key)">
+                                @trait.Name
+                            </button>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex justify-content-end mt-4">
+                <button type="button" class="btn btn-primary" @onclick="ProceedToEditor" disabled="@(SelectedCardTypeId == Guid.Empty)">
+                    Procedi all'Editor →
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- Step 2: Editor con Form Dinamico e Anteprima Live -->
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="alert alert-danger shadow-sm mb-3">@ErrorMessage</div>
+    }
+    @if (!string.IsNullOrEmpty(SuccessMessage))
+    {
+        <div class="alert alert-success shadow-sm mb-3">@SuccessMessage</div>
+    }
+
+    <TwoColumnLayout>
+        <FormContent>
+            <div class="card shadow-sm mb-3">
+                <div class="card-header py-2 fw-semibold">Informazioni Generali</div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Titolo nella collezione</label>
+                        <input type="text" class="form-control form-control-sm" @bind="CardTitle" placeholder="Es. Il mio Mago Supremo" />
+                    </div>
+
+                    @if (CurrentCardType?.AllowedTraits.Count > 0)
+                    {
+                        <div class="mt-3">
+                            <label class="form-label small fw-semibold d-block">Tratti selezionati</label>
+                            <div class="d-flex flex-wrap gap-1">
+                                @foreach (var trait in CurrentCardType.AllowedTraits)
+                                {
+                                    var isSelected = SelectedTraits.Contains(trait.Key);
+                                    <button type="button" 
+                                            class="btn btn-sm py-0 px-2 @(isSelected ? "btn-primary" : "btn-outline-secondary")"
+                                            @onclick="() => ToggleTrait(trait.Key)">
+                                        @trait.Name
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            @if (CurrentCardType is not null)
+            {
+                <DynamicCardForm Fields="@CurrentCardType.Fields" 
+                                 Values="@CardValues" 
+                                 OnValuesChanged="@TriggerPreviewDebounced" />
+            }
+        </FormContent>
+
+        <PreviewContent>
+            <CardPreview ImageSrc="@PreviewDataUrl"
+                         IsLoading="@IsPreviewLoading"
+                         Warnings="@PreviewWarnings"
+                         WidthPx="@WidthPx"
+                         HeightPx="@HeightPx"
+                         Dpi="150"
+                         Duration="@RenderDuration" />
+        </PreviewContent>
+    </TwoColumnLayout>
+}
+
+@if (Id.HasValue)
+{
+    <ExportModal @bind-IsOpen="ShowExportModal" CardId="@Id.Value" />
+}
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+
+    private bool IsNew => !Id.HasValue;
+    private bool IsWizardStep = true;
+    private bool IsLoading = true;
+    private bool IsSaving;
+    private bool ShowExportModal;
+
+    private string CurrentGameKey = "yugioh";
+    private Guid CurrentGameId;
+    private IReadOnlyList<CardTypeDetailDto> AvailableCardTypes = [];
+    private CardTypeDetailDto? CurrentCardType;
+    private Guid SelectedCardTypeId;
+
+    private string CardTitle = "Nuova Carta";
+    private Dictionary<string, CardValue> CardValues = [];
+    private List<string> SelectedTraits = [];
+
+    private string? PreviewDataUrl;
+    private bool IsPreviewLoading;
+    private IReadOnlyList<PreviewWarning>? PreviewWarnings;
+    private int WidthPx;
+    private int HeightPx;
+    private TimeSpan? RenderDuration;
+
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private CancellationTokenSource? _previewCts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            AvailableCardTypes = await CardService.GetGameCardTypesAsync(CurrentGameKey);
+
+            if (Id.HasValue && !string.IsNullOrEmpty(userId))
+            {
+                var card = await CardService.GetCardAsync(Id.Value, userId);
+                if (card is not null)
+                {
+                    CardTitle = card.Title;
+                    CurrentGameKey = card.GameKey;
+                    CurrentGameId = card.GameId;
+                    SelectedCardTypeId = card.CardTypeId;
+                    CurrentCardType = AvailableCardTypes.FirstOrDefault(c => c.Id == card.CardTypeId);
+                    CardValues = new Dictionary<string, CardValue>(card.Values);
+                    SelectedTraits = [.. card.SelectedTraits];
+                    IsWizardStep = false;
+                }
+            }
+            else if (AvailableCardTypes.Count > 0)
+            {
+                SelectCardType(AvailableCardTypes[0]);
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+
+        if (!IsWizardStep)
+        {
+            await TriggerPreviewDebounced();
+        }
+    }
+
+    private async Task OnGameChangedAsync()
+    {
+        AvailableCardTypes = await CardService.GetGameCardTypesAsync(CurrentGameKey);
+        if (AvailableCardTypes.Count > 0)
+        {
+            SelectCardType(AvailableCardTypes[0]);
+        }
+    }
+
+    private void SelectCardType(CardTypeDetailDto ct)
+    {
+        CurrentCardType = ct;
+        SelectedCardTypeId = ct.Id;
+        if (IsNew)
+        {
+            CardTitle = $"Nuovo {ct.Name}";
+            CardValues.Clear();
+            foreach (var field in ct.Fields)
+            {
+                if (!string.IsNullOrWhiteSpace(field.DefaultValueJson))
+                {
+                    CardValues[field.Key] = CardValue.FromText(field.DefaultValueJson.Trim('"'));
+                }
+            }
+        }
+    }
+
+    private void ToggleTrait(string traitKey)
+    {
+        if (SelectedTraits.Contains(traitKey))
+        {
+            SelectedTraits.Remove(traitKey);
+        }
+        else
+        {
+            SelectedTraits.Add(traitKey);
+        }
+        _ = TriggerPreviewDebounced();
+    }
+
+    private async Task ProceedToEditor()
+    {
+        IsWizardStep = false;
+        await TriggerPreviewDebounced();
+    }
+
+    private async Task TriggerPreviewDebounced()
+    {
+        _previewCts?.Cancel();
+        _previewCts = new CancellationTokenSource();
+        var token = _previewCts.Token;
+
+        try
+        {
+            await Task.Delay(200, token);
+            if (token.IsCancellationRequested) return;
+
+            await RenderLivePreviewAsync(token);
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignora cancellazioni da debounce
+        }
+    }
+
+    private async Task RenderLivePreviewAsync(CancellationToken cancellationToken)
+    {
+        if (CurrentCardType is null || CurrentCardType.Templates.Count == 0) return;
+
+        IsPreviewLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var template = TemplateSelector.SelectTemplate(CurrentCardType.Templates, CardValues);
+            var version = template?.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
+            if (template is null || version is null)
+            {
+                PreviewWarnings = [new PreviewWarning("template.missing", "Nessun template corrispondente alle regole trovate.", null)];
+                return;
+            }
+
+            var result = await PreviewService.RenderAsync(new CardPreviewRequest
+            {
+                LayoutJson = version.LayoutJson,
+                Values = CardValues,
+                Dpi = 150,
+                IncludeBleed = false,
+            }, cancellationToken);
+
+            if (result.Succeeded && result.Content is not null)
+            {
+                PreviewDataUrl = $"data:{result.ContentType};base64,{Convert.ToBase64String(result.Content)}";
+                WidthPx = result.WidthPx;
+                HeightPx = result.HeightPx;
+                RenderDuration = TimeSpan.FromMilliseconds(result.ElapsedMs);
+            }
+            PreviewWarnings = result.Warnings;
+        }
+        catch (Exception ex)
+        {
+            PreviewWarnings = [new PreviewWarning("render.error", ex.Message, null)];
+        }
+        finally
+        {
+            IsPreviewLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (CurrentCardType is null) return;
+
+        IsSaving = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                ErrorMessage = "Utente non autenticato.";
+                return;
+            }
+
+            var template = TemplateSelector.SelectTemplate(CurrentCardType.Templates, CardValues);
+            var version = template?.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
+            if (version is null)
+            {
+                ErrorMessage = "Impossibile salvare: nessun template valido per questa configurazione.";
+                return;
+            }
+
+            Guid? thumbnailAssetId = null;
+            try
+            {
+                var previewRender = await PreviewService.RenderAsync(new CardPreviewRequest
+                {
+                    LayoutJson = version.LayoutJson,
+                    Values = CardValues,
+                    Dpi = 96,
+                    IncludeBleed = false,
+                });
+
+                if (previewRender.Succeeded && previewRender.Content is not null)
+                {
+                    using var stream = new MemoryStream(previewRender.Content);
+                    var uploadOutcome = await AssetCatalog.UploadAsync(stream, new AssetUploadRequest
+                    {
+                        FileName = $"thumb_{Guid.NewGuid():N}.png",
+                        Category = AssetCategory.Other,
+                        LicenseNote = "Generated card thumbnail",
+                        GameId = CurrentCardType.GameId,
+                        UploadedByUserId = userId,
+                        Kind = UploadKind.Image
+                    });
+
+                    if (uploadOutcome.Succeeded && uploadOutcome.Asset is not null)
+                    {
+                        thumbnailAssetId = uploadOutcome.Asset.Id;
+                    }
+                }
+            }
+            catch
+            {
+                // La mancata generazione della miniatura non blocca il salvataggio della carta
+            }
+
+            var request = new SaveCardRequest
+            {
+                Title = string.IsNullOrWhiteSpace(CardTitle) ? "Senza Titolo" : CardTitle,
+                GameId = CurrentCardType.GameId,
+                CardTypeId = CurrentCardType.Id,
+                TemplateVersionId = version.Id,
+                Values = CardValues,
+                SelectedTraits = SelectedTraits,
+                ThumbnailAssetId = thumbnailAssetId,
+            };
+
+            if (IsNew)
+            {
+                var created = await CardService.CreateCardAsync(request, userId);
+                Id = created.Id;
+                SuccessMessage = "Carta creata con successo!";
+                Navigation.NavigateTo($"/cards/edit/{created.Id}");
+            }
+            else
+            {
+                await CardService.UpdateCardAsync(Id!.Value, request, userId);
+                SuccessMessage = "Modifiche salvate con successo!";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private async Task DuplicateAsync()
+    {
+        if (!Id.HasValue) return;
+
+        IsSaving = true;
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            var duplicated = await CardService.DuplicateCardAsync(Id.Value, userId);
+            Navigation.NavigateTo($"/cards/edit/{duplicated.Id}");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/cards");
+    }
+}

@@ -1,0 +1,135 @@
+@page "/admin/audit"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject IAdminContentService ContentService
+
+<PageTitle>Registro Audit — CardMaker Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Registro Audit Amministrativo</h1>
+        <p class="text-muted mb-0">Tracciamento delle modifiche e delle operazioni eseguite sui contenuti e sugli asset.</p>
+    </div>
+    <div>
+        <a href="admin/content" class="btn btn-outline-secondary btn-sm">
+            ← Torna a Gestione Contenuti
+        </a>
+    </div>
+</div>
+
+@if (IsLoading)
+{
+    <div class="p-5 text-center">
+        <LoadingSpinner Text="Caricamento registro audit..." />
+    </div>
+}
+else
+{
+    <div class="card shadow-sm mb-4">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-bold">Ultime Operazioni Registrate (@Logs.Count)</span>
+            <button class="btn btn-outline-primary btn-sm" @onclick="LoadLogsAsync">Aggiorna</button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data/Ora (UTC)</th>
+                        <th>Azione</th>
+                        <th>Tipo Entità</th>
+                        <th>ID Entità</th>
+                        <th>Utente</th>
+                        <th>Dettagli</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Logs.Count == 0)
+                    {
+                        <tr>
+                            <td colspan="6" class="text-center text-muted p-4">Nessun evento registrato finora.</td>
+                        </tr>
+                    }
+                    @foreach (var log in Logs)
+                    {
+                        <tr>
+                            <td class="small text-muted">@log.CreatedAtUtc.LocalDateTime.ToString("dd/MM/yyyy HH:mm:ss")</td>
+                            <td>
+                                <span class="badge @GetActionBadgeClass(log.Action)">@log.Action</span>
+                            </td>
+                            <td class="fw-semibold">@log.EntityName</td>
+                            <td><code class="small">@log.EntityId</code></td>
+                            <td class="small text-muted">@(string.IsNullOrEmpty(log.UserId) ? "Sistema" : log.UserId)</td>
+                            <td>
+                                @if (!string.IsNullOrEmpty(log.DetailsJson))
+                                {
+                                    <button class="btn btn-outline-secondary btn-sm py-0 px-2 small" @onclick="() => ShowDetails(log.DetailsJson)">
+                                        Visualizza JSON
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (SelectedDetailsJson is not null)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dettagli Operazione (JSON)</h5>
+                    <button type="button" class="btn-close" @onclick="() => SelectedDetailsJson = null"></button>
+                </div>
+                <div class="modal-body">
+                    <pre class="bg-surface-2 p-3 border rounded font-monospace small" style="max-height: 400px; overflow-y: auto;">@SelectedDetailsJson</pre>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => SelectedDetailsJson = null">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<AuditLogEntryDto> Logs = [];
+    private bool IsLoading = true;
+    private string? SelectedDetailsJson;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadLogsAsync();
+    }
+
+    private async Task LoadLogsAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            Logs = await ContentService.GetAuditLogsAsync(100);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void ShowDetails(string json)
+    {
+        SelectedDetailsJson = json;
+    }
+
+    private static string GetActionBadgeClass(string action) => action switch
+    {
+        var a when a.Contains("Create", StringComparison.OrdinalIgnoreCase) => "bg-success",
+        var a when a.Contains("Delete", StringComparison.OrdinalIgnoreCase) => "bg-danger",
+        var a when a.Contains("Replace", StringComparison.OrdinalIgnoreCase) => "bg-warning text-dark",
+        _ => "bg-primary"
+    };
+}
+

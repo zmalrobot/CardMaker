@@ -1,0 +1,368 @@
+@using CardMaker.Contracts.Geometry
+@using CardMaker.Contracts.Layout
+@using CardMaker.Domain.Assets
+
+<div class="card shadow-sm h-100">
+    <div class="card-header py-2 fw-bold d-flex justify-content-between align-items-center">
+        <span>⚙️ Proprietà Layer</span>
+        @if (Layer is not null)
+        {
+            <span class="badge bg-primary-subtle text-primary-emphasis small">@Layer.GetType().Name</span>
+        }
+    </div>
+    <div class="card-body p-3" style="max-height: calc(100vh - 180px); overflow-y: auto;">
+        @if (Layer is null)
+        {
+            <div class="text-muted text-center p-4">
+                Seleziona un layer dall'albero o dal canvas per ispezionarne e modificarne le proprietà.
+            </div>
+        }
+        else
+        {
+            <!-- PROPRIETÀ COMUNI -->
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Nome Layer</label>
+                <input type="text" 
+                       class="form-control form-control-sm" 
+                       value="@Layer.Name" 
+                       @oninput="@(e => UpdateCommon(name: e.Value?.ToString()))" />
+            </div>
+
+            <div class="card bg-surface-2 border p-2 mb-3">
+                <label class="form-label small fw-semibold mb-2">Posizione & Dimensioni (0..1 Normalizzato)</label>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label very-small text-muted mb-0">X (0..1)</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" 
+                               value="@Layer.Rect.X" 
+                               @oninput="@(e => UpdateRect(x: ParseDouble(e.Value)))" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label very-small text-muted mb-0">Y (0..1)</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" 
+                               value="@Layer.Rect.Y" 
+                               @oninput="@(e => UpdateRect(y: ParseDouble(e.Value)))" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label very-small text-muted mb-0">Larghezza (0..1)</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" 
+                               value="@Layer.Rect.Width" 
+                               @oninput="@(e => UpdateRect(w: ParseDouble(e.Value)))" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label very-small text-muted mb-0">Altezza (0..1)</label>
+                        <input type="number" step="0.01" class="form-control form-control-sm" 
+                               value="@Layer.Rect.Height" 
+                               @oninput="@(e => UpdateRect(h: ParseDouble(e.Value)))" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label small fw-semibold">Opacità (0..1)</label>
+                    <input type="number" step="0.05" min="0" max="1" class="form-control form-control-sm" 
+                           value="@Layer.Opacity" 
+                           @oninput="@(e => UpdateCommon(opacity: ParseDouble(e.Value)))" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label small fw-semibold">Rotazione (°)</label>
+                    <input type="number" step="1" class="form-control form-control-sm" 
+                           value="@Layer.RotationDeg" 
+                           @oninput="@(e => UpdateCommon(rot: ParseDouble(e.Value)))" />
+                </div>
+            </div>
+
+            <!-- PROPRIETÀ SPECIFICHE PER TIPO -->
+            <hr class="my-3" />
+
+            @if (Layer is StaticImageLayer staticImg)
+            {
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Asset Immagine</label>
+                    <select class="form-select form-select-sm" 
+                            value="@staticImg.AssetId?.ToString()" 
+                            @onchange="@(e => UpdateStaticImage(assetId: ParseGuid(e.Value)))">
+                        <option value="">-- Seleziona Asset --</option>
+                        @foreach (var a in AvailableAssets)
+                        {
+                            <option value="@a.Id">@a.OriginalFileName (@a.Category)</option>
+                        }
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Adattamento (Fit)</label>
+                    <select class="form-select form-select-sm" 
+                            value="@staticImg.Fit" 
+                            @onchange="@(e => UpdateStaticImage(fit: Enum.Parse<ImageFit>(e.Value?.ToString() ?? "Stretch")))">
+                        @foreach (ImageFit f in Enum.GetValues<ImageFit>())
+                        {
+                            <option value="@f">@f</option>
+                        }
+                    </select>
+                </div>
+            }
+            else if (Layer is ImageSlotLayer slot)
+            {
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Campo Sorgente Artwork</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="@slot.FieldKey" 
+                           @oninput="@(e => UpdateImageSlot(fieldKey: e.Value?.ToString()))" />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Adattamento (Fit)</label>
+                    <select class="form-select form-select-sm" 
+                            value="@slot.Fit" 
+                            @onchange="@(e => UpdateImageSlot(fit: Enum.Parse<ImageFit>(e.Value?.ToString() ?? "Cover")))">
+                        @foreach (ImageFit f in Enum.GetValues<ImageFit>())
+                        {
+                            <option value="@f">@f</option>
+                        }
+                    </select>
+                </div>
+            }
+            else if (Layer is TextLayer text)
+            {
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Sorgente Testo o Binding</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="@text.Source" 
+                           @oninput="@(e => UpdateText(source: e.Value?.ToString()))" 
+                           placeholder="Es. {{name}} oppure ATK/{{atk}}" />
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        @foreach (var f in Fields)
+                        {
+                            <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-1 very-small" 
+                                    @onclick="@(() => AppendToken(text, f.Key))">
+                                + {{@@f.Key}}
+                            </button>
+                        }
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Stile Tipografico</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="@text.Style" 
+                           @oninput="@(e => UpdateText(style: e.Value?.ToString()))" 
+                           placeholder="Es. title, description, stats" />
+                </div>
+            }
+            else if (Layer is RichTextLayer rich)
+            {
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Sorgente Rich Text</label>
+                    <textarea class="form-control form-control-sm" rows="3" 
+                              value="@rich.Source" 
+                              @oninput="@(e => UpdateRichText(source: e.Value?.ToString()))"></textarea>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Ruolo Font Grassetto</label>
+                        <input type="text" class="form-control form-control-sm" 
+                               value="@rich.BoldFont" 
+                               @oninput="@(e => UpdateRichText(boldFont: e.Value?.ToString()))" 
+                               placeholder="es. effect-bold" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Set Simboli Default</label>
+                        <input type="text" class="form-control form-control-sm" 
+                               value="@rich.DefaultSymbolSetKey" 
+                               @oninput="@(e => UpdateRichText(symbolSet: e.Value?.ToString()))" />
+                    </div>
+                </div>
+            }
+            else if (Layer is SymbolRepeaterLayer rep)
+            {
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Set di Simboli</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="@rep.SymbolSetKey" 
+                           @oninput="@(e => UpdateRepeater(setKey: e.Value?.ToString()))" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Chiave Simbolo</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="@rep.SymbolKey" 
+                           @oninput="@(e => UpdateRepeater(symKey: e.Value?.ToString()))" />
+                </div>
+                <div class="mb-2">
+                    <label class="form-label small fw-semibold">Campo Conteggio</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           value="@rep.FieldKey" 
+                           @oninput="@(e => UpdateRepeater(fieldKey: e.Value?.ToString()))" />
+                </div>
+            }
+            else if (Layer is ShapeLayer shape)
+            {
+                <div class="mb-3">
+                    <label class="form-label small fw-semibold">Forma</label>
+                    <select class="form-select form-select-sm" 
+                            value="@shape.Shape" 
+                            @onchange="@(e => UpdateShape(shape: Enum.Parse<ShapeKind>(e.Value?.ToString() ?? "Rectangle")))">
+                        @foreach (ShapeKind s in Enum.GetValues<ShapeKind>())
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Colore Riempimento</label>
+                        <input type="text" class="form-control form-control-sm" 
+                               value="@shape.FillColor" 
+                               @oninput="@(e => UpdateShape(fill: e.Value?.ToString()))" 
+                               placeholder="#000000" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold">Colore Bordo</label>
+                        <input type="text" class="form-control form-control-sm" 
+                               value="@shape.BorderColor" 
+                               @oninput="@(e => UpdateShape(border: e.Value?.ToString()))" 
+                               placeholder="#FFFFFF" />
+                    </div>
+                </div>
+            }
+
+            <!-- VISUAL CONDITION BUILDER -->
+            <hr class="my-3" />
+            <ConditionBuilder Condition="@Layer.VisibleWhen" 
+                              ConditionChanged="@(cond => UpdateVisibleWhen(cond))" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public LayerDefinition? Layer { get; set; }
+    [Parameter] public IReadOnlyList<FieldDefinitionDto> Fields { get; set; } = [];
+    [Parameter] public IReadOnlyList<Asset> AvailableAssets { get; set; } = [];
+    [Parameter] public IReadOnlyList<FontAsset> Fonts { get; set; } = [];
+    [Parameter] public EventCallback OnLayerChanged { get; set; }
+
+    private void UpdateCommon(string? name = null, double? opacity = null, double? rot = null)
+    {
+        if (Layer is null) return;
+        var newLayer = Layer with
+        {
+            Name = name ?? Layer.Name,
+            Opacity = opacity ?? Layer.Opacity,
+            RotationDeg = rot ?? Layer.RotationDeg,
+        };
+        Layer = newLayer;
+        _ = OnLayerChanged.InvokeAsync();
+    }
+
+    private void UpdateRect(double? x = null, double? y = null, double? w = null, double? h = null)
+    {
+        if (Layer is null) return;
+        var r = Layer.Rect;
+        var newRect = new NormalizedRect(
+            x ?? r.X,
+            y ?? r.Y,
+            w ?? r.Width,
+            h ?? r.Height);
+
+        Layer = Layer with { Rect = newRect };
+        _ = OnLayerChanged.InvokeAsync();
+    }
+
+    private void UpdateVisibleWhen(Condition? condition)
+    {
+        if (Layer is null) return;
+        Layer = Layer with { VisibleWhen = condition };
+        _ = OnLayerChanged.InvokeAsync();
+    }
+
+    private void UpdateStaticImage(Guid? assetId = null, ImageFit? fit = null)
+    {
+        if (Layer is StaticImageLayer img)
+        {
+            Layer = img with
+            {
+                AssetId = assetId ?? img.AssetId,
+                Fit = fit ?? img.Fit,
+            };
+            _ = OnLayerChanged.InvokeAsync();
+        }
+    }
+
+    private void UpdateImageSlot(string? fieldKey = null, ImageFit? fit = null)
+    {
+        if (Layer is ImageSlotLayer slot)
+        {
+            Layer = slot with
+            {
+                FieldKey = fieldKey ?? slot.FieldKey,
+                Fit = fit ?? slot.Fit,
+            };
+            _ = OnLayerChanged.InvokeAsync();
+        }
+    }
+
+    private void UpdateText(string? source = null, string? style = null)
+    {
+        if (Layer is TextLayer text)
+        {
+            Layer = text with
+            {
+                Source = source ?? text.Source,
+                Style = style ?? text.Style,
+            };
+            _ = OnLayerChanged.InvokeAsync();
+        }
+    }
+
+    private void AppendToken(TextLayer text, string fieldKey)
+    {
+        var token = "{{" + fieldKey + "}}";
+        UpdateText(source: text.Source + token);
+    }
+
+    private void UpdateRichText(string? source = null, string? boldFont = null, string? symbolSet = null)
+    {
+        if (Layer is RichTextLayer rich)
+        {
+            Layer = rich with
+            {
+                Source = source ?? rich.Source,
+                BoldFont = boldFont ?? rich.BoldFont,
+                DefaultSymbolSetKey = symbolSet ?? rich.DefaultSymbolSetKey,
+            };
+            _ = OnLayerChanged.InvokeAsync();
+        }
+    }
+
+    private void UpdateRepeater(string? setKey = null, string? symKey = null, string? fieldKey = null)
+    {
+        if (Layer is SymbolRepeaterLayer rep)
+        {
+            Layer = rep with
+            {
+                SymbolSetKey = setKey ?? rep.SymbolSetKey,
+                SymbolKey = symKey ?? rep.SymbolKey,
+                FieldKey = fieldKey ?? rep.FieldKey,
+            };
+            _ = OnLayerChanged.InvokeAsync();
+        }
+    }
+
+    private void UpdateShape(ShapeKind? shape = null, string? fill = null, string? border = null)
+    {
+        if (Layer is ShapeLayer s)
+        {
+            Layer = s with
+            {
+                Shape = shape ?? s.Shape,
+                FillColor = fill ?? s.FillColor,
+                BorderColor = border ?? s.BorderColor,
+            };
+            _ = OnLayerChanged.InvokeAsync();
+        }
+    }
+
+    private static double? ParseDouble(object? val) =>
+        double.TryParse(val?.ToString(), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var d) ? d : null;
+
+    private static Guid? ParseGuid(object? val) =>
+        Guid.TryParse(val?.ToString(), out var g) ? g : null;
+}

@@ -1,0 +1,110 @@
+@using CardMaker.Contracts.Geometry
+@using CardMaker.Contracts.Layout
+
+<div class="card shadow-sm h-100 d-flex flex-column">
+    <!-- Viewport Toolbar -->
+    <div class="card-header py-2 d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold small">🔍 Zoom:</span>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn @(ZoomLevel == 0.5 ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetZoom(0.5)">50%</button>
+                <button type="button" class="btn @(ZoomLevel == 0.75 ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetZoom(0.75)">75%</button>
+                <button type="button" class="btn @(ZoomLevel == 1.0 ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetZoom(1.0)">100%</button>
+                <button type="button" class="btn @(ZoomLevel == 1.5 ? "btn-primary" : "btn-outline-secondary")" @onclick="() => SetZoom(1.5)">150%</button>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            <div class="form-check form-check-inline form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="safeZoneSwitch" @bind="ShowSafeZone" />
+                <label class="form-check-label very-small" for="safeZoneSwitch">Safe Zone</label>
+            </div>
+            <div class="form-check form-check-inline form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="bleedSwitch" @bind="ShowBleed" />
+                <label class="form-check-label very-small" for="bleedSwitch">Bleed</label>
+            </div>
+            <div class="form-check form-check-inline form-switch mb-0">
+                <input class="form-check-input" type="checkbox" id="gridSwitch" @bind="ShowGrid" />
+                <label class="form-check-label very-small" for="gridSwitch">Griglia</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Canvas Scrollable Area -->
+    <div class="card-body p-4 d-flex align-items-center justify-content-center cm-checkerboard flex-grow-1" 
+         style="overflow: auto; min-height: 500px;">
+        
+        <div class="position-relative shadow-lg border rounded" 
+             style="transform: scale(@ZoomLevel); transform-origin: center center; transition: transform 0.15s ease;">
+            
+            @if (IsLoading)
+            {
+                <div class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-25 rounded z-3">
+                    <LoadingSpinner Text="Rendering..." />
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(PreviewDataUrl))
+            {
+                <img src="@PreviewDataUrl" alt="Anteprima Template" class="d-block rounded" style="user-select: none;" />
+            }
+            else
+            {
+                <div class="p-5 text-center text-muted" style="width: 350px; height: 500px; display: flex; align-items: center; justify-content: center;">
+                    Nessun rendering disponibile
+                </div>
+            }
+
+            <!-- Safe Zone Guide Overlay (3 mm) -->
+            @if (ShowSafeZone)
+            {
+                <div class="position-absolute border border-success border-dashed pointer-events-none z-2"
+                     style="top: 3.5%; left: 5%; width: 90%; height: 93%; pointer-events: none; opacity: 0.8;"
+                     title="Safe Zone (3 mm)"></div>
+            }
+
+            <!-- Bleed Guide Overlay (2 mm) -->
+            @if (ShowBleed)
+            {
+                <div class="position-absolute border border-danger border-dashed pointer-events-none z-2"
+                     style="top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.6;"
+                     title="Abbondanza Bleed (2 mm)"></div>
+            }
+
+            <!-- Grid Overlay -->
+            @if (ShowGrid)
+            {
+                <div class="position-absolute top-0 start-0 w-100 h-100 pointer-events-none z-1"
+                     style="background-size: 20px 20px; background-image: linear-gradient(to right, rgba(0, 120, 255, 0.1) 1px, transparent 1px), linear-gradient(to bottom, rgba(0, 120, 255, 0.1) 1px, transparent 1px); pointer-events: none;"></div>
+            }
+
+            <!-- Active Layer Selection Highlight Bounding Box -->
+            @if (SelectedLayer is not null)
+            {
+                var r = SelectedLayer.Rect;
+                <div class="position-absolute border border-primary border-2 shadow-sm z-3"
+                     style="top: @($"{r.Y * 100}%"); left: @($"{r.X * 100}%"); width: @($"{r.Width * 100}%"); height: @($"{r.Height * 100}%"); pointer-events: none; background-color: rgba(13, 110, 253, 0.15);">
+                    <span class="badge bg-primary position-absolute top-0 start-0 translate-middle-y very-small">@SelectedLayer.Name</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? PreviewDataUrl { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public IReadOnlyList<PreviewWarning>? Warnings { get; set; }
+    [Parameter] public LayerDefinition? SelectedLayer { get; set; }
+
+    private double ZoomLevel = 1.0;
+    private bool ShowSafeZone = true;
+    private bool ShowBleed = false;
+    private bool ShowGrid = false;
+
+    private void SetZoom(double zoom)
+    {
+        ZoomLevel = zoom;
+    }
+}
+

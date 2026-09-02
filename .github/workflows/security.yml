@@ -1,0 +1,37 @@
+name: Security & Quality Checks
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install SkiaSharp Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfontconfig1 libfreetype6 fonts-dejavu-core
+
+      - name: Restore Dependencies
+        run: dotnet restore CardMaker.slnx
+
+      - name: Build Solution (TreatWarningsAsErrors)
+        run: dotnet build CardMaker.slnx --no-restore -c Release
+
+      - name: Run Test Suite
+        run: dotnet test CardMaker.slnx --no-build -c Release --verbosity normal
+
+      - name: Vulnerable Package Audit
+        run: dotnet list package --vulnerable --include-transitive
+

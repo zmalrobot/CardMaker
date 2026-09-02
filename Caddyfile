@@ -1,0 +1,29 @@
+{
+    # Configurazione globale
+    email {$ACME_EMAIL:admin@example.com}
+}
+
+{$DOMAIN_NAME:localhost} {
+    encode gzip zstd
+
+    # Limite dimensione corpo richiesta (25 MB per upload immagini)
+    request_body {
+        max_size 25MB
+    }
+
+    # Reverse proxy verso il container Kestrel
+    reverse_proxy cardmaker-web:8080 {
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Real-IP {remote_host}
+    }
+
+    # Header di sicurezza aggiuntivi a livello di reverse proxy
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+}
+

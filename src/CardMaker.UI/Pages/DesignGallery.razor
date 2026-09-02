@@ -1,0 +1,300 @@
+@page "/design"
+@rendermode InteractiveServer
+@inject ICardPreviewService PreviewService
+
+<PageTitle>Galleria Design System — CardMaker</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Galleria Design System & Temi</h1>
+        <p class="text-muted mb-0">Riferimento visivo dei token, componenti e layout su palette blu/azzurro con supporto dark mode.</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <span class="small text-muted d-none d-md-inline">Tema attivo:</span>
+        <ThemeToggle />
+    </div>
+</div>
+
+<div class="row g-4 mb-5">
+    <!-- 1. Palette Colori & Token -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>1. Palette Colori e Token CSS</span>
+                <span class="badge bg-success-subtle text-success-emphasis">WCAG AA Validato</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-3 text-center">
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="p-3 rounded-3 shadow-sm border" style="background-color: var(--cm-primary); color: #fff;">
+                            <div class="fw-bold">Primary</div>
+                            <small class="opacity-75">--cm-primary</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="p-3 rounded-3 shadow-sm border" style="background-color: var(--cm-accent); color: #fff;">
+                            <div class="fw-bold">Accent</div>
+                            <small class="opacity-75">--cm-accent</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="p-3 rounded-3 shadow-sm border" style="background-color: var(--cm-surface); color: var(--cm-text);">
+                            <div class="fw-bold">Surface</div>
+                            <small class="text-muted">--cm-surface</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="p-3 rounded-3 shadow-sm border" style="background-color: var(--cm-surface-2); color: var(--cm-text);">
+                            <div class="fw-bold">Surface-2</div>
+                            <small class="text-muted">--cm-surface-2</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="p-3 rounded-3 shadow-sm border" style="background-color: var(--cm-success); color: #fff;">
+                            <div class="fw-bold">Success</div>
+                            <small class="opacity-75">--cm-success</small>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3 col-lg-2">
+                        <div class="p-3 rounded-3 shadow-sm border" style="background-color: var(--cm-danger); color: #fff;">
+                            <div class="fw-bold">Danger</div>
+                            <small class="opacity-75">--cm-danger</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Bottoni & Badge -->
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">2. Bottoni e Badge</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-muted small text-uppercase fw-bold">Bottoni</h6>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <button class="btn btn-primary">Primary</button>
+                        <button class="btn btn-accent text-white">Accent</button>
+                        <button class="btn btn-outline-primary">Outline Primary</button>
+                        <button class="btn btn-secondary">Secondary</button>
+                        <button class="btn btn-danger">Danger</button>
+                        <button class="btn btn-primary" disabled>Disabilitato</button>
+                    </div>
+                </div>
+                <div>
+                    <h6 class="text-muted small text-uppercase fw-bold">Badge e Pill</h6>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="badge bg-primary">Primary</span>
+                        <span class="badge bg-primary-subtle text-primary-emphasis">Primary Subtle</span>
+                        <span class="badge bg-success">Success</span>
+                        <span class="badge bg-warning text-dark">Warning</span>
+                        <span class="badge bg-danger">Danger</span>
+                        <span class="badge bg-info-subtle text-info-emphasis">600 DPI</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Form & Controlli -->
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">3. Controlli Form</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Nome carta</label>
+                        <input type="text" class="form-control" placeholder="Es. Mago Nero" value="Drago Bianco Occhi Blu" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Attributo</label>
+                        <select class="form-select">
+                            <option>LUCE</option>
+                            <option>OSCURITÀ</option>
+                            <option>FUOCO</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label small fw-semibold">Testo effetto</label>
+                        <textarea class="form-control" rows="2">Questo drago leggendario è una potente macchina di distruzione.</textarea>
+                    </div>
+                    <div class="col-12 d-flex gap-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="checkExample" checked />
+                            <label class="form-check-label small" for="checkExample">Includi abbondanza (bleed)</label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="switchExample" checked />
+                            <label class="form-check-label small" for="switchExample">Angoli arrotondati</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Skeleton Loader & Feedback -->
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">4. Skeleton Loader & Feedback</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <h6 class="text-muted small text-uppercase fw-bold">Skeleton Loading (Shimmer)</h6>
+                    <div class="d-flex flex-column gap-2 p-3 border rounded-3 bg-surface-2">
+                        <SkeletonLoader Width="40%" Height="1.25rem" />
+                        <SkeletonLoader Width="90%" Height="0.85rem" />
+                        <SkeletonLoader Width="75%" Height="0.85rem" />
+                        <div class="d-flex gap-2 mt-2">
+                            <SkeletonLoader Width="80px" Height="2rem" Radius="6px" />
+                            <SkeletonLoader Width="80px" Height="2rem" Radius="6px" />
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h6 class="text-muted small text-uppercase fw-bold">Indicatori di caricamento</h6>
+                    <div class="d-flex gap-4">
+                        <LoadingSpinner Text="Generazione render in corso..." />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Tabelle Responsive -->
+    <div class="col-12 col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">5. Tabelle dati compatte</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-sm align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Tipo Carta</th>
+                                <th>Gioco</th>
+                                <th>Stato</th>
+                                <th class="text-end pe-3">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="ps-3 fw-medium">Normal Monster</td>
+                                <td>Yu-Gi-Oh!</td>
+                                <td><span class="badge bg-success-subtle text-success-emphasis">Pubblicato</span></td>
+                                <td class="text-end pe-3"><button class="btn btn-sm btn-outline-primary py-0">Modifica</button></td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3 fw-medium">Link Monster</td>
+                                <td>Yu-Gi-Oh!</td>
+                                <td><span class="badge bg-success-subtle text-success-emphasis">Pubblicato</span></td>
+                                <td class="text-end pe-3"><button class="btn btn-sm btn-outline-primary py-0">Modifica</button></td>
+                            </tr>
+                            <tr>
+                                <td class="ps-3 fw-medium">Rush Maximum</td>
+                                <td>Rush Duel</td>
+                                <td><span class="badge bg-primary-subtle text-primary-emphasis">3 Fette</span></td>
+                                <td class="text-end pe-3"><button class="btn btn-sm btn-outline-primary py-0">Modifica</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. CardPreview Componente Reale -->
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>6. Componente Anteprima Carta (Scacchiera Neutra & Zoom)</span>
+                <button class="btn btn-sm btn-outline-primary" @onclick="GeneraAnteprimaDemoAsync" disabled="@IsLoading">
+                    Aggiorna Anteprima
+                </button>
+            </div>
+            <div class="card-body">
+                <TwoColumnLayout>
+                    <FormContent>
+                        <div class="p-3 border rounded-3 bg-surface-2 mb-3">
+                            <h6 class="fw-bold mb-2">Parametri di rendering dimostrativi</h6>
+                            <p class="small text-muted mb-3">Questo test esegue il vero <code>ICardPreviewService</code> server-side a 150 DPI per dimostrare il rendering, il tempo di esecuzione e gli avvisi strutturati.</p>
+                            
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">DPI di anteprima</label>
+                                <select class="form-select form-select-sm" @bind="DpiChoice">
+                                    <option value="96">96 DPI (Veloce)</option>
+                                    <option value="150">150 DPI (Bilanciato)</option>
+                                    <option value="300">300 DPI (Dettagliato)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" id="bleedCheck" @bind="IncludeBleed" />
+                                <label class="form-check-label small" for="bleedCheck">Mostra abbondanza di stampa (Bleed)</label>
+                            </div>
+                        </div>
+                    </FormContent>
+                    <PreviewContent>
+                        <CardPreview ImageSrc="@PreviewDataUrl"
+                                     IsLoading="@IsLoading"
+                                     Warnings="@Warnings"
+                                     WidthPx="@WidthPx"
+                                     HeightPx="@HeightPx"
+                                     Dpi="@DpiChoice"
+                                     Duration="@RenderDuration" />
+                    </PreviewContent>
+                </TwoColumnLayout>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? PreviewDataUrl;
+    private bool IsLoading;
+    private IReadOnlyList<PreviewWarning>? Warnings;
+    private int WidthPx;
+    private int HeightPx;
+    private int DpiChoice = 150;
+    private bool IncludeBleed;
+    private TimeSpan? RenderDuration;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GeneraAnteprimaDemoAsync();
+    }
+
+    private async Task GeneraAnteprimaDemoAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            var layout = DemoLayouts.YuGiOhMonster();
+            var values = DemoLayouts.SampleValues();
+
+            var result = await PreviewService.RenderAsync(new CardPreviewRequest
+            {
+                LayoutJson = LayoutSerializer.Serialize(layout),
+                Values = values,
+                Dpi = DpiChoice,
+                IncludeBleed = IncludeBleed,
+            });
+
+            if (result.Succeeded && result.Content is not null)
+            {
+                PreviewDataUrl = $"data:{result.ContentType};base64,{Convert.ToBase64String(result.Content)}";
+                WidthPx = result.WidthPx;
+                HeightPx = result.HeightPx;
+                RenderDuration = TimeSpan.FromMilliseconds(result.ElapsedMs);
+            }
+            Warnings = result.Warnings;
+        }
+        catch (Exception ex)
+        {
+            Warnings = [new PreviewWarning("render.error", ex.Message, null)];
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+}

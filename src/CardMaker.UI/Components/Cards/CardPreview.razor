@@ -1,0 +1,113 @@
+<div class="cm-preview-wrapper @CssClass">
+    <div class="cm-preview-toolbar">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-secondary-subtle text-secondary-emphasis">
+                @(Dpi) DPI
+            </span>
+            @if (WidthPx > 0 && HeightPx > 0)
+            {
+                <span class="badge bg-secondary-subtle text-secondary-emphasis d-none d-sm-inline">
+                    @(WidthPx) × @(HeightPx) px
+                </span>
+            }
+            @if (Duration.HasValue)
+            {
+                <span class="badge bg-info-subtle text-info-emphasis d-none d-md-inline">
+                    @(Duration.Value.TotalMilliseconds.ToString("F0")) ms
+                </span>
+            }
+        </div>
+
+        <div class="d-flex align-items-center gap-2">
+            @if (Warnings is { Count: > 0 })
+            {
+                <button type="button" 
+                        class="btn btn-sm btn-outline-warning py-0 px-2 d-flex align-items-center gap-1"
+                        @onclick="() => ShowWarnings = !ShowWarnings">
+                    <span>⚠️</span>
+                    <span>@(Warnings.Count) @(Warnings.Count == 1 ? "avviso" : "avvisi")</span>
+                </button>
+            }
+
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick="() => AdjustZoom(-0.25)" title="Riduci zoom">-</button>
+                <span class="btn btn-outline-secondary py-0 px-2 disabled text-body" style="min-width: 55px; opacity: 1;">
+                    @((ZoomLevel * 100).ToString("F0"))%
+                </span>
+                <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick="() => AdjustZoom(0.25)" title="Aumenta zoom">+</button>
+                <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick="ResetZoom" title="Ripristina zoom (Fit)">Fit</button>
+            </div>
+        </div>
+    </div>
+
+    @if (ShowWarnings && Warnings is { Count: > 0 })
+    {
+        <div class="cm-preview-warnings bg-warning-subtle border-bottom border-warning">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <strong class="text-warning-emphasis small">Avvisi del motore di rendering:</strong>
+                <button type="button" class="btn-close btn-close-sm" aria-label="Chiudi" @onclick="() => ShowWarnings = false"></button>
+            </div>
+            <ul class="mb-0 ps-3 small text-warning-emphasis">
+                @foreach (var warning in Warnings)
+                {
+                    <li>
+                        <code>@warning.Code</code>: @warning.Message
+                        @if (!string.IsNullOrEmpty(warning.LayerId))
+                        {
+                            <span class="text-muted">(layer: @warning.LayerId)</span>
+                        }
+                    </li>
+                }
+            </ul>
+        </div>
+    }
+
+    <div class="cm-preview-canvas-container cm-checkerboard">
+        @if (IsLoading)
+        {
+            <div class="position-absolute top-50 start-50 translate-middle text-center p-3 bg-body bg-opacity-75 rounded-3 shadow-sm z-3">
+                <div class="spinner-border text-primary mb-2" role="status"></div>
+                <div class="small fw-semibold">Generazione anteprima...</div>
+            </div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(ImageSrc))
+        {
+            <img src="@ImageSrc" 
+                 alt="Anteprima carta" 
+                 class="cm-card-image"
+                 style="transform: scale(@(ZoomLevel)); transform-origin: center center;" />
+        }
+        else if (!IsLoading)
+        {
+            <div class="text-center text-muted p-4">
+                <div class="display-6 mb-2">🃏</div>
+                <div>Nessuna anteprima disponibile</div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? ImageSrc { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public IReadOnlyList<PreviewWarning>? Warnings { get; set; }
+    [Parameter] public int WidthPx { get; set; }
+    [Parameter] public int HeightPx { get; set; }
+    [Parameter] public int Dpi { get; set; } = 600;
+    [Parameter] public TimeSpan? Duration { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+
+    private double ZoomLevel = 1.0;
+    private bool ShowWarnings = true;
+
+    private void AdjustZoom(double delta)
+    {
+        ZoomLevel = Math.Clamp(ZoomLevel + delta, 0.25, 2.5);
+    }
+
+    private void ResetZoom()
+    {
+        ZoomLevel = 1.0;
+    }
+}

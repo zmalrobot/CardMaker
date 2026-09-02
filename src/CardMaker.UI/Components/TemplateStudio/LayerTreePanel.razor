@@ -1,0 +1,154 @@
+@using CardMaker.Contracts.Geometry
+@using CardMaker.Contracts.Layout
+
+<div class="card shadow-sm h-100">
+    <div class="card-header py-2 fw-bold d-flex justify-content-between align-items-center">
+        <span>🌲 Albero Layer (@Layers.Count)</span>
+    </div>
+    <div class="card-body p-2 d-flex flex-column" style="max-height: calc(100vh - 180px);">
+        <!-- Quick Add Buttons -->
+        <div class="dropdown mb-2">
+            <button class="btn btn-primary btn-sm w-100 dropdown-toggle" type="button" @onclick="() => isDropdownOpen = !isDropdownOpen">
+                + Aggiungi Nuovo Layer
+            </button>
+            <ul class="dropdown-menu shadow w-100 @(isDropdownOpen ? "show" : "")" style="@(isDropdownOpen ? "display: block;" : "")">
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("frame")'>🖼️ Cornice Fissa (Frame)</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("slot")'>🎨 Slot Artwork Utente</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("text")'>🔤 Testo / Binding</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("rich")'>📝 Rich Text (Effetto)</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("symbol")'>🔣 Simbolo Singolo</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("repeater")'>⭐ Ripetitore (Livello/Rank)</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("link")'>🏹 Frecce Link (Toggle Group)</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("shape")'>⬛ Forma Geometrica</button></li>
+                <li><button class="dropdown-item small" type="button" @onclick='() => AddNewLayer("foil")'>✨ Overlay Olografico (Foil)</button></li>
+            </ul>
+        </div>
+
+        <!-- Layer List (Z-Order: Top to Bottom) -->
+        <div class="list-group list-group-flush flex-grow-1" style="overflow-y: auto;">
+            @if (Layers.Count == 0)
+            {
+                <div class="text-center text-muted p-4 small">
+                    Nessun layer nel template. Aggiungi il primo layer.
+                </div>
+            }
+            @for (int i = 0; i < Layers.Count; i++)
+            {
+                var layer = Layers[i];
+                var index = i;
+                var isSelected = SelectedLayer?.Id == layer.Id;
+
+                <div class="list-group-item list-group-item-action p-2 d-flex justify-content-between align-items-center @(isSelected ? "active bg-primary-subtle text-primary-emphasis border-primary" : "")"
+                     style="cursor: pointer;"
+                     @onclick="() => SelectLayer(layer)">
+                    <div class="d-flex align-items-center gap-2 text-truncate">
+                        <span class="small">@GetLayerIcon(layer)</span>
+                        <span class="small fw-semibold text-truncate">@(string.IsNullOrEmpty(layer.Name) ? layer.GetType().Name : layer.Name)</span>
+                        @if (layer.VisibleWhen is not null)
+                        {
+                            <span class="badge bg-warning-subtle text-warning-emphasis very-small">Cond</span>
+                        }
+                    </div>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-link p-0 px-1 text-secondary" disabled="@(index == 0)" @onclick:stopPropagation="true" @onclick="() => MoveLayer(index, -1)">↑</button>
+                        <button type="button" class="btn btn-link p-0 px-1 text-secondary" disabled="@(index == Layers.Count - 1)" @onclick:stopPropagation="true" @onclick="() => MoveLayer(index, 1)">↓</button>
+                        <button type="button" class="btn btn-link p-0 px-1 text-secondary" @onclick:stopPropagation="true" @onclick="() => DuplicateLayer(layer)">📋</button>
+                        <button type="button" class="btn btn-link p-0 px-1 text-danger" @onclick:stopPropagation="true" @onclick="() => DeleteLayer(layer)">🗑️</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<LayerDefinition> Layers { get; set; } = [];
+    [Parameter] public LayerDefinition? SelectedLayer { get; set; }
+    [Parameter] public EventCallback<LayerDefinition?> SelectedLayerChanged { get; set; }
+    [Parameter] public EventCallback OnLayersModified { get; set; }
+
+    private bool isDropdownOpen;
+
+    private void SelectLayer(LayerDefinition layer)
+    {
+        SelectedLayer = layer;
+        _ = SelectedLayerChanged.InvokeAsync(layer);
+    }
+
+    private void AddNewLayer(string type)
+    {
+        isDropdownOpen = false;
+        int count = Layers.Count + 1;
+        LayerDefinition newLayer = type switch
+        {
+            "frame" => new StaticImageLayer { Name = $"Frame_{count}", Rect = new NormalizedRect(0, 0, 1, 1) },
+            "slot" => new ImageSlotLayer { Name = $"Artwork_{count}", FieldKey = "artwork", Rect = new NormalizedRect(0.12, 0.18, 0.76, 0.44) },
+            "text" => new TextLayer { Name = $"Text_{count}", Source = "{{name}}", Rect = new NormalizedRect(0.08, 0.05, 0.75, 0.06) },
+            "rich" => new RichTextLayer { Name = $"Effect_{count}", Source = "{{effect}}", Rect = new NormalizedRect(0.08, 0.65, 0.84, 0.22) },
+            "symbol" => new SymbolSlotLayer { Name = $"Symbol_{count}", SymbolSetKey = "attribute", FieldKey = "attribute", Rect = new NormalizedRect(0.85, 0.05, 0.08, 0.06) },
+            "repeater" => new SymbolRepeaterLayer { Name = $"Stars_{count}", SymbolSetKey = "stars", SymbolKey = "level", FieldKey = "level", Rect = new NormalizedRect(0.1, 0.12, 0.8, 0.04) },
+            "link" => new ToggleGroupLayer { Name = $"Link_{count}", SymbolSetKey = "link-arrows", FieldKey = "linkArrows", OnSymbolKey = "on", Rect = new NormalizedRect(0.05, 0.12, 0.9, 0.75) },
+            "shape" => new ShapeLayer { Name = $"Shape_{count}", FillColor = "#000000", Rect = new NormalizedRect(0.05, 0.05, 0.9, 0.9) },
+            "foil" => new OverlayLayer { Name = $"Foil_{count}", Rect = new NormalizedRect(0, 0, 1, 1), BlendMode = "screen" },
+            _ => new StaticImageLayer { Name = $"Layer_{count}", Rect = new NormalizedRect(0, 0, 1, 1) }
+        };
+
+        Layers.Add(newLayer);
+        SelectLayer(newLayer);
+        _ = OnLayersModified.InvokeAsync();
+    }
+
+    private void MoveLayer(int index, int direction)
+    {
+        var newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= Layers.Count) return;
+
+        var temp = Layers[index];
+        Layers[index] = Layers[newIndex];
+        Layers[newIndex] = temp;
+
+        _ = OnLayersModified.InvokeAsync();
+    }
+
+    private void DuplicateLayer(LayerDefinition layer)
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(layer, LayoutSerializer.Options);
+        var copy = System.Text.Json.JsonSerializer.Deserialize<LayerDefinition>(json, LayoutSerializer.Options);
+        if (copy is not null)
+        {
+            var duplicated = copy with
+            {
+                Id = Guid.CreateVersion7().ToString("N"),
+                Name = $"{layer.Name}_copia",
+            };
+            Layers.Add(duplicated);
+            SelectLayer(duplicated);
+            _ = OnLayersModified.InvokeAsync();
+        }
+    }
+
+    private void DeleteLayer(LayerDefinition layer)
+    {
+        Layers.Remove(layer);
+        if (SelectedLayer?.Id == layer.Id)
+        {
+            SelectedLayer = Layers.LastOrDefault();
+            _ = SelectedLayerChanged.InvokeAsync(SelectedLayer);
+        }
+        _ = OnLayersModified.InvokeAsync();
+    }
+
+    private static string GetLayerIcon(LayerDefinition layer) => layer switch
+    {
+        StaticImageLayer => "🖼️",
+        ImageSlotLayer => "🎨",
+        TextLayer => "🔤",
+        RichTextLayer => "📝",
+        SymbolSlotLayer => "🔣",
+        SymbolRepeaterLayer => "⭐",
+        ToggleGroupLayer => "🏹",
+        ShapeLayer => "⬛",
+        OverlayLayer => "✨",
+        _ => "📄"
+    };
+}

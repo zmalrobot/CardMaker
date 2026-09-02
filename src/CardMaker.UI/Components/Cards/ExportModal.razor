@@ -1,0 +1,155 @@
+@inject ICardExportService ExportService
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthProvider
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Esporta Carta</h5>
+                    <button type="button" class="btn-close" aria-label="Chiudi" @onclick="Close"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(ErrorMessage))
+                    {
+                        <div class="alert alert-danger shadow-sm mb-3">@ErrorMessage</div>
+                    }
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Formato di Esportazione</label>
+                        <select class="form-select" @bind="Format">
+                            <option value="@RenderFormat.Png">PNG (Immagine Lossless)</option>
+                            <option value="@RenderFormat.Jpg">JPEG (Immagine compressa)</option>
+                            <option value="@RenderFormat.Pdf">PDF (Documento vettoriale/stampa)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Risoluzione (DPI)</label>
+                        <select class="form-select" @bind="Dpi">
+                            <option value="150">150 DPI (Anteprima Web)</option>
+                            <option value="300">300 DPI (Stampa Standard)</option>
+                            <option value="600">600 DPI (Stampa Professionale HD)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Facciata</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="faceRadio" id="frontOnly" 
+                                       checked="@(!BothFaces && Face == CardFace.Front)" 
+                                       @onchange="@(() => { BothFaces = false; Face = CardFace.Front; })" />
+                                <label class="form-check-label small" for="frontOnly">Solo Fronte</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="faceRadio" id="backOnly" 
+                                       checked="@(!BothFaces && Face == CardFace.Back)" 
+                                       @onchange="@(() => { BothFaces = false; Face = CardFace.Back; })" />
+                                <label class="form-check-label small" for="backOnly">Solo Retro</label>
+                            </div>
+                            @if (Format == RenderFormat.Pdf)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="faceRadio" id="bothFaces" 
+                                           checked="@BothFaces" 
+                                           @onchange="@(() => BothFaces = true)" />
+                                    <label class="form-check-label small" for="bothFaces">Fronte + Retro (2 pagine)</label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="bleedExport" @bind="IncludeBleed" />
+                        <label class="form-check-label small" for="bleedExport">
+                            Includi abbondanza di stampa (Bleed 3 mm per tipografia)
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" @onclick="Close" disabled="@IsExporting">Annulla</button>
+                    <button type="button" class="btn btn-primary" @onclick="ExecuteExportAsync" disabled="@IsExporting">
+                        @if (IsExporting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Generazione export...</span>
+                        }
+                        else
+                        {
+                            <span>Scarica File</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public Guid CardId { get; set; }
+
+    private RenderFormat Format = RenderFormat.Png;
+    private int Dpi = 600;
+    private bool IncludeBleed;
+    private CardFace Face = CardFace.Front;
+    private bool BothFaces;
+    private bool IsExporting;
+    private string? ErrorMessage;
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        ErrorMessage = null;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task ExecuteExportAsync()
+    {
+        IsExporting = true;
+        ErrorMessage = null;
+
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                ErrorMessage = "Utente non autenticato.";
+                return;
+            }
+
+            var result = await ExportService.ExportCardAsync(CardId, userId, new CardExportOptions
+            {
+                Format = Format,
+                Dpi = Dpi,
+                IncludeBleed = IncludeBleed,
+                Face = Face,
+                BothFaces = BothFaces,
+            });
+
+            if (!result.Succeeded || result.Content is null)
+            {
+                ErrorMessage = result.ErrorMessage ?? "Errore durante l'esportazione della carta.";
+                return;
+            }
+
+            var base64 = Convert.ToBase64String(result.Content);
+            await JS.InvokeVoidAsync("cardMaker.downloadFile", result.FileName, result.ContentType, base64);
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsExporting = false;
+        }
+    }
+}
+

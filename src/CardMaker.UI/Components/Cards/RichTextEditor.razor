@@ -1,0 +1,101 @@
+<div class="mb-3">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <label class="form-label small fw-semibold mb-0">@Label</label>
+            @if (Symbols is { Count: > 0 })
+            {
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary py-0 px-2 dropdown-toggle" type="button" @onclick="() => isSymbolDropdownOpen = !isSymbolDropdownOpen">
+                        Inserisci Simbolo
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm @(isSymbolDropdownOpen ? "show" : "")" style="@(isSymbolDropdownOpen ? "display: block;" : "") max-height: 250px; overflow-y: auto;">
+                        @foreach (var sym in Symbols)
+                        {
+                            <li>
+                                <button type="button" class="dropdown-item small d-flex align-items-center gap-2" @onclick="() => InsertSymbolAsync(sym.InlineToken ?? sym.Key)">
+                                    <span>@sym.Name</span>
+                                    <code class="text-muted ms-auto">@(sym.InlineToken ?? sym.Key)</code>
+                                </button>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    }
+
+    <!-- Toolbar formattazione rapida -->
+    <div class="btn-toolbar gap-1 mb-1 p-1 bg-surface-2 border rounded-top" role="toolbar" aria-label="Toolbar formattazione">
+        <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary py-0 px-2 fw-bold" @onclick='() => WrapSelectionAsync("**", "**")' title="Grassetto (**testo**)">
+                B
+            </button>
+            <button type="button" class="btn btn-outline-secondary py-0 px-2 fst-italic" @onclick='() => WrapSelectionAsync("*", "*")' title="Corsivo (*testo*)">
+                I
+            </button>
+            <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick='() => InsertAtCursorAsync("• ")' title="Punto elenco (• )">
+                • Elenco
+            </button>
+        </div>
+
+        <div class="btn-group btn-group-sm ms-auto">
+            <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick='() => InsertAtCursorAsync("[REQUISITO] ")' title="Sezione Requisito Rush">
+                [REQUISITO]
+            </button>
+            <button type="button" class="btn btn-outline-secondary py-0 px-2" @onclick='() => InsertAtCursorAsync("[EFFETTO] ")' title="Sezione Effetto Rush">
+                [EFFETTO]
+            </button>
+        </div>
+    </div>
+
+    <textarea class="form-control rounded-top-0" 
+              rows="@Rows" 
+              value="@Value" 
+              @oninput="HandleInputAsync"
+              placeholder="Inserisci il testo dell'effetto. Supporta **grassetto**, *corsivo*, • elenchi e simboli {sym:set.key}..."></textarea>
+
+    @if (!string.IsNullOrWhiteSpace(HelpText))
+    {
+        <div class="form-text small">@HelpText</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? HelpText { get; set; }
+    [Parameter] public int Rows { get; set; } = 5;
+    [Parameter] public IReadOnlyList<SymbolOptionDto>? Symbols { get; set; }
+
+    private bool isSymbolDropdownOpen;
+
+    private async Task HandleInputAsync(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString() ?? string.Empty;
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task WrapSelectionAsync(string before, string after)
+    {
+        // Simple insertion if full selection API is not hooked
+        Value = string.IsNullOrEmpty(Value) ? $"{before}testo{after}" : $"{Value} {before}testo{after}";
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task InsertAtCursorAsync(string text)
+    {
+        Value = string.IsNullOrEmpty(Value) ? text : $"{Value}\n{text}";
+        await ValueChanged.InvokeAsync(Value);
+    }
+
+    private async Task InsertSymbolAsync(string token)
+    {
+        isSymbolDropdownOpen = false;
+        var symToken = token.StartsWith('{') ? token : $"{{sym:{token}}}";
+        Value = string.IsNullOrEmpty(Value) ? symToken : $"{Value} {symToken}";
+        await ValueChanged.InvokeAsync(Value);
+    }
+}
+

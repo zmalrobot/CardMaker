@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+@layout CardMaker.Web.Components.Layout.MainLayout
+
+<div class="mb-4 pb-2 border-bottom">
+    <h1 class="h3 fw-bold mb-1">Gestione Account</h1>
+    <p class="text-muted mb-0">Personalizza le impostazioni del tuo profilo, sicurezza e preferenze.</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-3">
+        <div class="card border shadow-sm p-3">
+            <ManageNavMenu />
+        </div>
+    </div>
+    <div class="col-lg-9">
+        @Body
+    </div>
+</div>

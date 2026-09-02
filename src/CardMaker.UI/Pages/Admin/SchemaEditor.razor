@@ -1,0 +1,360 @@
+@page "/admin/schema/{CardTypeId:guid}"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@inject IAdminContentService ContentService
+@inject ICardService CardService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<PageTitle>Editor Schema Campi — CardMaker Admin</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+    <div>
+        <h1 class="h3 mb-1">Editor Schema Campi</h1>
+        <p class="text-muted mb-0">
+            @if (CardType is not null)
+            {
+                <span>Modifica dei campi di input per: <strong>@CardType.NameIt</strong> (<code>@CardType.Key</code>)</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="admin/content" class="btn btn-outline-secondary btn-sm">
+            ← Torna a Gestione Contenuti
+        </a>
+        <button class="btn btn-primary btn-sm" @onclick="OpenNewFieldModal">
+            + Aggiungi Campo
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger shadow-sm mb-3">@ErrorMessage</div>
+}
+@if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="alert alert-success shadow-sm mb-3">@SuccessMessage</div>
+}
+
+@if (IsLoading)
+{
+    <div class="p-5 text-center">
+        <LoadingSpinner Text="Caricamento schema campi in corso..." />
+    </div>
+}
+else if (CardType is not null)
+{
+    <TwoColumnLayout>
+        <FormContent>
+            <div class="card shadow-sm mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center py-2">
+                    <span class="fw-bold">Campi Definiti (@CardType.Fields.Count)</span>
+                    <button class="btn btn-sm btn-outline-primary" @onclick="OpenNewFieldModal">+ Nuovo Campo</button>
+                </div>
+                <div class="list-group list-group-flush">
+                    @if (CardType.Fields.Count == 0)
+                    {
+                        <div class="p-4 text-center text-muted">
+                            Nessun campo definito per questo tipo di carta. Aggiungi il primo campo.
+                        </div>
+                    }
+                    @for (int i = 0; i < CardType.Fields.Count; i++)
+                    {
+                        var field = CardType.Fields[i];
+                        var index = i;
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                            <div class="me-3">
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span class="fw-bold">@field.LabelIt</span>
+                                    <code>@field.Key</code>
+                                    <span class="badge bg-primary-subtle text-primary-emphasis">@field.Kind</span>
+                                    @if (field.IsRequired)
+                                    {
+                                        <span class="badge bg-danger-subtle text-danger-emphasis">Obbligatorio</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(field.GroupName))
+                                    {
+                                        <span class="badge bg-secondary-subtle text-secondary-emphasis">@field.GroupName</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(field.VisibleWhenJson))
+                                    {
+                                        <span class="badge bg-warning-subtle text-warning-emphasis" title="@field.VisibleWhenJson">Condizionale</span>
+                                    }
+                                </div>
+                                @if (!string.IsNullOrEmpty(field.HelpTextIt))
+                                {
+                                    <small class="text-muted d-block">@field.HelpTextIt</small>
+                                }
+                            </div>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-secondary" disabled="@(index == 0)" @onclick="() => MoveFieldAsync(index, -1)">↑</button>
+                                <button type="button" class="btn btn-outline-secondary" disabled="@(index == CardType.Fields.Count - 1)" @onclick="() => MoveFieldAsync(index, 1)">↓</button>
+                                <button type="button" class="btn btn-outline-primary" @onclick="() => EditField(field)">Modifica</button>
+                                <button type="button" class="btn btn-outline-danger" @onclick="() => DeleteFieldAsync(field.Id)">Elimina</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </FormContent>
+
+        <PreviewContent>
+            <div class="card shadow-sm sticky-top" style="top: 1rem;">
+                <div class="card-header bg-primary-subtle text-primary-emphasis py-2 fw-bold d-flex justify-content-between align-items-center">
+                    <span>👁️ Anteprima Interattiva Form Utente</span>
+                    <span class="badge bg-primary">Live</span>
+                </div>
+                <div class="card-body p-3">
+                    <p class="small text-muted mb-3">
+                        Questa anteprima riflette esattamente i controlli, le etichette e le condizioni <code>VisibleWhen</code> che vedrà l'utente durante la creazione della carta.
+                    </p>
+                    <DynamicCardForm Fields="@PreviewFields"
+                                     Values="@PreviewValues"
+                                     OnValuesChanged="@(() => StateHasChanged())" />
+                </div>
+            </div>
+        </PreviewContent>
+    </TwoColumnLayout>
+}
+
+<!-- Modale Configurazione Campo -->
+@if (ShowFieldModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(FieldModel.Id.HasValue ? "Modifica Campo" : "Aggiungi Nuovo Campo")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowFieldModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Key Campo (univoca nel tipo)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="FieldModel.Key" placeholder="Es. attack, effectText, level" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Tipo di Dato (Kind)</label>
+                            <select class="form-select form-select-sm" @bind="FieldModel.Kind">
+                                @foreach (FieldKind k in Enum.GetValues<FieldKind>())
+                                {
+                                    <option value="@k">@k</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Etichetta (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="FieldModel.LabelIt" placeholder="Es. Punti di Attacco (ATK)" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Etichetta (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="FieldModel.LabelEn" />
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Testo di Aiuto (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="FieldModel.HelpTextIt" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Gruppo / Sezione</label>
+                            <input type="text" class="form-control form-control-sm" @bind="FieldModel.GroupName" placeholder="Es. Statistiche, Testo Carta" />
+                        </div>
+                    </div>
+
+                    @if (FieldModel.Kind == FieldKind.Enum)
+                    {
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Lista di Opzioni collegata</label>
+                            <select class="form-select form-select-sm" @bind="FieldModel.OptionListId">
+                                <option value="">-- Seleziona Lista --</option>
+                                @foreach (var opt in OptionLists)
+                                {
+                                    <option value="@opt.Id">@opt.NameIt (@opt.Key)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    @if (FieldModel.Kind == FieldKind.SymbolRef || FieldModel.Kind == FieldKind.RichText)
+                    {
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Set di Simboli collegato</label>
+                            <select class="form-select form-select-sm" @bind="FieldModel.SymbolSetId">
+                                <option value="">-- Seleziona Set Simboli --</option>
+                                @foreach (var sym in SymbolSets)
+                                {
+                                    <option value="@sym.Id">@sym.NameIt (@sym.Key)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Regola di Visibilità Condizionale (VisibleWhen JSON)</label>
+                        <textarea class="form-control form-control-sm font-monospace" rows="2" @bind="FieldModel.VisibleWhenJson" placeholder='Es. {"field": "isPendulum", "op": "==", "value": true}'></textarea>
+                    </div>
+
+                    <div class="form-check form-switch mt-2">
+                        <input class="form-check-input" type="checkbox" id="reqSwitch" @bind="FieldModel.IsRequired" />
+                        <label class="form-check-label small fw-semibold" for="reqSwitch">Campo Obbligatorio</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowFieldModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveFieldAsync">Salva Campo</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid CardTypeId { get; set; }
+
+    private AdminCardTypeDetailDto? CardType;
+    private IReadOnlyList<AdminOptionListDto> OptionLists = [];
+    private IReadOnlyList<AdminSymbolSetDto> SymbolSets = [];
+
+    private IReadOnlyList<FieldDefinitionDto> PreviewFields = [];
+    private Dictionary<string, CardValue> PreviewValues = [];
+
+    private bool IsLoading = true;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+
+    private bool ShowFieldModal;
+    private SaveFieldDefinitionRequest FieldModel = new() { Key = "", LabelIt = "" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSchemaAsync();
+    }
+
+    private async Task LoadSchemaAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            CardType = await ContentService.GetCardTypeByIdAsync(CardTypeId);
+            if (CardType is not null)
+            {
+                OptionLists = await ContentService.GetOptionListsAsync(CardType.GameId);
+                SymbolSets = await ContentService.GetSymbolSetsAsync(CardType.GameId);
+
+                // Build preview fields from updated metadata
+                var gameTypes = await CardService.GetGameCardTypesAsync("yugioh");
+                var currentCt = gameTypes.FirstOrDefault(c => c.Id == CardTypeId);
+                if (currentCt is not null)
+                {
+                    PreviewFields = currentCt.Fields;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private void OpenNewFieldModal()
+    {
+        FieldModel = new SaveFieldDefinitionRequest
+        {
+            Key = "",
+            LabelIt = "",
+            LabelEn = "",
+            Kind = FieldKind.Text,
+            SortOrder = ((CardType?.Fields.Count ?? 0) + 1) * 10,
+        };
+        ShowFieldModal = true;
+    }
+
+    private void EditField(AdminFieldDto field)
+    {
+        FieldModel = new SaveFieldDefinitionRequest
+        {
+            Id = field.Id,
+            Key = field.Key,
+            LabelIt = field.LabelIt,
+            LabelEn = field.LabelEn,
+            HelpTextIt = field.HelpTextIt,
+            HelpTextEn = field.HelpTextEn,
+            Kind = field.Kind,
+            IsRequired = field.IsRequired,
+            DefaultValueJson = field.DefaultValueJson,
+            OptionListId = field.OptionListId,
+            SymbolSetId = field.SymbolSetId,
+            ValidationJson = field.ValidationJson,
+            ComputedExprJson = field.ComputedExprJson,
+            VisibleWhenJson = field.VisibleWhenJson,
+            GroupName = field.GroupName,
+            SortOrder = field.SortOrder,
+        };
+        ShowFieldModal = true;
+    }
+
+    private async Task SaveFieldAsync()
+    {
+        try
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveFieldDefinitionAsync(CardTypeId, FieldModel, uid);
+            ShowFieldModal = false;
+            SuccessMessage = "Campo salvato con successo!";
+            await LoadSchemaAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task DeleteFieldAsync(Guid fieldId)
+    {
+        try
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteFieldDefinitionAsync(fieldId, uid);
+            SuccessMessage = "Campo eliminato!";
+            await LoadSchemaAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task MoveFieldAsync(int index, int direction)
+    {
+        if (CardType is null) return;
+        var newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= CardType.Fields.Count) return;
+
+        var list = CardType.Fields.Select(f => f.Id).ToList();
+        var temp = list[index];
+        list[index] = list[newIndex];
+        list[newIndex] = temp;
+
+        var auth = await AuthProvider.GetAuthenticationStateAsync();
+        var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+        await ContentService.ReorderFieldsAsync(CardTypeId, list, uid);
+        await LoadSchemaAsync();
+    }
+}
+

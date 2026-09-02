@@ -1,0 +1,83 @@
+@page "/Account/RegisterConfirmation"
+
+@using System.Text
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.WebUtilities
+@using CardMaker.Infrastructure.Identity
+
+@inject UserManager<ApplicationUser> UserManager
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject NavigationManager NavigationManager
+@inject IdentityRedirectManager RedirectManager
+
+<PageTitle>Registrazione Completata — CardMaker</PageTitle>
+
+<div class="row justify-content-center py-4">
+    <div class="col-lg-6">
+        <div class="card border shadow-sm p-4 text-center">
+            <div class="display-6 mb-2">🎉</div>
+            <h2 class="h4 fw-bold mb-2">Registrazione Ricevuta</h2>
+            <StatusMessage Message="@statusMessage" />
+
+            @if (emailConfirmationLink is not null)
+            {
+                <p class="text-muted small mb-3">
+                    Per completare l'attivazione del tuo profilo, conferma il tuo account cliccando sul link sottostante:
+                </p>
+                <div class="mb-3">
+                    <a href="@emailConfirmationLink" class="btn btn-primary fw-semibold">Conferma e Attiva il tuo Account</a>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted small mb-3">
+                    Controlla la tua casella di posta per confermare e attivare l'account.
+                </p>
+            }
+
+            <div class="pt-3 border-top">
+                <a href="Account/Login" class="text-decoration-none small">Vai alla pagina di Accesso</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? emailConfirmationLink;
+    private string? statusMessage;
+
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? Email { get; set; }
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Email is null)
+        {
+            RedirectManager.RedirectTo("");
+            return;
+        }
+
+        var user = await UserManager.FindByEmailAsync(Email);
+        if (user is null)
+        {
+            HttpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            statusMessage = "Error finding user for unspecified email";
+        }
+        else if (EmailSender is IdentityNoOpEmailSender)
+        {
+            // Once you add a real email sender, you should remove this code that lets you confirm the account
+            var userId = await UserManager.GetUserIdAsync(user);
+            var code = await UserManager.GenerateEmailConfirmationTokenAsync(user);
+            code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+            emailConfirmationLink = NavigationManager.GetUriWithQueryParameters(
+                NavigationManager.ToAbsoluteUri("Account/ConfirmEmail").AbsoluteUri,
+                new Dictionary<string, object?> { ["userId"] = userId, ["code"] = code, ["returnUrl"] = ReturnUrl });
+        }
+    }
+}

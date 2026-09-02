@@ -1,0 +1,46 @@
+services:
+  cardmaker-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cardmaker-web
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Storage__DataRoot=/app/data
+      - Bootstrap__AdminEmail=${BOOTSTRAP_ADMIN_EMAIL:-admin@cardmaker.local}
+      - Bootstrap__AdminPassword=${BOOTSTRAP_ADMIN_PASSWORD:-}
+    volumes:
+      - cardmaker-data:/app/data
+    networks:
+      - cardmaker-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: cardmaker-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME:-localhost}
+      - ACME_EMAIL=${ACME_EMAIL:-admin@example.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - cardmaker-web
+    networks:
+      - cardmaker-net
+
+volumes:
+  cardmaker-data:
+    driver: local
+  caddy-data:
+  caddy-config:
+
+networks:
+  cardmaker-net:
+    driver: bridge
+

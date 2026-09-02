@@ -1,0 +1,455 @@
+@page "/admin/templates/{TemplateId:guid}"
+@attribute [Authorize(Roles = "Admin")]
+@rendermode InteractiveServer
+
+@using CardMaker.UI.Components.TemplateStudio
+@inject ITemplateAdminService TemplateService
+@inject ICardService CardService
+@inject IAssetCatalog AssetCatalog
+@inject IFontCatalog FontCatalog
+@inject ICardPreviewService PreviewService
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<PageTitle>@(Template?.Name ?? "Editor Template") — CardMaker Studio</PageTitle>
+
+<!-- Top Studio Toolbar -->
+<div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+    <div class="d-flex align-items-center gap-3">
+        <a href="admin/content" class="btn btn-outline-secondary btn-sm">
+            ← Contenuti
+        </a>
+        <div>
+            <h1 class="h4 mb-0 fw-bold d-flex align-items-center gap-2">
+                <span>🎨 @Template?.Name</span>
+                <code class="small text-muted">@Template?.Key</code>
+                @if (Template?.IsDefault == true)
+                {
+                    <span class="badge bg-success small">Default</span>
+                }
+            </h1>
+            <small class="text-muted">Tipo Carta: <strong>@Template?.CardTypeName</strong> (@Template?.GameKey)</small>
+        </div>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+        <!-- Version Selector -->
+        @if (Template?.Versions.Count > 0)
+        {
+            <div class="d-flex align-items-center gap-1">
+                <span class="small fw-semibold text-muted">Versione:</span>
+                <select class="form-select form-select-sm w-auto" value="@SelectedVersionId" @onchange="OnVersionChangedAsync">
+                    @foreach (var v in Template.Versions)
+                    {
+                        <option value="@v.Id">
+                            v@v.VersionNumber @(v.IsPublished ? "★ (Pubblicata)" : "(Bozza)")
+                        </option>
+                    }
+                </select>
+            </div>
+        }
+
+        <!-- Validation Badge -->
+        @if (ValidationReport is not null)
+        {
+            <button type="button" class="btn btn-sm @(ValidationReport.IsValid ? "btn-outline-success" : "btn-outline-warning")" @onclick="() => ShowValidationModal = true">
+                @(ValidationReport.IsValid ? "✓ Layout Valido" : $"⚠️ {ValidationReport.Issues.Count} Avvisi")
+            </button>
+        }
+
+        <button type="button" class="btn btn-outline-primary btn-sm" @onclick="OpenNewVersionModal">
+            + Nuova Versione
+        </button>
+
+        @if (CurrentVersionDto?.IsPublished == false)
+        {
+            <button type="button" class="btn btn-success btn-sm" @onclick="PublishCurrentVersionAsync">
+                Pubblica v@CurrentVersionDto.VersionNumber
+            </button>
+        }
+
+        <button type="button" class="btn btn-primary btn-sm" @onclick="SaveCurrentLayoutAsync" disabled="@IsSaving">
+            @if (IsSaving)
+            {
+                <span class="spinner-border spinner-border-sm me-1"></span>
+                <span>Salvataggio...</span>
+            }
+            else
+            {
+                <span>Salva Bozza</span>
+            }
+        </button>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(ErrorMessage))
+{
+    <div class="alert alert-danger shadow-sm mb-3">@ErrorMessage</div>
+}
+@if (!string.IsNullOrEmpty(SuccessMessage))
+{
+    <div class="alert alert-success shadow-sm mb-3">@SuccessMessage</div>
+}
+
+@if (IsLoading)
+{
+    <div class="p-5 text-center">
+        <LoadingSpinner Text="Caricamento studio template WYSIWYG..." />
+    </div>
+}
+else if (Template is not null && CurrentLayout is not null)
+{
+    <!-- 3-PANEL STUDIO LAYOUT -->
+    <div class="row g-3" style="min-height: calc(100vh - 180px);">
+        <!-- 1. LEFT PANEL: LAYER TREE -->
+        <div class="col-12 col-md-3">
+            <LayerTreePanel Layers="@LayersList"
+                            SelectedLayer="@SelectedLayer"
+                            SelectedLayerChanged="@(layer => SelectedLayer = layer)"
+                            OnLayersModified="@OnLayersModifiedAsync" />
+        </div>
+
+        <!-- 2. CENTER PANEL: CANVAS VIEWPORT -->
+        <div class="col-12 col-md-6">
+            <CanvasViewport PreviewDataUrl="@PreviewDataUrl"
+                            IsLoading="@IsPreviewLoading"
+                            Warnings="@PreviewWarnings"
+                            SelectedLayer="@SelectedLayer" />
+        </div>
+
+        <!-- 3. RIGHT PANEL: LAYER INSPECTOR -->
+        <div class="col-12 col-md-3">
+            <LayerInspector Layer="@SelectedLayer"
+                            Fields="@AvailableFields"
+                            AvailableAssets="@AvailableAssets"
+                            Fonts="@AvailableFonts"
+                            OnLayerChanged="@OnLayerPropertyChangedAsync" />
+        </div>
+    </div>
+}
+
+<!-- Modale Validazione Layout -->
+@if (ShowValidationModal && ValidationReport is not null)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Rapporto di Validazione Layout</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowValidationModal = false"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Severità</th>
+                                    <th>Layer</th>
+                                    <th>Codice</th>
+                                    <th>Messaggio</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (ValidationReport.Issues.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="4" class="p-4 text-center text-success">
+                                            ✓ Nessun problema rilevato. Il layout è perfettamente conforme!
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var issue in ValidationReport.Issues)
+                                {
+                                    <tr>
+                                        <td>
+                                            <span class="badge @(issue.Severity == "error" ? "bg-danger" : issue.Severity == "warning" ? "bg-warning text-dark" : "bg-info text-dark")">
+                                                @issue.Severity
+                                            </span>
+                                        </td>
+                                        <td class="fw-semibold">@issue.LayerName</td>
+                                        <td><code>@issue.Code</code></td>
+                                        <td class="small">@issue.Message</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowValidationModal = false">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modale Nuova Versione -->
+@if (ShowNewVersionModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crea Nuova Versione Template</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowNewVersionModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Note di Modifica / Changelog</label>
+                        <textarea class="form-control form-control-sm" rows="3" @bind="NewVersionChangeNotes" placeholder="Es. Aggiornato layout box effetto e stile font"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowNewVersionModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="CreateNewVersionAsync">Crea Versione</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid TemplateId { get; set; }
+
+    private TemplateDetailDto? Template;
+    private TemplateVersionDto? CurrentVersionDto;
+    private Guid SelectedVersionId;
+
+    private CardLayout? CurrentLayout;
+    private List<LayerDefinition> LayersList = [];
+    private LayerDefinition? SelectedLayer;
+
+    private IReadOnlyList<FieldDefinitionDto> AvailableFields = [];
+    private IReadOnlyList<Asset> AvailableAssets = [];
+    private IReadOnlyList<FontAsset> AvailableFonts = [];
+
+    private LayoutValidationReport? ValidationReport;
+    private bool ShowValidationModal;
+    private bool ShowNewVersionModal;
+    private string NewVersionChangeNotes = "";
+
+    private string? PreviewDataUrl;
+    private bool IsPreviewLoading;
+    private IReadOnlyList<PreviewWarning>? PreviewWarnings;
+    private CancellationTokenSource? _previewCts;
+
+    private bool IsLoading = true;
+    private bool IsSaving;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStudioAsync();
+    }
+
+    private async Task LoadStudioAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            Template = await TemplateService.GetTemplateDetailAsync(TemplateId);
+            if (Template is not null)
+            {
+                CurrentVersionDto = Template.CurrentVersion;
+                if (CurrentVersionDto is not null)
+                {
+                    SelectedVersionId = CurrentVersionDto.Id;
+                    CurrentLayout = LayoutSerializer.Deserialize(CurrentVersionDto.LayoutJson) ?? new CardLayout();
+                    LayersList = CurrentLayout.Layers.ToList();
+                    SelectedLayer = LayersList.FirstOrDefault();
+                }
+
+                var ctDetails = await CardService.GetGameCardTypesAsync(Template.GameKey);
+                var ct = ctDetails.FirstOrDefault(c => c.Id == Template.CardTypeId);
+                if (ct is not null)
+                {
+                    AvailableFields = ct.Fields;
+                }
+
+                AvailableAssets = await AssetCatalog.ListAsync();
+                AvailableFonts = await FontCatalog.ListAsync();
+
+                if (CurrentLayout is not null)
+                {
+                    ValidationReport = await TemplateService.ValidateLayoutAsync(Template.CardTypeId, CurrentLayout);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+
+        await TriggerPreviewDebounced();
+    }
+
+    private async Task OnVersionChangedAsync(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var vId) && Template is not null)
+        {
+            CurrentVersionDto = Template.Versions.FirstOrDefault(v => v.Id == vId);
+            if (CurrentVersionDto is not null)
+            {
+                SelectedVersionId = CurrentVersionDto.Id;
+                CurrentLayout = LayoutSerializer.Deserialize(CurrentVersionDto.LayoutJson) ?? new CardLayout();
+                LayersList = CurrentLayout.Layers.ToList();
+                SelectedLayer = LayersList.FirstOrDefault();
+
+                ValidationReport = await TemplateService.ValidateLayoutAsync(Template.CardTypeId, CurrentLayout);
+                await TriggerPreviewDebounced();
+            }
+        }
+    }
+
+    private async Task OnLayersModifiedAsync()
+    {
+        if (CurrentLayout is null) return;
+        CurrentLayout = CurrentLayout with { Layers = LayersList };
+        await TriggerPreviewDebounced();
+    }
+
+    private async Task OnLayerPropertyChangedAsync()
+    {
+        await OnLayersModifiedAsync();
+    }
+
+    private async Task TriggerPreviewDebounced()
+    {
+        _previewCts?.Cancel();
+        _previewCts = new CancellationTokenSource();
+        var token = _previewCts.Token;
+
+        try
+        {
+            await Task.Delay(200, token);
+            if (token.IsCancellationRequested || CurrentLayout is null || Template is null) return;
+
+            IsPreviewLoading = true;
+            StateHasChanged();
+
+            // Sincronizza layers nel layout
+            CurrentLayout = CurrentLayout with { Layers = LayersList };
+            var json = LayoutSerializer.Serialize(CurrentLayout);
+
+            // Validazione statica live
+            ValidationReport = await TemplateService.ValidateLayoutAsync(Template.CardTypeId, CurrentLayout, token);
+
+            // Costruisci valori campione per l'anteprima
+            var sampleValues = new Dictionary<string, CardValue>();
+            foreach (var f in AvailableFields)
+            {
+                sampleValues[f.Key] = CardValue.FromText(f.Key);
+            }
+
+            var result = await PreviewService.RenderAsync(new CardPreviewRequest
+            {
+                LayoutJson = json,
+                Values = sampleValues,
+                Dpi = 150,
+                IncludeBleed = false,
+            }, token);
+
+            if (result.Succeeded && result.Content is not null)
+            {
+                PreviewDataUrl = $"data:{result.ContentType};base64,{Convert.ToBase64String(result.Content)}";
+            }
+            PreviewWarnings = result.Warnings;
+        }
+        catch (TaskCanceledException)
+        {
+            // Ignora debounce cancellato
+        }
+        catch (Exception ex)
+        {
+            PreviewWarnings = [new PreviewWarning("render.error", ex.Message, null)];
+        }
+        finally
+        {
+            IsPreviewLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveCurrentLayoutAsync()
+    {
+        if (Template is null || CurrentLayout is null || CurrentVersionDto is null) return;
+
+        IsSaving = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+
+        try
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            CurrentLayout = CurrentLayout with { Layers = LayersList };
+            var json = LayoutSerializer.Serialize(CurrentLayout);
+
+            var updated = await TemplateService.CreateVersionAsync(Template.Id, json, $"Salvataggio manuale v{CurrentVersionDto.VersionNumber}", uid);
+            SuccessMessage = $"Layout salvato con successo come bozza v{updated.VersionNumber}!";
+            await LoadStudioAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private void OpenNewVersionModal()
+    {
+        NewVersionChangeNotes = "";
+        ShowNewVersionModal = true;
+    }
+
+    private async Task CreateNewVersionAsync()
+    {
+        if (Template is null || CurrentLayout is null) return;
+
+        try
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            CurrentLayout = CurrentLayout with { Layers = LayersList };
+            var json = LayoutSerializer.Serialize(CurrentLayout);
+
+            var created = await TemplateService.CreateVersionAsync(Template.Id, json, NewVersionChangeNotes, uid);
+            ShowNewVersionModal = false;
+            SuccessMessage = $"Creata nuova versione v{created.VersionNumber}!";
+            await LoadStudioAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    private async Task PublishCurrentVersionAsync()
+    {
+        if (CurrentVersionDto is null) return;
+
+        try
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            await TemplateService.PublishVersionAsync(CurrentVersionDto.Id, uid);
+            SuccessMessage = $"Versione v{CurrentVersionDto.VersionNumber} pubblicata con successo!";
+            await LoadStudioAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+    }
+}
