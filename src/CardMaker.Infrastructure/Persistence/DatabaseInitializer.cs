@@ -16,6 +16,8 @@ public sealed class DatabaseInitializer(
     CardMakerDbContext db,
     UserManager<ApplicationUser> userManager,
     RoleManager<IdentityRole> roleManager,
+    CardMaker.Application.Assets.IPlaceholderSeeder placeholderSeeder,
+    CardMaker.Application.Content.IYuGiOhContentSeeder yugiohSeeder,
     IConfiguration configuration,
     ILogger<DatabaseInitializer> logger)
 {
@@ -33,6 +35,17 @@ public sealed class DatabaseInitializer(
         }
 
         await EnsureBootstrapAdminAsync().ConfigureAwait(false);
+
+        // Assicura che i template e i frame di default di Yu-Gi-Oh siano sempre presenti al primo avvio
+        try
+        {
+            await placeholderSeeder.SeedYuGiOhAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            await yugiohSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Errore durante il seeding iniziale dei template di gioco");
+        }
     }
 
     private async Task EnsureBootstrapAdminAsync()

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" data-bs-theme="@InitialTheme" data-cm-theme-setting="@InitialTheme">
 
 <head>
     <meta charset="utf-8" />
@@ -8,12 +8,10 @@
     <script>
         (function() {
             try {
-                const match = document.cookie.match(new RegExp('(^| )cm-theme=([^;]+)'));
-                let theme = match ? match[2] : (localStorage.getItem('cm-theme') || 'system');
-                if (theme === 'system') {
-                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                }
-                document.documentElement.setAttribute('data-bs-theme', theme);
+                const stored = localStorage.getItem('cm-theme') || 'system';
+                const resolved = stored === 'system' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : stored;
+                document.documentElement.setAttribute('data-bs-theme', resolved);
+                document.documentElement.setAttribute('data-cm-theme-setting', stored);
             } catch (e) {}
         })();
     </script>
@@ -37,3 +35,13 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? InitialTheme =>
+        HttpContext?.Request.Cookies.TryGetValue("cm-theme", out var theme) == true && (theme == "dark" || theme == "light")
+            ? theme
+            : null;
+}
