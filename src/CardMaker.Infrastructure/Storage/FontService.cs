@@ -104,7 +104,9 @@ public sealed partial class FontService(
 
         return await db.FontAssets.AsNoTracking()
             .Include(f => f.Asset)
-            .FirstOrDefaultAsync(f => f.GameId == gameId && f.Alias == normalized, cancellationToken)
+            .Where(f => f.Alias == normalized && (gameId == null || f.GameId == gameId || f.GameId == null))
+            .OrderBy(f => f.GameId == gameId ? 0 : 1)
+            .FirstOrDefaultAsync(cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -124,7 +126,46 @@ public sealed partial class FontService(
         CancellationToken cancellationToken = default)
     {
         var font = await FindByAliasAsync(gameId, roleAlias, cancellationToken).ConfigureAwait(false);
-        return font is null ? null : await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
+        if (font is not null)
+        {
+            var bytes = await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
+            if (bytes is not null && bytes.Length > 0)
+            {
+                return bytes;
+            }
+        }
+
+        return GetEmbeddedFontBytes(roleAlias);
+    }
+
+    internal static byte[]? GetEmbeddedFontBytes(string roleAlias)
+    {
+        var normalized = NormalizeAlias(roleAlias);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        var fileName = normalized switch
+        {
+            "card-name" or "atk-def-value" or "link-rating" or "pendulum-scale" or "rush-maximum-atk" => "Matrix-Bold.otf",
+            "atk-def-label" => "MatrixBoldSmallCaps.ttf",
+            "type-line" or "spell-trap-label" or "effect-bold" => "Stone Serif Semibold.ttf",
+            "effect-italic" => "Stone Serif Italic.ttf",
+            "rush-card-name" or "rush-section-label" or "rush-type-line" => "FOT-Rodin Pro M.ttf",
+            _ => "Stone Serif Regular.ttf",
+        };
+
+        var resourceName = $"CardMaker.Infrastructure.Resources.Fonts.{fileName}";
+        using var stream = typeof(FontService).Assembly.GetManifestResourceStream(resourceName);
+        if (stream is null)
+        {
+            return null;
+        }
+
+        using var mem = new MemoryStream();
+        stream.CopyTo(mem);
+        return mem.ToArray();
     }
 
     public async Task<bool> RemoveAsync(Guid fontAssetId, CancellationToken cancellationToken = default)

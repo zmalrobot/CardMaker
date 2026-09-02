@@ -83,10 +83,10 @@ public sealed class PlaceholderFrameGenerator
             AttributeBox = new NormalizedRect(0.820, 0.033, 0.110, 0.072),
             LevelStrip = new NormalizedRect(0.100, 0.120, 0.800, 0.042),
             ArtWindow = new NormalizedRect(0.115, 0.175, 0.770, 0.560),
-            TypeLineBox = new NormalizedRect(0.070, 0.752, 0.860, 0.032),
-            EffectBox = new NormalizedRect(0.070, 0.790, 0.860, 0.140),
-            AtkBox = new NormalizedRect(0.540, 0.940, 0.180, 0.030),
-            DefBox = new NormalizedRect(0.740, 0.940, 0.180, 0.030),
+            TypeLineBox = new NormalizedRect(0.070, 0.752, 0.860, 0.028),
+            EffectBox = new NormalizedRect(0.070, 0.782, 0.860, 0.145),
+            AtkBox = new NormalizedRect(0.530, 0.932, 0.190, 0.026),
+            DefBox = new NormalizedRect(0.730, 0.932, 0.190, 0.026),
         },
     };
 

@@ -49,16 +49,40 @@
                     }
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold" for="name">Nome carta</label>
-                    <input id="name" class="form-control" @bind="_name" @bind:event="oninput" />
-                    <div class="form-text small">Allunga il nome per osservare la compressione orizzontale automatica.</div>
+                <div class="row g-2 mb-3">
+                    <div class="col-8">
+                        <label class="form-label small fw-semibold" for="name">Nome carta</label>
+                        <input id="name" class="form-control" @bind="_name" @bind:event="oninput" />
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label small fw-semibold" for="effectFlag">Categoria</label>
+                        <select id="effectFlag" class="form-select" @bind="_effectFlag">
+                            <option value="Normale">Normale</option>
+                            <option value="Effetto">Effetto</option>
+                            <option value="Tuner">Tuner</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold" for="race">Tipo / Razza</label>
+                        <input id="race" class="form-control" @bind="_race" @bind:event="oninput" placeholder="es. Drago, Guerriero..." />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small fw-semibold" for="summon">Metodo evocazione</label>
+                        <select id="summon" class="form-select" @bind="_summonMethod">
+                            <option value="">(Nessuno)</option>
+                            <option value="Synchro">Synchro</option>
+                            <option value="Link">Link (Nasconde DEF)</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold" for="effect">Testo effetto</label>
-                    <textarea id="effect" class="form-control" rows="5" @bind="_effect" @bind:event="oninput"></textarea>
-                    <div class="form-text small">Aggiungi testo per osservare l'auto-fit ridurre corpo e interlinea.</div>
+                    <label class="form-label small fw-semibold" for="effect">Testo effetto / Descrizione</label>
+                    <textarea id="effect" class="form-control" rows="4" @bind="_effect" @bind:event="oninput"></textarea>
+                    <div class="form-text small">Aggiungi testo o descrizione per osservare l'auto-fit ridurre corpo e interlinea.</div>
                 </div>
 
                 <div class="row g-2 mb-3">
@@ -81,21 +105,35 @@
                     </div>
                 </div>
 
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <label class="form-label small fw-semibold" for="summon">Metodo evocazione</label>
-                        <select id="summon" class="form-select" @bind="_summonMethod">
-                            <option value="">(Nessuno)</option>
-                            <option value="Synchro">Synchro</option>
-                            <option value="Link">Link (Nasconde DEF)</option>
-                        </select>
-                    </div>
-                    <div class="col-6 d-flex align-items-end">
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="guides" @bind="_showGuides" />
-                            <label class="form-check-label small" for="guides">Guide di trim e safe zone</label>
+                <div class="card mb-3 bg-surface-2 border">
+                    <div class="card-header py-1 px-3 fw-semibold small">Dettagli Carta, Codici &amp; Versione</div>
+                    <div class="card-body p-2">
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold" for="setCode">Codice Set / Numero</label>
+                                <input id="setCode" class="form-control form-control-sm" @bind="_setCode" @bind:event="oninput" placeholder="es. LOB-IT001" />
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small fw-semibold" for="edition">Edizione / Versione</label>
+                                <input id="edition" class="form-control form-control-sm" @bind="_edition" @bind:event="oninput" placeholder="es. 1ª EDIZIONE" />
+                            </div>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-5">
+                                <label class="form-label small fw-semibold" for="passcode">Numero Seriale / Passcode</label>
+                                <input id="passcode" class="form-control form-control-sm" @bind="_passcode" @bind:event="oninput" placeholder="es. 89631139" />
+                            </div>
+                            <div class="col-7">
+                                <label class="form-label small fw-semibold" for="copyright">Copyright / Info legali</label>
+                                <input id="copyright" class="form-control form-control-sm" @bind="_copyright" @bind:event="oninput" placeholder="es. ©2020 Studio Dice..." />
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="guides" @bind="_showGuides" />
+                    <label class="form-check-label small" for="guides">Guide di trim e safe zone</label>
                 </div>
 
                 <button class="btn btn-primary w-100 py-2 fw-semibold" @onclick="RenderAsync" disabled="@_busy">
@@ -145,9 +183,15 @@
     private string _artworkFileName = string.Empty;
 
     private string _name = "Drago Bianco Occhi Blu";
+    private string _race = "Drago";
+    private string _effectFlag = "Normale";
     private string _effect = DemoLayouts.SampleValues()["effectText"].AsText();
     private string _atk = "3000";
     private string _def = "2500";
+    private string _setCode = "LOB-IT001";
+    private string _edition = "1ª EDIZIONE";
+    private string _passcode = "89631139";
+    private string _copyright = "©2020 Studio Dice/SHUEISHA, TV TOKYO, KONAMI";
     private string _summonMethod = string.Empty;
     private int _dpi = 150;
     private bool _showGuides;
@@ -241,9 +285,15 @@
         {
             var values = DemoLayouts.SampleValues();
             values["name"] = CardValue.FromText(_name);
+            values["race"] = CardValue.FromText(_race);
+            values["effectFlag"] = CardValue.FromText(_effectFlag);
             values["effectText"] = CardValue.FromText(_effect);
             values["atk"] = CardValue.FromText(_atk);
             values["def"] = CardValue.FromText(_def);
+            values["setCode"] = CardValue.FromText(_setCode);
+            values["edition"] = CardValue.FromText(_edition);
+            values["passcode"] = CardValue.FromText(_passcode);
+            values["copyright"] = CardValue.FromText(_copyright);
             values["summonMethod"] = CardValue.FromText(_summonMethod);
 
             if (_artworkAssetId.HasValue)

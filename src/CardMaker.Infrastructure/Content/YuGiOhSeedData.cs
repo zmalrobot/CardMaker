@@ -296,6 +296,8 @@ public static class YuGiOhSeedData
         fields.Add(TextField(cardType, "setCode", "Codice set", "Set Code", order++));
         fields.Add(EnumField(cardType, "rarity", "Rarità", "Rarity", rarities, order++));
         fields.Add(EnumField(cardType, "edition", "Edizione", "Edition", editions, order++));
+        fields.Add(TextField(cardType, "passcode", "Numero seriale / Passcode", "Card Number / Passcode", order++));
+        fields.Add(TextField(cardType, "copyright", "Copyright", "Copyright", order++));
         cardType.Fields = fields;
         cardType.AllowedTraits = [.. traits.Select(t => new CardTypeTrait { CardTypeId = cardType.Id, CardType = cardType, TraitId = t.Id, Trait = t })];
 
@@ -318,6 +320,8 @@ public static class YuGiOhSeedData
             TextField(cardType, "setCode", "Codice set", "Set Code", 4),
             EnumField(cardType, "rarity", "Rarità", "Rarity", rarities, 5),
             EnumField(cardType, "edition", "Edizione", "Edition", editions, 6),
+            TextField(cardType, "passcode", "Numero seriale / Passcode", "Card Number / Passcode", 7),
+            TextField(cardType, "copyright", "Copyright", "Copyright", 8),
         ];
 
         var regions = PlaceholderFrameGenerator.GetRegions(PlaceholderLayout.SpellTrap);
@@ -425,6 +429,8 @@ public static class YuGiOhSeedData
             TextField(cardType, "setCode", "Codice set", "Set Code", 8),
             EnumField(cardType, "rarity", "Rarità", "Rarity", rarities, 9),
             EnumField(cardType, "edition", "Edizione", "Edition", editions, 10),
+            TextField(cardType, "passcode", "Numero seriale / Passcode", "Card Number / Passcode", 11),
+            TextField(cardType, "copyright", "Copyright", "Copyright", 12),
         ];
 
         var regions = PlaceholderFrameGenerator.GetRegions(PlaceholderLayout.Monster);
@@ -448,8 +454,12 @@ public static class YuGiOhSeedData
                     new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = "rush-monster-effect", Fit = ImageFit.Stretch },
                     new SymbolSlotLayer { Id = "attribute", Name = "Attributo", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = "attributes", FieldKey = "attribute" },
                     new TextLayer { Id = "name", Name = "Nome", Z = 2, Rect = regions.NameBox, Source = "{{name}}", Style = "cardName" },
+                    new TextLayer { Id = "edition", Name = "Edizione", Z = 2, Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016), Source = "{{edition}}", Style = "edition" },
+                    new TextLayer { Id = "set-code", Name = "Codice set", Z = 2, Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016), Source = "{{setCode}}", Style = "smallPrint" },
                     new RichTextLayer { Id = "effect", Name = "Testo effetto", Z = 2, Rect = regions.EffectBox, Source = "{{effectText}}", Style = "effectText" },
                     new TextLayer { Id = "atk", Name = "Maximum ATK", Z = 2, Rect = regions.AtkBox, Source = "MAXIMUM ATK/{{maximumAtk}}", Style = "atkDef" },
+                    new TextLayer { Id = "passcode", Name = "Numero seriale / Passcode", Z = 2, Rect = new NormalizedRect(0.065, 0.962, 0.250, 0.018), Source = "{{passcode}}", Style = "passcode" },
+                    new TextLayer { Id = "copyright", Name = "Copyright", Z = 2, Rect = new NormalizedRect(0.400, 0.962, 0.520, 0.018), Source = "{{copyright}}", Style = "copyright" },
                 ],
             };
 
@@ -517,6 +527,8 @@ public static class YuGiOhSeedData
         }
 
         layers.Add(new TextLayer { Id = "name", Name = "Nome carta", Z = 3, Rect = regions.NameBox, Source = "{{name}}", Style = "cardName" });
+        layers.Add(new TextLayer { Id = "edition", Name = "Edizione", Z = 3, Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016), Source = "{{edition}}", Style = "edition" });
+        layers.Add(new TextLayer { Id = "set-code", Name = "Codice set", Z = 3, Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016), Source = "{{setCode}}", Style = "smallPrint" });
         layers.Add(new TextLayer { Id = "type-line", Name = "Type line", Z = 3, Rect = regions.TypeLineBox, Source = "[{{race}}]", Style = "typeLine" });
 
         if (spec.HasPendulum && regions.PendulumBox is { } pendulumBox)
@@ -532,7 +544,8 @@ public static class YuGiOhSeedData
             layers.Add(new TextLayer { Id = "def", Name = "DEF", Z = 3, Rect = defBox, Source = "DEF/{{def}}", Style = "atkDef" });
         }
 
-        layers.Add(new TextLayer { Id = "set-code", Name = "Codice set", Z = 3, Rect = new NormalizedRect(0.640, 0.163, 0.245, 0.020), Source = "{{setCode}}", Style = "smallPrint" });
+        layers.Add(new TextLayer { Id = "passcode", Name = "Numero seriale / Passcode", Z = 3, Rect = new NormalizedRect(0.065, 0.962, 0.250, 0.018), Source = "{{passcode}}", Style = "passcode" });
+        layers.Add(new TextLayer { Id = "copyright", Name = "Copyright", Z = 3, Rect = new NormalizedRect(0.400, 0.962, 0.520, 0.018), Source = "{{copyright}}", Style = "copyright" });
 
         return new CardLayout
         {
@@ -555,8 +568,11 @@ public static class YuGiOhSeedData
                 new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = spec.FrameKey, Fit = ImageFit.Stretch },
                 new SymbolSlotLayer { Id = "property", Name = "Proprietà", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = spec.SymbolSetKey, FieldKey = "property" },
                 new TextLayer { Id = "name", Name = "Nome", Z = 2, Rect = regions.NameBox, Source = "{{name}}", Style = "cardName" },
+                new TextLayer { Id = "edition", Name = "Edizione", Z = 2, Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016), Source = "{{edition}}", Style = "edition" },
+                new TextLayer { Id = "set-code", Name = "Codice set", Z = 2, Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016), Source = "{{setCode}}", Style = "smallPrint" },
                 new RichTextLayer { Id = "effect", Name = "Testo effetto", Z = 2, Rect = regions.EffectBox, Source = "{{effectText}}", Style = "effectText" },
-                new TextLayer { Id = "set-code", Name = "Codice set", Z = 2, Rect = new NormalizedRect(0.640, 0.163, 0.245, 0.020), Source = "{{setCode}}", Style = "smallPrint" },
+                new TextLayer { Id = "passcode", Name = "Numero seriale / Passcode", Z = 2, Rect = new NormalizedRect(0.065, 0.962, 0.250, 0.018), Source = "{{passcode}}", Style = "passcode" },
+                new TextLayer { Id = "copyright", Name = "Copyright", Z = 2, Rect = new NormalizedRect(0.400, 0.962, 0.520, 0.018), Source = "{{copyright}}", Style = "copyright" },
             ],
         };
     }
@@ -575,7 +591,10 @@ public static class YuGiOhSeedData
         },
         ["effectText"] = new() { Font = fontPrefix + "effect", SizePt = 6.5, Color = "#101010", LineHeight = 1.12, PaddingXPt = 3 },
         ["atkDef"] = new() { Font = "atk-def-value", SizePt = 7, Color = "#101010", Align = TextAlign.Right, VerticalAlign = VerticalAlign.Middle, MaxLines = 1 },
-        ["smallPrint"] = new() { Font = "set-code", SizePt = 3.4, Color = "#202020", Align = TextAlign.Right, VerticalAlign = VerticalAlign.Middle, MaxLines = 1 },
+        ["smallPrint"] = new() { Font = "set-code", SizePt = 3.6, Color = "#101010", Align = TextAlign.Right, VerticalAlign = VerticalAlign.Middle, MaxLines = 1 },
+        ["edition"] = new() { Font = "edition", SizePt = 3.6, Color = "#101010", Align = TextAlign.Left, VerticalAlign = VerticalAlign.Middle, MaxLines = 1 },
+        ["passcode"] = new() { Font = "passcode", SizePt = 3.6, Color = "#101010", Align = TextAlign.Left, VerticalAlign = VerticalAlign.Middle, MaxLines = 1 },
+        ["copyright"] = new() { Font = "copyright", SizePt = 3.2, Color = "#101010", Align = TextAlign.Right, VerticalAlign = VerticalAlign.Middle, MaxLines = 1 },
     };
 
     // ---- Field factories ----

@@ -69,12 +69,39 @@ public static class DemoLayouts
             ["smallPrint"] = new()
             {
                 Font = "set-code",
-                SizePt = 3.4,
-                Color = "#202020",
+                SizePt = 3.6,
+                Color = "#101010",
                 Align = TextAlign.Right,
                 VerticalAlign = VerticalAlign.Middle,
                 MaxLines = 1,
                 AutoFit = new AutoFitSettings { Mode = AutoFitMode.Shrink, MinSizePt = 2.4 },
+            },
+            ["edition"] = new()
+            {
+                Font = "edition",
+                SizePt = 3.6,
+                Color = "#101010",
+                Align = TextAlign.Left,
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+            ["passcode"] = new()
+            {
+                Font = "passcode",
+                SizePt = 3.6,
+                Color = "#101010",
+                Align = TextAlign.Left,
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+            ["copyright"] = new()
+            {
+                Font = "copyright",
+                SizePt = 3.2,
+                Color = "#101010",
+                Align = TextAlign.Right,
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
             },
         },
         Computed =
@@ -135,10 +162,28 @@ public static class DemoLayouts
             },
             new TextLayer
             {
+                Id = "edition",
+                Name = "Edizione",
+                Z = 30,
+                Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016),
+                Source = "{{edition}}",
+                Style = "edition",
+            },
+            new TextLayer
+            {
+                Id = "set-code",
+                Name = "Codice set",
+                Z = 30,
+                Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016),
+                Source = "{{setCode}}",
+                Style = "smallPrint",
+            },
+            new TextLayer
+            {
                 Id = "type-line",
                 Name = "Type line",
                 Z = 30,
-                Rect = new NormalizedRect(0.070, 0.752, 0.860, 0.032),
+                Rect = new NormalizedRect(0.070, 0.752, 0.860, 0.028),
                 Source = "{{typeLine}}",
                 Style = "typeLine",
             },
@@ -147,7 +192,7 @@ public static class DemoLayouts
                 Id = "effect",
                 Name = "Testo effetto",
                 Z = 30,
-                Rect = new NormalizedRect(0.070, 0.790, 0.860, 0.140),
+                Rect = new NormalizedRect(0.070, 0.782, 0.860, 0.145),
                 Source = "{{effectText}}",
                 Style = "effectText",
             },
@@ -156,7 +201,7 @@ public static class DemoLayouts
                 Id = "atk",
                 Name = "ATK",
                 Z = 30,
-                Rect = new NormalizedRect(0.540, 0.940, 0.180, 0.030),
+                Rect = new NormalizedRect(0.530, 0.932, 0.190, 0.026),
                 Source = "ATK/{{atk}}",
                 Style = "atkDef",
             },
@@ -165,7 +210,7 @@ public static class DemoLayouts
                 Id = "def",
                 Name = "DEF",
                 Z = 30,
-                Rect = new NormalizedRect(0.740, 0.940, 0.180, 0.030),
+                Rect = new NormalizedRect(0.730, 0.932, 0.190, 0.026),
                 Source = "DEF/{{def}}",
                 Style = "atkDef",
                 // I Link Monster non hanno DEF: il layer sparisce senza duplicare il template.
@@ -173,12 +218,21 @@ public static class DemoLayouts
             },
             new TextLayer
             {
-                Id = "set-code",
-                Name = "Codice set",
+                Id = "passcode",
+                Name = "Numero seriale / Passcode",
                 Z = 30,
-                Rect = new NormalizedRect(0.640, 0.163, 0.245, 0.020),
-                Source = "{{setCode}}",
-                Style = "smallPrint",
+                Rect = new NormalizedRect(0.065, 0.962, 0.250, 0.018),
+                Source = "{{passcode}}",
+                Style = "passcode",
+            },
+            new TextLayer
+            {
+                Id = "copyright",
+                Name = "Copyright",
+                Z = 30,
+                Rect = new NormalizedRect(0.400, 0.962, 0.520, 0.018),
+                Source = "{{copyright}}",
+                Style = "copyright",
             },
         ],
     };
@@ -187,17 +241,19 @@ public static class DemoLayouts
     {
         ["name"] = CardValue.FromText("Drago Bianco Occhi Blu"),
         ["attribute"] = CardValue.FromText("light"),
-        ["race"] = CardValue.FromText("Dragon"),
+        ["race"] = CardValue.FromText("Drago"),
         ["summonMethod"] = CardValue.FromText(string.Empty),
         ["abilities"] = CardValue.FromText(string.Empty),
-        ["effectFlag"] = CardValue.FromText("Effect"),
+        ["effectFlag"] = CardValue.FromText("Normale"),
         ["effectText"] = CardValue.FromText(
-            "Se questa carta viene Evocata Normalmente o Specialmente: puoi prendere prendere il controllo "
-            + "di un mostro scoperto controllato dal tuo avversario fino alla End Phase.\n"
-            + "Una volta per turno, durante la tua Main Phase: puoi far perdere a tutti i mostri che il tuo "
-            + "avversario controlla 500 ATK fino alla fine di questo turno."),
+            "Questo leggendario drago è un potente motore di distruzione. "
+            + "Praticamente invincibile, sono ben pochi coloro che hanno "
+            + "affrontato questa magnifica creatura e sono sopravvissuti per raccontarlo."),
         ["atk"] = CardValue.FromNumber(3000),
         ["def"] = CardValue.FromNumber(2500),
-        ["setCode"] = CardValue.FromText("DEMO-IT001"),
+        ["setCode"] = CardValue.FromText("LOB-IT001"),
+        ["edition"] = CardValue.FromText("1ª EDIZIONE"),
+        ["passcode"] = CardValue.FromText("89631139"),
+        ["copyright"] = CardValue.FromText("©2020 Studio Dice/SHUEISHA, TV TOKYO, KONAMI"),
     };
 }
