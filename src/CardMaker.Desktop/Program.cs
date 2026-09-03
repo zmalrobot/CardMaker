@@ -2,9 +2,12 @@ using CardMaker.Application.Assets;
 using CardMaker.Application.Content;
 using CardMaker.Desktop;
 using CardMaker.Desktop.Services;
+using CardMaker.Domain.Identity;
 using CardMaker.Infrastructure;
+using CardMaker.Infrastructure.Identity;
 using CardMaker.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Photino.Blazor;
@@ -37,6 +40,12 @@ public static class Program
         appBuilder.Services.AddCardMakerInfrastructure(configuration, dataRoot);
 
         // 3. Desktop in-process local admin auth bypass (ADR-009)
+        appBuilder.Services.AddDataProtection();
+        appBuilder.Services.AddIdentityCore<ApplicationUser>()
+            .AddRoles<IdentityRole>()
+            .AddCardMakerIdentityStores()
+            .AddDefaultTokenProviders();
+
         appBuilder.Services.AddAuthorizationCore();
         appBuilder.Services.AddScoped<AuthenticationStateProvider, DesktopAuthenticationStateProvider>();
 
@@ -45,20 +54,7 @@ public static class Program
 
         var app = appBuilder.Build();
 
-        // 5. Run automatic initial DB & content seeding
-        using (var scope = app.Services.CreateScope())
-        {
-            var dbInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
-            dbInitializer.InitializeAsync().GetAwaiter().GetResult();
-
-            var seeder = scope.ServiceProvider.GetRequiredService<IPlaceholderSeeder>();
-            seeder.SeedYuGiOhAsync().GetAwaiter().GetResult();
-
-            var ygoSeeder = scope.ServiceProvider.GetRequiredService<IYuGiOhContentSeeder>();
-            ygoSeeder.SeedAsync().GetAwaiter().GetResult();
-        }
-
-        // 6. Configure Desktop Window
+        // 5. Configure Desktop Window
         app.MainWindow
             .SetTitle("CardMaker Studio Desktop")
             .SetSize(1280, 850)

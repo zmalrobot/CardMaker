@@ -34,7 +34,10 @@ public static class DependencyInjection
         var databasePath = Path.Combine(dataRoot, "cardmaker.db");
 
         services.AddDbContext<CardMakerDbContext>(options =>
-            options.UseSqlite($"Data Source={databasePath}"));
+        {
+            options.UseSqlite($"Data Source={databasePath}");
+            options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+        });
 
         services.Configure<AssetStoreOptions>(o => o.RootPath = Path.Combine(dataRoot, "assets"));
         services.Configure<UploadLimits>(configuration.GetSection("Uploads"));

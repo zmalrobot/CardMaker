@@ -1,6 +1,5 @@
 @page "/admin/invitations"
 @attribute [Authorize(Roles = "Admin")]
-@rendermode InteractiveServer
 @using CardMaker.Application.Identity
 @inject IInvitationService InvitationService
 @inject NavigationManager NavigationManager

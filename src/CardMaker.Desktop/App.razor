@@ -1,30 +1,86 @@
-<CascadingAuthenticationState>
-    <Router AppAssembly="typeof(Program).Assembly"
-            AdditionalAssemblies="_uiAssemblies">
-        <Found Context="routeData">
-            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.DesktopMainLayout)">
-                <NotAuthorized>
-                    <div class="p-4 text-center">
-                        <h4>Accesso Non Autorizzato</h4>
+@using CardMaker.Infrastructure.Persistence
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceProvider ServiceProvider
+
+@if (!_isReady)
+{
+    <div class="cm-splash-screen">
+        <div class="cm-splash-card">
+            <div class="cm-splash-icon">🃏</div>
+            <h1 class="cm-splash-title">CardMaker Studio</h1>
+            <span class="cm-splash-badge">Desktop Edition</span>
+            
+            <div class="cm-splash-progress-container">
+                <div class="cm-splash-progress-bar"></div>
+            </div>
+            
+            <p class="cm-splash-status">@_statusText</p>
+        </div>
+    </div>
+}
+else
+{
+    <CascadingAuthenticationState>
+        <Router AppAssembly="typeof(Program).Assembly"
+                AdditionalAssemblies="_uiAssemblies">
+            <Found Context="routeData">
+                <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.DesktopMainLayout)">
+                    <NotAuthorized>
+                        <div class="p-4 text-center">
+                            <h4>Accesso Non Autorizzato</h4>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeRouteView>
+                <FocusOnNavigate RouteData="routeData" Selector="h1" />
+            </Found>
+            <NotFound>
+                <LayoutView Layout="typeof(Layout.DesktopMainLayout)">
+                    <div class="p-5 text-center">
+                        <h2>Pagina Non Trovata</h2>
+                        <p class="text-muted">La pagina richiesta non esiste.</p>
+                        <a href="" class="btn btn-primary btn-sm">Torna alla Home</a>
                     </div>
-                </NotAuthorized>
-            </AuthorizeRouteView>
-            <FocusOnNavigate RouteData="routeData" Selector="h1" />
-        </Found>
-        <NotFound>
-            <LayoutView Layout="typeof(Layout.DesktopMainLayout)">
-                <div class="p-5 text-center">
-                    <h2>Pagina Non Trovata</h2>
-                    <p class="text-muted">La pagina richiesta non esiste.</p>
-                    <a href="" class="btn btn-primary btn-sm">Torna alla Home</a>
-                </div>
-            </LayoutView>
-        </NotFound>
-    </Router>
-</CascadingAuthenticationState>
+                </LayoutView>
+            </NotFound>
+        </Router>
+    </CascadingAuthenticationState>
+}
 
 @code {
     private static readonly System.Reflection.Assembly[] _uiAssemblies =
         [typeof(CardMaker.UI.Pages.Admin.AssetLibrary).Assembly];
+
+    private bool _isReady;
+    private string _statusText = "Caricamento componenti...";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _statusText = "Inizializzazione database locale e template...";
+            StateHasChanged();
+            await Task.Yield();
+
+            using (var scope = ServiceProvider.CreateScope())
+            {
+                var dbInitializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+                await dbInitializer.InitializeAsync();
+            }
+
+            _statusText = "Pronto!";
+            StateHasChanged();
+            await Task.Delay(200);
+        }
+        catch (Exception ex)
+        {
+            _statusText = $"Errore di avvio: {ex.Message}";
+            await Task.Delay(1000);
+        }
+        finally
+        {
+            _isReady = true;
+        }
+    }
 }
+
 

@@ -1,6 +1,5 @@
 @page "/admin/templates/{TemplateId:guid}"
 @attribute [Authorize(Roles = "Admin")]
-@rendermode InteractiveServer
 
 @using CardMaker.UI.Components.TemplateStudio
 @inject ITemplateAdminService TemplateService
