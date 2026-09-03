@@ -41,7 +41,7 @@
                     @if (_artworkAssetId.HasValue)
                     {
                         <div class="d-flex align-items-center gap-2 mt-2 p-2 border rounded bg-surface-2">
-                            <img src="/assets/@_artworkAssetId.Value" class="rounded border" style="height:45px; width:45px; object-fit:cover;" />
+                            <CardMaker.UI.Components.Common.AssetImage AssetId="@_artworkAssetId.Value" Class="rounded border" Style="height:45px; width:45px; object-fit:cover;" />
                             <span class="small text-success flex-grow-1 text-truncate">@_artworkFileName</span>
                             <button type="button" class="btn btn-sm btn-outline-danger" @onclick="ClearArtwork">Rimuovi</button>
                         </div>

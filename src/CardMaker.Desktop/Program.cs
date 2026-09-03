@@ -49,6 +49,8 @@ public static class Program
         appBuilder.Services.AddAuthorizationCore();
         appBuilder.Services.AddScoped<AuthenticationStateProvider, DesktopAuthenticationStateProvider>();
         appBuilder.Services.AddScoped<CardMaker.Application.Common.ILoadingService, CardMaker.UI.Services.LoadingService>();
+        appBuilder.Services.AddMemoryCache();
+        appBuilder.Services.AddScoped<CardMaker.Application.Assets.IAssetUriService, CardMaker.Desktop.Services.DesktopAssetUriService>();
 
         // 4. Configure Root Component
         appBuilder.RootComponents.Add<App>("#app");

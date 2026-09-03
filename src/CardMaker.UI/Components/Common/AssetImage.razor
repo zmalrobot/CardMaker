@@ -1,0 +1,57 @@
+@using CardMaker.Application.Assets
+@inject IAssetUriService AssetUriService
+
+@if (!string.IsNullOrEmpty(_src))
+{
+    <img src="@_src" class="@Class" style="@Style" alt="@Alt" loading="lazy" />
+}
+else if (_loading)
+{
+    <div class="d-inline-flex align-items-center justify-content-center bg-body-secondary text-muted rounded @Class" style="@Style">
+        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+    </div>
+}
+else
+{
+    <div class="d-inline-flex align-items-center justify-content-center bg-body-secondary text-muted rounded @Class" style="@Style">
+        <small class="text-secondary">N/D</small>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid AssetId { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public string? Style { get; set; }
+    [Parameter] public string? Alt { get; set; }
+
+    private string? _src;
+    private bool _loading = true;
+    private Guid _lastAssetId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (AssetId == _lastAssetId && _src is not null) return;
+        _lastAssetId = AssetId;
+
+        if (AssetId == Guid.Empty)
+        {
+            _src = null;
+            _loading = false;
+            return;
+        }
+
+        _loading = true;
+        try
+        {
+            _src = await AssetUriService.GetAssetUriAsync(AssetId);
+        }
+        catch
+        {
+            _src = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

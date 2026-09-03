@@ -116,12 +116,10 @@
                                 <td class="ps-3">
                                     @if (asset.ContentType.StartsWith("image/", StringComparison.Ordinal))
                                     {
-                                        <img src="/assets/@asset.Id" alt="@asset.OriginalFileName" class="rounded border" style="height:45px; width:45px; object-fit:contain;" />
-                                    }
+                                        <CardMaker.UI.Components.Common.AssetImage AssetId="@asset.Id" Alt="@asset.OriginalFileName" Class="rounded border" Style="height:45px; width:45px; object-fit:contain;" />
                                 </td>
-                                <td><a href="/assets/@asset.Id" target="_blank" class="fw-medium">@asset.OriginalFileName</a></td>
+                                <td><span class="fw-medium">@asset.OriginalFileName</span></td>
                                 <td>
-                                    <span class="badge @(asset.GameId.HasValue ? "bg-primary-subtle text-primary-emphasis" : "bg-secondary-subtle text-secondary-emphasis")">
                                         @GetGameName(asset.GameId)
                                     </span>
                                 </td>

@@ -268,7 +268,7 @@ else
                                 <div class="badge bg-surface border text-foreground p-2 d-flex align-items-center gap-2">
                                     @if (sym.AssetId.HasValue)
                                     {
-                                        <img src="/assets/@sym.AssetId.Value" alt="@sym.NameIt" style="width: 20px; height: 20px; object-fit: contain;" />
+                                        <CardMaker.UI.Components.Common.AssetImage AssetId="@sym.AssetId.Value" Alt="@sym.NameIt" Style="width: 20px; height: 20px; object-fit: contain;" />
                                     }
                                     <span>@sym.NameIt (<code>@sym.Key</code>)</span>
                                     <button class="btn btn-link text-danger p-0 ms-1" @onclick="() => DeleteSymbolAsync(sym.Id)">×</button>

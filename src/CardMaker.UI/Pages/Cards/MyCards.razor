@@ -59,7 +59,7 @@ else
                         <div class="cm-checkerboard rounded border mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 140px; height: 200px; overflow: hidden;">
                             @if (card.ThumbnailAssetId.HasValue)
                             {
-                                <img src="/assets/@card.ThumbnailAssetId.Value" alt="@card.Title" class="img-fluid" style="max-height: 100%; object-fit: contain;" />
+                                <CardMaker.UI.Components.Common.AssetImage AssetId="@card.ThumbnailAssetId.Value" Alt="@card.Title" Class="img-fluid" Style="max-height: 100%; object-fit: contain;" />
                             }
                             else
                             {

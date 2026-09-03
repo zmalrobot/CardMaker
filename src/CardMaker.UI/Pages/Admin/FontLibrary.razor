@@ -112,7 +112,7 @@
                                 </td>
                                 <td class="fw-medium">@font.FamilyName</td>
                                 <td>@font.StyleName (@font.Weight)</td>
-                                <td><img src="/fonts/@font.Id/preview.png" alt="Anteprima di @font.Alias" class="rounded border p-1" style="max-height:40px" /></td>
+                                <td><CardMaker.UI.Components.Common.FontPreviewImage FontId="@font.Id" Alt="@($"Anteprima di {font.Alias}")" Class="rounded border p-1" Style="max-height:40px" /></td>
                                 <td class="text-end pe-3">
                                     <button class="btn btn-sm btn-outline-danger" @onclick="() => RemoveAsync(font.Id)">
                                         Rimuovi

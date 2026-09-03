@@ -2,10 +2,13 @@
 @attribute [Authorize(Roles = "Admin")]
 
 @using CardMaker.Application.Admin
+@using CardMaker.Application.Common
+@using CardMaker.UI.Components.Common
 @inject IPlaceholderSeeder Seeder
 @inject IAssetCatalog Catalog
 @inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
+@inject ILoadingService LoadingService
 
 <PageTitle>Segnaposto — CardMaker</PageTitle>
 
@@ -93,7 +96,7 @@
                 {
                     <div class="col-6 col-md-3 col-lg-2">
                         <div class="card h-100 shadow-sm">
-                            <img src="/assets/@asset.Id" class="card-img-top p-1" style="height:150px; object-fit:contain;" alt="@asset.OriginalFileName" />
+                            <AssetImage AssetId="@asset.Id" Class="card-img-top p-1" Style="height:150px; object-fit:contain;" Alt="@asset.OriginalFileName" />
                             <div class="card-body p-2 text-center">
                                 <small class="d-block text-truncate fw-medium" title="@asset.OriginalFileName">@asset.OriginalFileName</small>
                                 <span class="badge bg-secondary-subtle text-secondary-emphasis">@asset.Category</span>
@@ -159,25 +162,28 @@
         _busy = true;
         try
         {
-            var state = await AuthProvider.GetAuthenticationStateAsync();
-            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
+            using (LoadingService.BeginScope($"Generazione segnaposto per {CurrentGameName}..."))
+            {
+                var state = await AuthProvider.GetAuthenticationStateAsync();
+                var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
 
-            var key = CurrentGame?.Key?.ToLowerInvariant();
-            if (key == "pokemon")
-            {
-                _result = await Seeder.SeedPokemonAsync(userId, _showGuides, gameId);
-            }
-            else if (key == "mtg")
-            {
-                _result = await Seeder.SeedMtgAsync(userId, _showGuides, gameId);
-            }
-            else
-            {
-                _result = await Seeder.SeedYuGiOhAsync(userId, _showGuides, gameId);
-            }
+                var key = CurrentGame?.Key?.ToLowerInvariant();
+                if (key == "pokemon")
+                {
+                    _result = await Seeder.SeedPokemonAsync(userId, _showGuides, gameId);
+                }
+                else if (key == "mtg")
+                {
+                    _result = await Seeder.SeedMtgAsync(userId, _showGuides, gameId);
+                }
+                else
+                {
+                    _result = await Seeder.SeedYuGiOhAsync(userId, _showGuides, gameId);
+                }
 
-            await RefreshAsync();
+                await RefreshAsync();
+            }
         }
         finally
         {
