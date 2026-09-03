@@ -34,6 +34,12 @@ public sealed class PlaceholderSymbolGenerator
             case "pokemon-rarity":
                 DrawPokemonRarity(canvas, symbolKey, size);
                 break;
+            case "mtg-mana":
+                DrawMtgMana(canvas, symbolKey, size);
+                break;
+            case "mtg-rarity":
+                DrawMtgRarity(canvas, symbolKey, size);
+                break;
             default:
                 DrawGenericBadge(canvas, symbolKey, size, new SKColor(0x50, 0x50, 0x50));
                 break;
@@ -269,5 +275,59 @@ public sealed class PlaceholderSymbolGenerator
                 DrawStar(canvas, "star", size);
                 break;
         }
+    }
+
+    private static void DrawMtgMana(SKCanvas canvas, string key, int size)
+    {
+        var center = size / 2f;
+        var radius = (size - 8) / 2f;
+
+        var (fill, stroke, textCol, label) = key.ToLowerInvariant() switch
+        {
+            "w" or "white" => (new SKColor(0xF9, 0xFA, 0xF4), new SKColor(0xC0, 0xA0, 0x40), SKColors.Black, "W"),
+            "u" or "blue" => (new SKColor(0x0E, 0x68, 0xAB), new SKColor(0x09, 0x43, 0x70), SKColors.White, "U"),
+            "b" or "black" => (new SKColor(0x21, 0x1B, 0x19), new SKColor(0x50, 0x50, 0x50), SKColors.White, "B"),
+            "r" or "red" => (new SKColor(0xD3, 0x20, 0x2A), new SKColor(0x8B, 0x15, 0x1C), SKColors.White, "R"),
+            "g" or "green" => (new SKColor(0x00, 0x73, 0x3E), new SKColor(0x00, 0x4D, 0x2A), SKColors.White, "G"),
+            "c" or "colorless" => (new SKColor(0xCB, 0xC5, 0xC1), new SKColor(0x8A, 0x85, 0x82), SKColors.Black, "C"),
+            "t" or "tap" => (new SKColor(0xCB, 0xC5, 0xC1), new SKColor(0x8A, 0x85, 0x82), SKColors.Black, "T"),
+            _ => (new SKColor(0xCB, 0xC5, 0xC1), new SKColor(0x8A, 0x85, 0x82), SKColors.Black, key.ToUpperInvariant())
+        };
+
+        using var fillPaint = new SKPaint { Color = fill, IsAntialias = true, Style = SKPaintStyle.Fill };
+        using var strokePaint = new SKPaint { Color = stroke, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3 };
+        canvas.DrawCircle(center, center, radius, fillPaint);
+        canvas.DrawCircle(center, center, radius, strokePaint);
+
+        using var textPaint = new SKPaint { Color = textCol, IsAntialias = true };
+        using var font = new SKFont(SKTypeface.Default, size * 0.48f);
+        var fontMetrics = font.Metrics;
+        var textY = center - (fontMetrics.Ascent + fontMetrics.Descent) / 2f;
+        canvas.DrawText(label, center, textY, SKTextAlign.Center, font, textPaint);
+    }
+
+    private static void DrawMtgRarity(SKCanvas canvas, string key, int size)
+    {
+        var center = size / 2f;
+        var (fill, stroke) = key.ToLowerInvariant() switch
+        {
+            "uncommon" => (new SKColor(0x8A, 0x9E, 0xA7), SKColors.Black),
+            "rare" => (new SKColor(0xCC, 0xA2, 0x43), SKColors.Black),
+            "mythic" => (new SKColor(0xD4, 0x50, 0x20), SKColors.Black),
+            _ => (new SKColor(0x1A, 0x1A, 0x1A), SKColors.White)
+        };
+
+        var builder = new SKPathBuilder();
+        builder.MoveTo(center, size * 0.15f);
+        builder.LineTo(size * 0.85f, center);
+        builder.LineTo(center, size * 0.85f);
+        builder.LineTo(size * 0.15f, center);
+        builder.Close();
+
+        using var fillPaint = new SKPaint { Color = fill, IsAntialias = true, Style = SKPaintStyle.Fill };
+        using var strokePaint = new SKPaint { Color = stroke, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 2 };
+        using var path = builder.Detach();
+        canvas.DrawPath(path, fillPaint);
+        canvas.DrawPath(path, strokePaint);
     }
 }

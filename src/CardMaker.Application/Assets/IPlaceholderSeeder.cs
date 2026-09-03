@@ -18,4 +18,10 @@ public interface IPlaceholderSeeder
         bool showGuides = false,
         Guid? gameId = null,
         CancellationToken cancellationToken = default);
+
+    Task<PlaceholderSeedResult> SeedMtgAsync(
+        string? userId = null,
+        bool showGuides = false,
+        Guid? gameId = null,
+        CancellationToken cancellationToken = default);
 }

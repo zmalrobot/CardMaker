@@ -165,7 +165,7 @@ public static class DemoLayouts
                 Id = "edition",
                 Name = "Edizione",
                 Z = 30,
-                Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016),
+                Rect = new NormalizedRect(0.080, 0.718, 0.350, 0.022),
                 Source = "{{edition}}",
                 Style = "edition",
             },
@@ -174,7 +174,7 @@ public static class DemoLayouts
                 Id = "set-code",
                 Name = "Codice set",
                 Z = 30,
-                Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016),
+                Rect = new NormalizedRect(0.550, 0.718, 0.360, 0.022),
                 Source = "{{setCode}}",
                 Style = "smallPrint",
             },
@@ -183,7 +183,7 @@ public static class DemoLayouts
                 Id = "type-line",
                 Name = "Type line",
                 Z = 30,
-                Rect = new NormalizedRect(0.070, 0.752, 0.860, 0.028),
+                Rect = new NormalizedRect(0.080, 0.750, 0.840, 0.028),
                 Source = "{{typeLine}}",
                 Style = "typeLine",
             },
@@ -376,7 +376,7 @@ public static class DemoLayouts
                 Id = "stage",
                 Name = "Fase",
                 Z = 30,
-                Rect = new NormalizedRect(0.075, 0.035, 0.120, 0.050),
+                Rect = new NormalizedRect(0.075, 0.026, 0.120, 0.066),
                 Source = "{{stage}}",
                 Style = "stage",
             },
@@ -385,7 +385,7 @@ public static class DemoLayouts
                 Id = "name",
                 Name = "Nome Pokémon",
                 Z = 30,
-                Rect = new NormalizedRect(0.200, 0.035, 0.430, 0.050),
+                Rect = new NormalizedRect(0.200, 0.026, 0.430, 0.066),
                 Source = "{{name}}",
                 Style = "pokemonName",
             },
@@ -394,7 +394,7 @@ public static class DemoLayouts
                 Id = "hp",
                 Name = "Punti Salute",
                 Z = 30,
-                Rect = new NormalizedRect(0.630, 0.035, 0.190, 0.050),
+                Rect = new NormalizedRect(0.630, 0.026, 0.190, 0.066),
                 Source = "HP {{hp}}",
                 Style = "hp",
             },
@@ -403,7 +403,7 @@ public static class DemoLayouts
                 Id = "energy-type",
                 Name = "Tipo Energia",
                 Z = 30,
-                Rect = new NormalizedRect(0.835, 0.035, 0.090, 0.050),
+                Rect = new NormalizedRect(0.835, 0.035, 0.090, 0.048),
                 SymbolSetKey = "pokemon-energy",
                 FieldKey = "energyType",
             },
@@ -439,7 +439,7 @@ public static class DemoLayouts
                 Id = "attack1-effect",
                 Name = "Effetto Attacco 1",
                 Z = 30,
-                Rect = new NormalizedRect(0.100, 0.605, 0.800, 0.075),
+                Rect = new NormalizedRect(0.105, 0.605, 0.790, 0.075),
                 Source = "{{attack1Effect}}",
                 Style = "attackEffect",
             },
@@ -468,7 +468,7 @@ public static class DemoLayouts
                 Id = "attack2-effect",
                 Name = "Effetto Attacco 2",
                 Z = 30,
-                Rect = new NormalizedRect(0.100, 0.730, 0.800, 0.075),
+                Rect = new NormalizedRect(0.105, 0.730, 0.790, 0.075),
                 Source = "{{attack2Effect}}",
                 Style = "attackEffect",
                 VisibleWhen = Condition.Not(Condition.Equal("attack2Name", "")),
@@ -478,7 +478,7 @@ public static class DemoLayouts
                 Id = "weakness",
                 Name = "Debolezza",
                 Z = 30,
-                Rect = new NormalizedRect(0.120, 0.888, 0.045, 0.038),
+                Rect = new NormalizedRect(0.120, 0.885, 0.045, 0.045),
                 SymbolSetKey = "pokemon-energy",
                 FieldKey = "weakness",
             },
@@ -487,7 +487,7 @@ public static class DemoLayouts
                 Id = "weakness-val",
                 Name = "Valore Debolezza",
                 Z = 30,
-                Rect = new NormalizedRect(0.170, 0.888, 0.080, 0.038),
+                Rect = new NormalizedRect(0.170, 0.885, 0.080, 0.045),
                 Source = "{{weaknessValue}}",
                 Style = "footerStat",
             },
@@ -496,7 +496,7 @@ public static class DemoLayouts
                 Id = "retreat-label",
                 Name = "Ritirata Label",
                 Z = 30,
-                Rect = new NormalizedRect(0.660, 0.888, 0.140, 0.038),
+                Rect = new NormalizedRect(0.660, 0.885, 0.140, 0.045),
                 Source = "Ritirata:",
                 Style = "footerStat",
             },
@@ -505,7 +505,7 @@ public static class DemoLayouts
                 Id = "retreat-cost",
                 Name = "Costo Ritirata",
                 Z = 30,
-                Rect = new NormalizedRect(0.800, 0.888, 0.100, 0.038),
+                Rect = new NormalizedRect(0.800, 0.885, 0.080, 0.045),
                 Source = "{{retreatCost}}",
                 Style = "footerStat",
             },
@@ -514,7 +514,7 @@ public static class DemoLayouts
                 Id = "flavor",
                 Name = "Descrizione Pokédex",
                 Z = 30,
-                Rect = new NormalizedRect(0.100, 0.815, 0.800, 0.065),
+                Rect = new NormalizedRect(0.105, 0.815, 0.790, 0.060),
                 Source = "{{flavorText}}",
                 Style = "flavorText",
                 VisibleWhen = Condition.Not(Condition.Equal("flavorText", "")),
@@ -581,5 +581,198 @@ public static class DemoLayouts
         ["rarity"] = CardValue.FromText("common"),
         ["regulationMark"] = CardValue.FromText("G"),
         ["copyright"] = CardValue.FromText("©2024 Pokémon / Nintendo / Creatures / GAME FREAK"),
+    };
+
+    public const string MtgFrameAssetKey = "placeholder-mtg-frame-white";
+
+    public static CardLayout MtgCreature() => new()
+    {
+        Canvas = CanvasDefinition.FromGeometry(CardGeometry.PokerSize()),
+        TextStyles = new Dictionary<string, TextStyle>(StringComparer.Ordinal)
+        {
+            ["cardName"] = new()
+            {
+                Font = "mtg-name",
+                SizePt = 11.5,
+                Color = "#111111",
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+            ["manaCost"] = new()
+            {
+                Font = "mtg-name",
+                SizePt = 10,
+                Color = "#111111",
+                Align = TextAlign.Right,
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+            ["typeLine"] = new()
+            {
+                Font = "mtg-type-line",
+                SizePt = 9.5,
+                Color = "#111111",
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+            ["rulesText"] = new()
+            {
+                Font = "mtg-rules",
+                SizePt = 8.5,
+                Color = "#111111",
+                LineHeight = 1.15,
+            },
+            ["flavorText"] = new()
+            {
+                Font = "mtg-flavor",
+                SizePt = 8.0,
+                Color = "#333333",
+                LineHeight = 1.15,
+            },
+            ["pt"] = new()
+            {
+                Font = "mtg-pt",
+                SizePt = 12,
+                Color = "#111111",
+                Align = TextAlign.Center,
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+            ["smallPrint"] = new()
+            {
+                Font = "mtg-small",
+                SizePt = 4.8,
+                Color = "#333333",
+                VerticalAlign = VerticalAlign.Middle,
+                MaxLines = 1,
+            },
+        },
+        Layers =
+        [
+            new ImageSlotLayer
+            {
+                Id = "artwork",
+                Name = "Artwork",
+                Z = 10,
+                Rect = new NormalizedRect(0.075, 0.100, 0.850, 0.450),
+                FieldKey = "artwork",
+                Fit = ImageFit.Cover,
+            },
+            new StaticImageLayer
+            {
+                Id = "frame",
+                Name = "Frame",
+                Z = 20,
+                Rect = new NormalizedRect(0, 0, 1, 1),
+                AssetKey = MtgFrameAssetKey,
+                Fit = ImageFit.Stretch,
+            },
+            new TextLayer
+            {
+                Id = "name",
+                Name = "Nome Carta",
+                Z = 30,
+                Rect = new NormalizedRect(0.080, 0.034, 0.550, 0.058),
+                Source = "{{name}}",
+                Style = "cardName",
+            },
+            new TextLayer
+            {
+                Id = "mana-cost",
+                Name = "Costo di Mana",
+                Z = 30,
+                Rect = new NormalizedRect(0.650, 0.034, 0.270, 0.058),
+                Source = "{{manaCost}}",
+                Style = "manaCost",
+            },
+            new TextLayer
+            {
+                Id = "type-line",
+                Name = "Riga del Tipo",
+                Z = 30,
+                Rect = new NormalizedRect(0.080, 0.558, 0.750, 0.046),
+                Source = "{{typeLine}}",
+                Style = "typeLine",
+            },
+            new SymbolSlotLayer
+            {
+                Id = "rarity",
+                Name = "Simbolo Rarità",
+                Z = 30,
+                Rect = new NormalizedRect(0.855, 0.564, 0.060, 0.034),
+                SymbolSetKey = "mtg-rarity",
+                FieldKey = "setRarity",
+            },
+            new RichTextLayer
+            {
+                Id = "rules",
+                Name = "Testo Regole",
+                Z = 30,
+                Rect = new NormalizedRect(0.095, 0.622, 0.800, 0.155),
+                Source = "{{rulesText}}",
+                Style = "rulesText",
+            },
+            new RichTextLayer
+            {
+                Id = "flavor",
+                Name = "Testo di Colore",
+                Z = 30,
+                Rect = new NormalizedRect(0.095, 0.785, 0.620, 0.075),
+                Source = "{{flavorText}}",
+                Style = "flavorText",
+                VisibleWhen = Condition.Not(Condition.Equal("flavorText", "")),
+            },
+            new TextLayer
+            {
+                Id = "pt",
+                Name = "Forza / Costituzione",
+                Z = 30,
+                Rect = new NormalizedRect(0.740, 0.865, 0.180, 0.048),
+                Source = "{{power}}/{{toughness}}",
+                Style = "pt",
+            },
+            new TextLayer
+            {
+                Id = "collector-number",
+                Name = "Numero Collettore",
+                Z = 30,
+                Rect = new NormalizedRect(0.075, 0.935, 0.250, 0.022),
+                Source = "{{collectorNumber}}",
+                Style = "smallPrint",
+            },
+            new TextLayer
+            {
+                Id = "illustrator",
+                Name = "Illustratore",
+                Z = 30,
+                Rect = new NormalizedRect(0.075, 0.960, 0.350, 0.022),
+                Source = "Illus. {{illustrator}}",
+                Style = "smallPrint",
+            },
+            new TextLayer
+            {
+                Id = "copyright",
+                Name = "Copyright",
+                Z = 30,
+                Rect = new NormalizedRect(0.450, 0.960, 0.475, 0.022),
+                Source = "{{copyright}}",
+                Style = "smallPrint",
+            },
+        ],
+    };
+
+    public static Dictionary<string, CardValue> MtgSampleValues() => new(StringComparer.Ordinal)
+    {
+        ["name"] = CardValue.FromText("Angelo Serra"),
+        ["manaCost"] = CardValue.FromText("{3}{W}{W}"),
+        ["typeLine"] = CardValue.FromText("Creatura — Angelo"),
+        ["rulesText"] = CardValue.FromText("Volare, cautela (Questa creatura attacca senza TAPpare.)"),
+        ["flavorText"] = CardValue.FromText("Nata con ali di luce e una spada di vendetta, non conosce paura né perdono."),
+        ["power"] = CardValue.FromText("4"),
+        ["toughness"] = CardValue.FromText("4"),
+        ["setRarity"] = CardValue.FromText("rare"),
+        ["collectorNumber"] = CardValue.FromText("023/280"),
+        ["illustrator"] = CardValue.FromText("Douglas Shuler"),
+        ["copyright"] = CardValue.FromText("™ & © 2024 Wizards of the Coast"),
     };
 }

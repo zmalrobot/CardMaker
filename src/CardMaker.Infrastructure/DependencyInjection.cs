@@ -55,8 +55,10 @@ public static class DependencyInjection
         services.AddScoped<IPlaceholderSeeder, PlaceholderSeeder>();
         services.AddScoped<IYuGiOhFontSeeder, YuGiOhFontSeeder>();
         services.AddScoped<IPokemonFontSeeder, PokemonFontSeeder>();
+        services.AddScoped<IMtgFontSeeder, MtgFontSeeder>();
         services.AddScoped<CardMaker.Application.Content.IYuGiOhContentSeeder, CardMaker.Infrastructure.Content.YuGiOhContentSeeder>();
         services.AddScoped<CardMaker.Application.Content.IPokemonContentSeeder, CardMaker.Infrastructure.Content.PokemonContentSeeder>();
+        services.AddScoped<CardMaker.Application.Content.IMtgContentSeeder, CardMaker.Infrastructure.Content.MtgContentSeeder>();
         services.AddScoped<CardMaker.Application.Content.IGamePackageService, CardMaker.Infrastructure.Content.GamePackageService>();
         services.AddScoped<CardMaker.Application.Content.ITemplateSelector, CardMaker.Application.Content.TemplateSelector>();
         services.AddScoped<CardMaker.Application.Cards.ICardService, CardMaker.Infrastructure.Cards.CardService>();

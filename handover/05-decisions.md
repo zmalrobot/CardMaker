@@ -680,27 +680,58 @@ e la registrazione aperta costituirebbe un vettore di abuso immediato (ADR-012).
 
 ---
 
-## ADR-033 — Localizzazione Completa IT/EN, Pagine Identity in Italiano e Pagina Note Legali / Disclaimer Fan-Made
-**Stato:** Accettata · 2026-09-01 (in F10)
+## ADR-034 — Estensione Multi-Gioco: Pokémon TCG & Magic: The Gathering
+**Stato:** Accettata · 2026-09-03 (in F11 e F12)
 
-**Contesto.** La v1 di CardMaker (supporto a Yu-Gi-Oh! classico e Rush Duel) deve essere completa, rifinita nell'esperienza utente,
-chiara dal punto di vista legale e pronta all'uso sia in italiano sia in inglese. Le pagine di autenticazione e gestione account
-di default fornite da ASP.NET Core Identity erano originariamente in inglese e andavano adattate e localizzate (ADR-014).
+**Contesto.** Per completare i tre giochi target previsti dalle specifiche iniziali, il sistema doveva includere il supporto completo
+a Pokémon TCG e Magic: The Gathering (MTG), comprendendo modelli dati, layout demo, simboli procedurali, ruoli font dedicati con font
+incorporati e isolamento dei filtri di gioco nella UI admin.
 
 **Decisione.**
-- **Localizzazione Pagine Identity**:
-  - Tutte le pagine di autenticazione (`Login.razor`, `Register.razor`, `ForgotPassword.razor`, `ResetPassword.razor`, `AccessDenied.razor`, `Lockout.razor`)
-    e gestione profilo (`Manage/Index.razor`, `Manage/ChangePassword.razor`) sono state tradotte ed armonizzate con la UI di CardMaker.
-- **Pagina Disclaimer Legale Fan-Made (`/disclaimer` e `/terms`)**:
-  - Creata la pagina dedicata con le clausole di non-commercialità, assenza di affiliazione con Konami, Nintendo e Wizards of the Coast,
-    divieto di vendita di proxy e riaffermazione della proprietà dei marchi ai legittimi titolari.
-- **Footer Applicativo (`AppFooter`)**:
-  - Componente condiviso che visualizza il badge di progetto amatoriale / non commerciale e il collegamento diretto alle note legali.
+- **Seeding di Dominio Modulare**:
+  - Creati `PokemonContentSeeder`, `PokemonFontSeeder`, `MtgContentSeeder`, `MtgFontSeeder` con relative interfacce in `CardMaker.Application`
+    e cablati nel `DatabaseInitializer`.
+- **Font Incorporati & Risoluzione**:
+  - Incorporati come risorse TTF/OTF in `CardMaker.Infrastructure`: GillSansBold, GillSansItalic, GillSans, Futura-Bold per Pokémon;
+    Beleren2016-Bold, Beleren2016SmallCaps-Bold, Mplantin per MTG.
+  - `FontService` mappa automaticamente gli alias dei ruoli di tutti e tre i giochi garantendo fallback eleganti.
+- **Simboli Procedurali SkiaSharp**:
+  - `PlaceholderSymbolGenerator` esteso per generare su richiesta i simboli di mana MTG (`mtg-mana`: w, u, b, r, g, c, numeri 0-9, x, tap),
+    i simboli di rarità MTG (`mtg-rarity`: common, uncommon, rare, mythic) e i simboli energia Pokémon (`pokemon-energy`: grass, fire, water, lightning, psychic, fighting, darkness, metal, colorless).
+- **Filtri di Gioco per Risorse Admin**:
+  - Libreria Asset, Ruoli Font, Segnaposto e Prova Motore filtrano rigorosamente le risorse e le opzioni in base al gioco selezionato.
 
 **Conseguenze.**
-- ✅ Esperienza utente uniforme e rifinita in lingua italiana con supporto bilingue.
-- ✅ Protezione legale chiara e trasparente su natura fan-made e assenza di scopo di lucro.
-- ✅ Conclusione a regola d'arte della v1 del progetto.
+- ✅ Supporto nativo completo per Yu-Gi-Oh!, Pokémon TCG e Magic: The Gathering.
+- ✅ Autonomia completa anche offline o senza asset caricati grazie a font incorporati e simboli procedurali.
+
+---
+
+## ADR-035 — Centraggio Ottico CapHeight e Mappatura 1:1 dei Frame Master a Piena Abbondanza
+**Stato:** Accettata · 2026-09-03
+
+**Contesto.** Nei frame delle carte reali e segnaposto, il testo (es. nome della carta) deve apparire otticamente centrato all'interno
+delle caselle grafiche, senza sbavature, sovrapposizioni alle linee di contorno o disallineamenti dovuti all'abbondanza (bleed).
+In precedenza:
+1. Il calcolo della baseline in `DrawFittedText` basato sull'altezza totale del bounding box (`Ascent` + `Descent`) spingeva verso l'alto
+   i font con ascendenti marcate (es. Beleren per MTG), toccando la cornice superiore.
+2. I frame generati a dimensione master (`MasterWidthPx` x `MasterHeightPx`) venivano disegnati all'interno del rettangolo `(0, 0, 1, 1)`
+   (ovvero il trim), comprimendo l'abbondanza nel trim e causando uno sfasamento di ~12px rispetto ai livelli di testo.
+
+**Decisione.**
+- **Centraggio Ottico Verticale**:
+  - `CardRenderer` calcola la baseline del testo a riga singola e multipla in base a `CapHeight` (`metrics.CapHeight > 0 ? metrics.CapHeight : -metrics.Ascent * 0.7f`).
+  - La baseline per `VerticalAlign.Middle` è centrata esattamente su `box.MidY + (capHeight / 2f)`, allineando visivamente i caratteri maiuscoli
+    con spaziatura perfettamente simmetrica sopra e sotto.
+- **Mappatura Automatica Frame Master (Full-Bleed)**:
+  - In `PaintStaticImage`, se un'immagine ha le dimensioni esatte del canvas master (`MasterWidthPx` e `MasterHeightPx`) e il layer copre
+    l'intera carta (`NormalizedRect(0, 0, 1, 1)`), viene disegnata direttamente sul master canvas `(0, 0, MasterWidthPx, MasterHeightPx)`.
+  - Questo elimina l'effetto di doppia applicazione del bleed e garantisce un allineamento pixel-perfect (0 pixel di scarto) tra frame e livelli.
+
+**Conseguenze.**
+- ✅ Carte composte con segnaposto e asset grafici allineate al millimetro su tutti i giochi.
+- ✅ Resa tipografica professionale identica a quella degli strumenti di desktop publishing.
+
 
 
 

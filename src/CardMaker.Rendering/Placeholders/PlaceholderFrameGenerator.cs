@@ -43,9 +43,8 @@ public sealed class PlaceholderFrameGenerator
         if (spec.ShowGuides)
         {
             DrawGuides(canvas, geometry);
+            DrawLabel(canvas, geometry, spec.Label);
         }
-
-        DrawLabel(canvas, geometry, spec.Label);
 
         using var image = surface.Snapshot();
         using var encoded = image.Encode(SKEncodedImageFormat.Png, 100);
@@ -84,7 +83,7 @@ public sealed class PlaceholderFrameGenerator
             DefBox = new NormalizedRect(0.630, 0.035, 0.190, 0.050),
             AttributeBox = new NormalizedRect(0.835, 0.035, 0.090, 0.050),
             ArtWindow = new NormalizedRect(0.075, 0.100, 0.850, 0.420),
-            TypeLineBox = new NormalizedRect(0.080, 0.525, 0.840, 0.026),
+            TypeLineBox = new NormalizedRect(0.075, 0.522, 0.850, 0.028),
             EffectBox = new NormalizedRect(0.075, 0.555, 0.850, 0.325),
             AtkBox = new NormalizedRect(0.075, 0.885, 0.850, 0.045),
         },
@@ -110,16 +109,27 @@ public sealed class PlaceholderFrameGenerator
             AtkBox = new NormalizedRect(0, 0, 0, 0),
             DefBox = null,
         },
+        PlaceholderLayout.Mtg => new PlaceholderRegions
+        {
+            NameBox = new NormalizedRect(0.065, 0.040, 0.580, 0.048),
+            AttributeBox = new NormalizedRect(0.650, 0.040, 0.285, 0.048),
+            LevelStrip = new NormalizedRect(0, 0, 0, 0),
+            ArtWindow = new NormalizedRect(0.075, 0.100, 0.850, 0.450),
+            TypeLineBox = new NormalizedRect(0.065, 0.558, 0.870, 0.046),
+            EffectBox = new NormalizedRect(0.065, 0.612, 0.870, 0.260),
+            AtkBox = new NormalizedRect(0.740, 0.865, 0.180, 0.048),
+            DefBox = null,
+        },
         _ => new PlaceholderRegions
         {
-            NameBox = new NormalizedRect(0.070, 0.038, 0.720, 0.058),
-            AttributeBox = new NormalizedRect(0.820, 0.033, 0.110, 0.072),
-            LevelStrip = new NormalizedRect(0.100, 0.120, 0.800, 0.042),
-            ArtWindow = new NormalizedRect(0.115, 0.175, 0.770, 0.560),
-            TypeLineBox = new NormalizedRect(0.070, 0.752, 0.860, 0.028),
-            EffectBox = new NormalizedRect(0.070, 0.782, 0.860, 0.145),
-            AtkBox = new NormalizedRect(0.530, 0.932, 0.190, 0.026),
-            DefBox = new NormalizedRect(0.730, 0.932, 0.190, 0.026),
+            NameBox = new NormalizedRect(0.065, 0.030, 0.730, 0.068),
+            AttributeBox = new NormalizedRect(0.815, 0.028, 0.120, 0.072),
+            LevelStrip = new NormalizedRect(0.100, 0.115, 0.800, 0.042),
+            ArtWindow = new NormalizedRect(0.115, 0.170, 0.770, 0.540),
+            TypeLineBox = new NormalizedRect(0.070, 0.748, 0.860, 0.032),
+            EffectBox = new NormalizedRect(0.070, 0.785, 0.860, 0.145),
+            AtkBox = new NormalizedRect(0.510, 0.935, 0.200, 0.032),
+            DefBox = new NormalizedRect(0.730, 0.935, 0.200, 0.032),
         },
     };
 
@@ -130,21 +140,24 @@ public sealed class PlaceholderFrameGenerator
         using var background = new SKPaint { Color = frameColor, IsAntialias = true };
         canvas.DrawRect(0, 0, geometry.MasterWidthPx, geometry.MasterHeightPx, background);
 
-        // Cornice interna, per rendere visibile dove finisce l'area di taglio.
-        var inset = geometry.BleedPx + (geometry.TrimWidthPx * 0.03f);
-        using var border = new SKPaint
+        // Cornice interna: visibile solo per Yu-Gi-Oh (il frame originale ha una linea di delimitazione esterna)
+        if (spec.Layout is PlaceholderLayout.Monster or PlaceholderLayout.MonsterPendulum or PlaceholderLayout.SpellTrap)
         {
-            Color = Darken(frameColor, 0.72f),
-            IsAntialias = true,
-            Style = SKPaintStyle.Stroke,
-            StrokeWidth = geometry.TrimWidthPx * 0.006f,
-        };
-        canvas.DrawRect(
-            inset,
-            inset,
-            geometry.MasterWidthPx - (2 * inset),
-            geometry.MasterHeightPx - (2 * inset),
-            border);
+            var inset = geometry.BleedPx + (geometry.TrimWidthPx * 0.03f);
+            using var border = new SKPaint
+            {
+                Color = Darken(frameColor, 0.72f),
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = geometry.TrimWidthPx * 0.006f,
+            };
+            canvas.DrawRect(
+                inset,
+                inset,
+                geometry.MasterWidthPx - (2 * inset),
+                geometry.MasterHeightPx - (2 * inset),
+                border);
+        }
     }
 
     private static void DrawBoxes(SKCanvas canvas, CardGeometry geometry, PlaceholderFrameSpec spec, PlaceholderRegions regions)
@@ -153,11 +166,24 @@ public sealed class PlaceholderFrameGenerator
 
         if (spec.Layout == PlaceholderLayout.Pokemon)
         {
-            var headerRect = new NormalizedRect(0.060, 0.030, 0.880, 0.060);
+            var headerRect = new NormalizedRect(0.060, 0.026, 0.880, 0.066);
             DrawBox(canvas, geometry, headerRect, Lighten(frameColor, 0.25f));
             DrawBox(canvas, geometry, regions.TypeLineBox, Parchment.WithAlpha(0xF0));
             DrawBox(canvas, geometry, regions.EffectBox, Parchment);
             DrawBox(canvas, geometry, regions.AtkBox, Lighten(frameColor, 0.20f));
+            return;
+        }
+
+        if (spec.Layout == PlaceholderLayout.Mtg)
+        {
+            var headerRect = new NormalizedRect(0.065, 0.034, 0.870, 0.058);
+            DrawBox(canvas, geometry, headerRect, Lighten(frameColor, 0.25f));
+            DrawBox(canvas, geometry, regions.TypeLineBox, Lighten(frameColor, 0.20f));
+            DrawBox(canvas, geometry, regions.EffectBox, Parchment);
+            if (regions.AtkBox is { } pt)
+            {
+                DrawBox(canvas, geometry, pt, Lighten(frameColor, 0.30f));
+            }
             return;
         }
 

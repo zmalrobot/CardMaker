@@ -1,0 +1,220 @@
+@page "/guida"
+@page "/help"
+
+<PageTitle>Guida all'Utilizzo - CardMaker</PageTitle>
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div class="display-6">📖</div>
+        <div>
+            <h1 class="h3 mb-1">Guida all'Utilizzo per gli Utenti</h1>
+            <p class="text-muted mb-0">Tutto ciò che serve per comporre, personalizzare ed esportare le tue carte da gioco collezionabili.</p>
+        </div>
+    </div>
+
+    <!-- Quick Navigation Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h5 class="card-title d-flex align-items-center gap-2">
+                        <span>✨</span> 1. Crea la Carta
+                    </h5>
+                    <p class="card-text small text-muted">
+                        Scegli il gioco (Yu-Gi-Oh!, Pokémon o Magic) e la categoria di carta per caricare automaticamente lo schema corrispondente.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h5 class="card-title d-flex align-items-center gap-2">
+                        <span>🖼️</span> 2. Inserisci l'Artwork
+                    </h5>
+                    <p class="card-text small text-muted">
+                        Carica l'illustrazione dal tuo dispositivo e regolane lo zoom e la posizione con le modalità Cover o Contain.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h5 class="card-title d-flex align-items-center gap-2">
+                        <span>📥</span> 3. Esporta in Alta Risoluzione
+                    </h5>
+                    <p class="card-text small text-muted">
+                        Scarica la carta in PNG trasparente o JPEG a 150, 300 o 600 DPI, con o senza abbondanza di taglio per la stampa.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Sections -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🎯</span> Giochi e Formati Supportati
+            </h3>
+            <p>CardMaker gestisce in modo indipendente le proporzioni e le caratteristiche fisiche di ciascun gioco:</p>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Gioco</th>
+                            <th>Formato</th>
+                            <th>Dimensioni al Taglio (Trim)</th>
+                            <th>Con Abbondanza (Bleed 2mm)</th>
+                            <th>Note Grafiche</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-semibold">Yu-Gi-Oh! (Classico & Rush)</td>
+                            <td><span class="badge bg-secondary">Japanese Size</span></td>
+                            <td>59.0 × 86.0 mm</td>
+                            <td>63.0 × 90.0 mm</td>
+                            <td>Supporta mostri normali, effetto, synchro, xyz, link (con frecce), pendulum e carte Rush Duel</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold">Pokémon TCG</td>
+                            <td><span class="badge bg-primary">Poker Size</span></td>
+                            <td>63.0 × 88.0 mm</td>
+                            <td>67.0 × 92.0 mm</td>
+                            <td>Supporta Pokémon Base, Fasi evolutive, EX, GX, V, VMAX, carte Trainer ed Energia</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-semibold">Magic: The Gathering (MTG)</td>
+                            <td><span class="badge bg-primary">Poker Size</span></td>
+                            <td>63.0 × 88.0 mm</td>
+                            <td>67.0 × 92.0 mm</td>
+                            <td>Supporta Creature con riquadro F/C, Planeswalker, Istantanei, Stregonerie, Incantesimi e Terre</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rich Text & Symbols -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🔮</span> Inserimento Simboli ed Effetti (Rich Text)
+            </h3>
+            <p>
+                Nei campi di testo (come l'effetto di un mostro o le abilità di una creatura), puoi arricchire il testo con simboli grafici inline utilizzando la sintassi <code>{sym:set_key.symbol_key}</code>.
+            </p>
+
+            <div class="row g-4 mt-2">
+                <div class="col-md-4">
+                    <div class="p-3 border rounded bg-surface-2 h-100">
+                        <h6 class="fw-bold text-primary">Magic: The Gathering (Mana)</h6>
+                        <p class="small text-muted mb-2">Prefisso: <code>mtg-mana</code></p>
+                        <ul class="list-unstyled small mb-0 font-monospace">
+                            <li><code>{sym:mtg-mana.w}</code> : Mana Bianco</li>
+                            <li><code>{sym:mtg-mana.u}</code> : Mana Blu</li>
+                            <li><code>{sym:mtg-mana.b}</code> : Mana Nero</li>
+                            <li><code>{sym:mtg-mana.r}</code> : Mana Rosso</li>
+                            <li><code>{sym:mtg-mana.g}</code> : Mana Verde</li>
+                            <li><code>{sym:mtg-mana.c}</code> : Mana Incolore</li>
+                            <li><code>{sym:mtg-mana.1}</code> ... <code>{sym:mtg-mana.9}</code> : Numeri</li>
+                            <li><code>{sym:mtg-mana.tap}</code> : Simbolo TAP</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded bg-surface-2 h-100">
+                        <h6 class="fw-bold text-warning text-dark">Pokémon (Energie)</h6>
+                        <p class="small text-muted mb-2">Prefisso: <code>pokemon-energy</code></p>
+                        <ul class="list-unstyled small mb-0 font-monospace">
+                            <li><code>{sym:pokemon-energy.grass}</code> : Erba</li>
+                            <li><code>{sym:pokemon-energy.fire}</code> : Fuoco</li>
+                            <li><code>{sym:pokemon-energy.water}</code> : Acqua</li>
+                            <li><code>{sym:pokemon-energy.lightning}</code> : Lampo</li>
+                            <li><code>{sym:pokemon-energy.psychic}</code> : Psico</li>
+                            <li><code>{sym:pokemon-energy.fighting}</code> : Lotta</li>
+                            <li><code>{sym:pokemon-energy.darkness}</code> : Oscurità</li>
+                            <li><code>{sym:pokemon-energy.metal}</code> : Metallo</li>
+                            <li><code>{sym:pokemon-energy.colorless}</code> : Incolore</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded bg-surface-2 h-100">
+                        <h6 class="fw-bold text-danger">Yu-Gi-Oh! (Attributi & Magie)</h6>
+                        <p class="small text-muted mb-2">Prefisso: <code>ygo-attributes</code></p>
+                        <ul class="list-unstyled small mb-0 font-monospace">
+                            <li><code>{sym:ygo-attributes.dark}</code> : Oscurità</li>
+                            <li><code>{sym:ygo-attributes.light}</code> : Luce</li>
+                            <li><code>{sym:ygo-attributes.earth}</code> : Terra</li>
+                            <li><code>{sym:ygo-attributes.fire}</code> : Fuoco</li>
+                            <li><code>{sym:ygo-attributes.water}</code> : Acqua</li>
+                            <li><code>{sym:ygo-attributes.wind}</code> : Vento</li>
+                            <li><code>{sym:ygo-attributes.divine}</code> : Divinità</li>
+                            <li><code>{sym:ygo-spell-icons.continuous}</code> : Continua</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Artwork & Adjustment -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🎨</span> Gestione dell'Illustrazione (Artwork)
+            </h3>
+            <p>Per ottenere il miglior risultato visivo per la tua carta, tieni a mente questi suggerimenti:</p>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded bg-surface-2">
+                        <h6 class="fw-bold">Modalità Cover vs Contain</h6>
+                        <ul class="small mb-0 ps-3">
+                            <li><strong>Cover (Consigliato)</strong>: L'immagine riempie l'intera finestra dell'illustrazione eliminando eventuali bande nere. Se l'immagine ha proporzioni diverse, le parti eccedenti vengono tagliate in modo uniforme.</li>
+                            <li><strong>Contain</strong>: L'immagine viene scalata per essere visibile al 100% all'interno della finestra senza alcun taglio.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded bg-surface-2">
+                        <h6 class="fw-bold">Risoluzione Consigliata</h6>
+                        <p class="small mb-0">
+                            Per una stampa ottimale a 600 DPI, carica immagini con risoluzione minima di <strong>900 × 900 pixel</strong> (o superiore). Il motore supporta file JPEG, PNG e WebP.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export & Printing -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🖨️</span> Stampa ed Esportazione
+            </h3>
+            <p>Quando apri il modal di esportazione per scaricare la carta:</p>
+            <ul>
+                <li><strong>Risoluzione 150 DPI</strong>: Ideale per condivisione online, forum, Discord e anteprime veloci (peso contenuto).</li>
+                <li><strong>Risoluzione 300 DPI</strong>: Standard di qualità per stampanti domestiche ad alta definizione o visualizzazione su schermi Retina.</li>
+                <li><strong>Risoluzione 600 DPI</strong>: Massima fedeltà tipografica, rasterizzazione ultra-dettagliata dei testi e dei simboli vettoriali per stampa professionale su cartoncino.</li>
+                <li><strong>Includi Abbondanza (Bleed)</strong>:
+                    Attiva questa opzione se stamperai la carta su foglio per poi ritagliarla con taglierina. Il file includerà 2 mm extra per lato con il colore del bordo esteso, evitando bordi bianchi antiestetici.
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Call to action -->
+    <div class="text-center py-3">
+        <a href="cards/create" class="btn btn-primary btn-lg px-4 gap-2">
+            <span>✨</span> Inizia a Creare una Carta
+        </a>
+    </div>
+</div>
+

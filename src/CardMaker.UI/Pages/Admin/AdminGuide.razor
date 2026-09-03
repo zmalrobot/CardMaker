@@ -1,0 +1,257 @@
+@page "/admin/guida"
+@page "/admin/help"
+
+<PageTitle>Guida Amministratore - CardMaker</PageTitle>
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div class="display-6">📘</div>
+        <div>
+            <h1 class="h3 mb-1">Guida all'Amministrazione di CardMaker</h1>
+            <p class="text-muted mb-0">Manuale operativo per la configurazione dei giochi, schemi carta, template grafici, font e asset.</p>
+        </div>
+    </div>
+
+    <!-- Quick Sections Overview -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h6 class="fw-bold d-flex align-items-center gap-2"><span>🗂️</span> Contenuti & Schemi</h6>
+                    <p class="small text-muted mb-0">Configura giochi, tipologie di carte, tratti e campi del form utente con logica condizionale.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h6 class="fw-bold d-flex align-items-center gap-2"><span>🖼️</span> Libreria Asset</h6>
+                    <p class="small text-muted mb-0">Carica e gestisci frame, texture, simboli e maschere con filtri per gioco e deduplicazione SHA-256.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h6 class="fw-bold d-flex align-items-center gap-2"><span>🔤</span> Ruoli Font</h6>
+                    <p class="small text-muted mb-0">Assegna file TTF/OTF agli alias tipografici astratti, con analisi metadati e fallback automatico.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm border-0 bg-surface-1">
+                <div class="card-body">
+                    <h6 class="fw-bold d-flex align-items-center gap-2"><span>⚡</span> Studio & Render</h6>
+                    <p class="small text-muted mb-0">Editor WYSIWYG dei template, banchi di collaudo render, backup SQLite e gestione inviti.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Gestione Contenuti e Schemi -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🗂️</span> 1. Gestione Contenuti & Schema Editor
+            </h3>
+            <p>
+                La sezione <strong>Gestione Contenuti</strong> (<code>/admin/content</code>) è il centro di controllo del dominio delle carte. Da qui puoi configurare la gerarchia completa per ciascun gioco:
+            </p>
+            <ul>
+                <li><strong>Giochi (Games)</strong>: Parametri fisici globali (larghezza mm, altezza mm, abbondanza bleed mm, raggio angoli mm, safe zone mm e DPI predefinito).</li>
+                <li><strong>Tipologie di Carta (Card Types)</strong>: Categorie specifiche (es. <em>Mostro Effetto</em>, <em>Pokémon Base</em>, <em>Creatura MTG</em>). Ciascun tipo carta possiede uno <strong>Schema Campi</strong> associato.</li>
+                <li><strong>Tratti (Traits)</strong>: Proprietà categoriche per il filtraggio e la selezione (es. Attributi, Tipi mostro, Colori di mana).</li>
+                <li><strong>Liste di Opzioni</strong>: Valori a discesa riutilizzabili nei form (es. lista attributi, rarità, stadi evolutivi).</li>
+                <li><strong>Set di Simboli</strong>: Raccolte di icone referenziabili sia nei layer di simboli sia come token inline nei testi rich text.</li>
+            </ul>
+
+            <h5 class="h6 fw-bold mt-3">Editor dello Schema Campi (<code>/admin/schema/{id}</code>)</h5>
+            <p class="small text-muted">
+                Permette di definire i campi che l'utente compila nel wizard di creazione:
+            </p>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="p-2 border rounded bg-surface-2 small">
+                        <strong>Tipi di Dato:</strong> Testo, Testo Multiriga, Numero intero/decimale, Booleano, Selezione singola (OptionList), Immagine (Artwork).
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-2 border rounded bg-surface-2 small">
+                        <strong>Validazione:</strong> Obbligatorietà, lunghezza min/max, valori numerici consentiti, messaggi di errore personalizzati.
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-2 border rounded bg-surface-2 small">
+                        <strong>Condizioni di Visibilità:</strong> Mostra campi solo se altri campi soddisfano criteri (es. mostra <code>attack2Damage</code> solo se <code>attack2Name != ""</code>).
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 2: Libreria Asset e Regole di Caricamento -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🖼️</span> 2. Libreria Asset & Specifiche File
+            </h3>
+            <p>
+                In <strong>Libreria Asset</strong> (<code>/admin/assets</code>) vengono caricati i file grafici utilizzati dai template. Gli asset sono filtrabili per <strong>Gioco</strong> e per <strong>Categoria</strong> (Frame, Sfondo, Texture, Simbolo, Maschera).
+            </p>
+
+            <div class="alert alert-info py-2 small mb-3">
+                <strong>💡 Integrità e Deduplicazione:</strong> Ogni file viene salvato su disco identificato dall'hash SHA-256 del suo contenuto. Non vengono mai creati duplicati di blob identici. Il sistema impedisce la cancellazione accidentale se un asset è referenziato da template attivi.
+            </div>
+
+            <h5 class="h6 fw-bold">Requisiti Tecnici per i File Grafici:</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered small">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Categoria Asset</th>
+                            <th>Formato</th>
+                            <th>Canale Alpha</th>
+                            <th>Dimensioni Raccomandate</th>
+                            <th>Note Importanti</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Frame Carta</strong></td>
+                            <td>PNG 24/32-bit</td>
+                            <td>Trasparente (RGBA)</td>
+                            <td>Dimensione Master (con 2mm bleed) a 300 o 600 DPI</td>
+                            <td>La finestra dell'artwork DEVE essere trasparente al 100% (alpha 0) per mostrare l'illustrazione sottostante.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Simboli / Icone</strong></td>
+                            <td>PNG 32-bit o SVG</td>
+                            <td>Trasparente (RGBA)</td>
+                            <td>128 × 128 px o 256 × 256 px</td>
+                            <td>Centrati nel quadrato, senza margini asimmetrici.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Texture / Overlay Foil</strong></td>
+                            <td>PNG o JPEG</td>
+                            <td>Opaco o semitrasparente</td>
+                            <td>Dimensione Master a 300 o 600 DPI</td>
+                            <td>Vengono applicati con modalità di fusione (Screen, ColorDodge, Overlay) sopra la carta.</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Maschere</strong></td>
+                            <td>PNG 8/24-bit</td>
+                            <td>Scala di grigi o Alpha</td>
+                            <td>Stesse proporzioni della finestra target</td>
+                            <td>Utilizzate con BlendMode DstIn per ritagliare l'artwork in forme irregolari.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Font e Tipografia -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🔤</span> 3. Ruoli Font e Tipografia (<code>/admin/fonts</code>)
+            </h3>
+            <p>
+                I template di CardMaker referenziano i font tramite <strong>Alias di Ruolo</strong> (es. <code>card-name</code>, <code>pokemon-name</code>, <code>mtg-name</code>). Questo disaccoppia il design della carta dai file fisici.
+            </p>
+
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-3 border rounded bg-surface-2 h-100">
+                        <h6 class="fw-bold">Font Incorporati nel Runtime (Fallback)</h6>
+                        <p class="small text-muted mb-2">
+                            Se l'amministratore non carica font personalizzati, il sistema include già out-of-the-box i font corretti:
+                        </p>
+                        <ul class="small mb-0">
+                            <li><strong>Yu-Gi-Oh!</strong>: Matrix-Bold, MatrixBoldSmallCaps, Stone Serif Semibold/Italic/Regular, FOT-Rodin Pro M.</li>
+                            <li><strong>Pokémon</strong>: GillSansBold, GillSansItalic, GillSans, Futura-Bold.</li>
+                            <li><strong>MTG</strong>: Beleren2016-Bold, Beleren2016SmallCaps-Bold, Mplantin.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded bg-surface-2 h-100">
+                        <h6 class="fw-bold">Caricamento e Probing di Nuovi Font</h6>
+                        <p class="small text-muted mb-2">
+                            Al caricamento di un file TTF/OTF, il servizio esegue un'analisi automatica con SkiaSharp:
+                        </p>
+                        <ul class="small mb-0">
+                            <li>Estrae Family Name, Style Name, Peso (Weight) e flag Corsivo (Italic).</li>
+                            <li>Verifica che SkiaSharp sia in grado di rasterizzare i caratteri senza eccezioni.</li>
+                            <li>Rifiuta file corrotti o formati non supportati dal motore.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 4: Segnaposto Procedurali e Prova Motore -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>🧩</span> 4. Segnaposto Procedurali & Prova Motore
+            </h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h5 class="h6 fw-bold">Frame Segnaposto (<code>/admin/placeholders</code>)</h5>
+                    <p class="small text-muted">
+                        I segnaposto permettono di creare e testare carte prima ancora di disporre della grafica definitiva. La pagina consente di:
+                    </p>
+                    <ul class="small">
+                        <li>Filtrare per gioco (Yu-Gi-Oh!, Pokémon, MTG).</li>
+                        <li>Generare o rigenerare massivamente tutti i frame con o senza guide di taglio (Trim/Bleed/SafeZone).</li>
+                        <li>Scaricare il PNG del segnaposto o verificare l'anteprima a schermo.</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="h6 fw-bold">Prova Motore di Rendering (<code>/admin/render-test</code>)</h5>
+                    <p class="small text-muted">
+                        Banco di collaudo interattivo isolato per verificare il comportamento del motore grafico:
+                    </p>
+                    <ul class="small">
+                        <li>Testa il rendering di carte Yu-Gi-Oh!, Pokémon e Magic.</li>
+                        <li>Permette di caricare illustrazioni di prova e testare la risposta a testi molto lunghi (auto-fit shrink e condense).</li>
+                        <li>Consente di commutare DPI (150 / 300 / 600) e visualizzare eventuali avvisi generati dalla pipeline di rendering.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 5: Backup, Integrità e Sicurezza -->
+    <div class="card shadow-sm border-0 bg-surface-1 mb-4">
+        <div class="card-body p-4">
+            <h3 class="h4 mb-3 d-flex align-items-center gap-2">
+                <span>💾</span> 5. Backup, Integrità e Gestione Inviti
+            </h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <h5 class="h6 fw-bold">Backup & Integrità (<code>/admin/backups</code>)</h5>
+                    <p class="small text-muted mb-1">
+                        Esegue snapshot atomici online a caldo del database SQLite utilizzando il comando nativo <code>VACUUM INTO</code>.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        Include un tool di diagnostica per eseguire <code>PRAGMA integrity_check</code> e verificare l'integrità strutturale degli indici e dei record.
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <h5 class="h6 fw-bold">Inviti Utente (<code>/admin/invitations</code>)</h5>
+                    <p class="small text-muted mb-1">
+                        Nella versione Web, la registrazione è rigorosamente protetta da token a invito.
+                    </p>
+                    <p class="small text-muted mb-0">
+                        L'amministratore può generare link di invito con scadenza temporale, visualizzare chi ha utilizzato ciascun invito e revocare token non ancora riscattati.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+

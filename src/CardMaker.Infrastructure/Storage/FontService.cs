@@ -161,6 +161,11 @@ public sealed partial class FontService(
             "pokemon-flavor" => "GillSansItalic.ttf",
             "pokemon-body" or "pokemon-small" or "pokemon-illustrator" or "pokemon-rule" => "GillSans.ttf",
 
+            // Magic: The Gathering
+            "mtg-name" or "mtg-type-line" or "mtg-pt" => "Beleren2016-Bold.ttf",
+            "mtg-header" or "mtg-small-caps" => "Beleren2016SmallCaps-Bold.ttf",
+            "mtg-rules" or "mtg-flavor" or "mtg-body" or "mtg-small" or "mtg-collector" => "Mplantin.ttf",
+
             _ => "Stone Serif Regular.ttf",
         };
 

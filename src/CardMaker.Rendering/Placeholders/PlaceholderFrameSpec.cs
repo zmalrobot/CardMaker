@@ -11,6 +11,7 @@ public enum PlaceholderLayout
     Pokemon,
     PokemonTrainer,
     PokemonEnergy,
+    Mtg,
 }
 
 /// <summary>
@@ -66,6 +67,19 @@ public sealed record PlaceholderFrameSpec
         new() { Key = "pokemon-frame-trainer", Label = "ALLENATORE", FrameColor = 0xFF00A8FF, Layout = PlaceholderLayout.PokemonTrainer },
         new() { Key = "pokemon-frame-energy", Label = "ENERGIA", FrameColor = 0xFF2ECC71, Layout = PlaceholderLayout.PokemonEnergy },
         new() { Key = "pokemon-back", Label = "POKÉMON RETRO", FrameColor = 0xFF0984E3, Layout = PlaceholderLayout.Back },
+    ];
+
+    public static IReadOnlyList<PlaceholderFrameSpec> MtgSet() =>
+    [
+        new() { Key = "mtg-frame-white", Label = "MAGIC BIANCO", FrameColor = 0xFFF8F6E8, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-blue", Label = "MAGIC BLU", FrameColor = 0xFF0E68AB, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-black", Label = "MAGIC NERO", FrameColor = 0xFF2A2A2A, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-red", Label = "MAGIC ROSSO", FrameColor = 0xFFD3202A, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-green", Label = "MAGIC VERDE", FrameColor = 0xFF00733E, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-colorless", Label = "MAGIC INCOLORE / ARTEFATTO", FrameColor = 0xFFB8B2AC, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-gold", Label = "MAGIC ORO / MULTICOLORE", FrameColor = 0xFFCCA243, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-frame-land", Label = "MAGIC TERRA", FrameColor = 0xFF9E7B58, Layout = PlaceholderLayout.Mtg },
+        new() { Key = "mtg-back", Label = "MAGIC RETRO", FrameColor = 0xFF54341B, Layout = PlaceholderLayout.Back },
     ];
 }
 

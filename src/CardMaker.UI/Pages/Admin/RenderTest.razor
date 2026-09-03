@@ -49,7 +49,90 @@
                     }
                 </div>
 
-                @if (IsPokemon)
+                @if (IsMtg)
+                {
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label class="form-label small fw-semibold" for="mtgName">Nome Carta</label>
+                            <input id="mtgName" class="form-control" @bind="_mtgName" @bind:event="oninput" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold" for="mtgMana">Costo di Mana</label>
+                            <input id="mtgMana" class="form-control" @bind="_mtgManaCost" @bind:event="oninput" placeholder="{3}{W}{W}" />
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-8">
+                            <label class="form-label small fw-semibold" for="mtgType">Riga del Tipo</label>
+                            <input id="mtgType" class="form-control" @bind="_mtgTypeLine" @bind:event="oninput" placeholder="Creatura — Angelo" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold" for="mtgRarity">Rarità</label>
+                            <select id="mtgRarity" class="form-select" @bind="_mtgRarity">
+                                <option value="common">Comune</option>
+                                <option value="uncommon">Non Comune</option>
+                                <option value="rare">Rara</option>
+                                <option value="mythic">Rara Mitica</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold" for="mtgRules">Testo delle Regole</label>
+                        <textarea id="mtgRules" class="form-control" rows="3" @bind="_mtgRules" @bind:event="oninput"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold" for="mtgFlavor">Testo di Colore (Flavor Text)</label>
+                        <textarea id="mtgFlavor" class="form-control" rows="2" @bind="_mtgFlavor" @bind:event="oninput"></textarea>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-3">
+                            <label class="form-label small fw-semibold" for="mtgPower">Forza</label>
+                            <input id="mtgPower" class="form-control" @bind="_mtgPower" @bind:event="oninput" />
+                        </div>
+                        <div class="col-3">
+                            <label class="form-label small fw-semibold" for="mtgToughness">Costituzione</label>
+                            <input id="mtgToughness" class="form-control" @bind="_mtgToughness" @bind:event="oninput" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold" for="dpi">DPI</label>
+                            <select id="dpi" class="form-select" @bind="_dpi">
+                                <option value="96">96 DPI (Bozza)</option>
+                                <option value="150">150 DPI (Anteprima)</option>
+                                <option value="300">300 DPI</option>
+                                <option value="600">600 DPI (Export)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="card bg-surface-2 border-0 mb-3">
+                        <div class="card-header bg-transparent py-1 px-2 border-0">
+                            <span class="small fw-bold text-uppercase text-secondary">Piè di pagina e Metadati</span>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold" for="mtgCollector">Numero Collettore</label>
+                                    <input id="mtgCollector" class="form-control form-control-sm" @bind="_mtgCollectorNumber" @bind:event="oninput" />
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label small fw-semibold" for="mtgIllus">Illustratore</label>
+                                    <input id="mtgIllus" class="form-control form-control-sm" @bind="_mtgIllustrator" @bind:event="oninput" />
+                                </div>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <label class="form-label small fw-semibold" for="mtgCopy">Copyright</label>
+                                    <input id="mtgCopy" class="form-control form-control-sm" @bind="_mtgCopyright" @bind:event="oninput" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                else if (IsPokemon)
                 {
                     <div class="row g-2 mb-3">
                         <div class="col-8">
@@ -346,6 +429,19 @@
     private string _pkmnCardNum = "025/102";
     private string _pkmnCopyright = "©2024 Pokémon / Nintendo / Creatures / GAME FREAK";
 
+    // Magic fields
+    private string _mtgName = "Angelo Serra";
+    private string _mtgManaCost = "{3}{W}{W}";
+    private string _mtgTypeLine = "Creatura — Angelo";
+    private string _mtgRules = "Volare, cautela (Questa creatura attacca senza TAPpare.)";
+    private string _mtgFlavor = "Nata con ali di luce e una spada di vendetta, non conosce paura né perdono.";
+    private string _mtgPower = "4";
+    private string _mtgToughness = "4";
+    private string _mtgRarity = "rare";
+    private string _mtgCollectorNumber = "023/280";
+    private string _mtgIllustrator = "Douglas Shuler";
+    private string _mtgCopyright = "™ & © 2024 Wizards of the Coast";
+
     private int _dpi = 150;
     private bool _showGuides;
     private bool _busy;
@@ -357,6 +453,7 @@
     private IReadOnlyList<PreviewWarning> _warnings = [];
     private IReadOnlyList<string> _errors = [];
 
+    private bool IsMtg => _games.FirstOrDefault(g => g.Id.ToString() == _selectedGameId)?.Key == "mtg";
     private bool IsPokemon => _games.FirstOrDefault(g => g.Id.ToString() == _selectedGameId)?.Key == "pokemon";
 
     protected override async Task OnInitializedAsync()
@@ -441,7 +538,36 @@
             Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
             CardPreviewResult result;
 
-            if (IsPokemon)
+            if (IsMtg)
+            {
+                var values = DemoLayouts.MtgSampleValues();
+                values["name"] = CardValue.FromText(_mtgName);
+                values["manaCost"] = CardValue.FromText(_mtgManaCost);
+                values["typeLine"] = CardValue.FromText(_mtgTypeLine);
+                values["rulesText"] = CardValue.FromText(_mtgRules);
+                values["flavorText"] = CardValue.FromText(_mtgFlavor);
+                values["power"] = CardValue.FromText(_mtgPower);
+                values["toughness"] = CardValue.FromText(_mtgToughness);
+                values["setRarity"] = CardValue.FromText(_mtgRarity);
+                values["collectorNumber"] = CardValue.FromText(_mtgCollectorNumber);
+                values["illustrator"] = CardValue.FromText(_mtgIllustrator);
+                values["copyright"] = CardValue.FromText(_mtgCopyright);
+
+                if (_artworkAssetId.HasValue)
+                {
+                    values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+                }
+
+                result = await Preview.RenderAsync(new CardPreviewRequest
+                {
+                    LayoutJson = LayoutSerializer.Serialize(DemoLayouts.MtgCreature()),
+                    Values = values,
+                    GameId = gameId,
+                    Dpi = _dpi,
+                    ShowGuides = _showGuides,
+                });
+            }
+            else if (IsPokemon)
             {
                 var values = DemoLayouts.PokemonSampleValues();
                 values["name"] = CardValue.FromText(_pkmnName);

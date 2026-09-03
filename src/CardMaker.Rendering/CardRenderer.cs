@@ -710,11 +710,11 @@ public sealed class CardRenderer(TextEngine textEngine)
             };
         }
 
-        var totalHeight = fitted.TotalHeightPx;
+        var visualHeight = ((fitted.Lines.Count - 1) * fitted.LineHeightPx) + glyphHeight;
         var startY = style.VerticalAlign switch
         {
-            VerticalAlign.Middle => box.Top + ((box.Height - totalHeight) / 2f),
-            VerticalAlign.Bottom => box.Bottom - totalHeight,
+            VerticalAlign.Middle => box.Top + ((box.Height - visualHeight) / 2f),
+            VerticalAlign.Bottom => box.Bottom - visualHeight,
             _ => box.Top,
         };
 
@@ -728,9 +728,7 @@ public sealed class CardRenderer(TextEngine textEngine)
                     continue;
                 }
 
-                // Il glifo viene centrato nel quadratone: ascendenti e discendenti sbordano in modo simmetrico.
-                var baseline = startY + (i * fitted.LineHeightPx)
-                    + ((fitted.SizePx - glyphHeight) / 2f) - metrics.Ascent;
+                var baseline = startY + (i * fitted.LineHeightPx) - metrics.Ascent;
 
                 var isLastLine = i == fitted.Lines.Count - 1;
                 DrawLine(canvas, line, style, font, paint, strokePaint, box, baseline, letterSpacing, isLastLine);

@@ -4,8 +4,10 @@ using CardMaker.Contracts.Geometry;
 using CardMaker.Contracts.Layout;
 using CardMaker.Domain.Templates;
 using CardMaker.Infrastructure.Content;
+using CardMaker.Infrastructure.Storage;
 using CardMaker.Rendering;
 using CardMaker.Rendering.Fonts;
+using CardMaker.Rendering.Placeholders;
 using CardMaker.Rendering.Text;
 using SkiaSharp;
 
@@ -16,15 +18,59 @@ public class YuGiOhSeedDataTests
     private sealed class StubResources : IRenderResources, IDisposable
     {
         private readonly List<SKImage> _created = [];
+        private readonly PlaceholderFrameGenerator _frameGen = new();
+        private readonly PlaceholderSymbolGenerator _symGen = new();
 
         public SKImage? GetImage(Guid assetId) => null;
 
-        public SKImage? GetImageByKey(string assetKey) => MakeSolid(SKColors.DarkBlue);
+        public SKImage? GetImageByKey(string assetKey)
+        {
+            if (assetKey.StartsWith("placeholder-", StringComparison.Ordinal))
+            {
+                var key = assetKey["placeholder-".Length..];
+                var spec = PlaceholderFrameSpec.YuGiOhSet().FirstOrDefault(s => s.Key == key)
+                    ?? PlaceholderFrameSpec.YuGiOhSet()[0];
+                var png = _frameGen.Generate(spec, CardGeometry.YuGiOh(150));
+                using var data = SKData.CreateCopy(png);
+                var img = SKImage.FromEncodedData(data);
+                if (img is not null)
+                {
+                    _created.Add(img);
+                }
+                return img;
+            }
+            return MakeSolid(SKColors.DarkBlue);
+        }
 
-        public SKImage? GetSymbol(string symbolSetKey, string symbolKey) => MakeSolid(SKColors.Goldenrod);
+        public SKImage? GetSymbol(string symbolSetKey, string symbolKey)
+        {
+            var png = _symGen.Generate(symbolSetKey, symbolKey, 128);
+            using var data = SKData.CreateCopy(png);
+            var img = SKImage.FromEncodedData(data);
+            if (img is not null)
+            {
+                _created.Add(img);
+            }
+            return img;
+        }
 
         public SKTypeface ResolveFont(string? roleAlias, out bool isFallback)
         {
+            if (!string.IsNullOrEmpty(roleAlias))
+            {
+                var bytes = FontService.GetEmbeddedFontBytes(roleAlias);
+                if (bytes is not null)
+                {
+                    using var data = SKData.CreateCopy(bytes);
+                    var tf = SKTypeface.FromData(data);
+                    if (tf is not null)
+                    {
+                        isFallback = false;
+                        return tf;
+                    }
+                }
+            }
+
             isFallback = true;
             return FontRegistry.Fallback;
         }
@@ -214,5 +260,34 @@ public class YuGiOhSeedDataTests
                 }
             }
         }
+    }
+
+    [Fact]
+    public void RenderizzaDemoYuGiOhSenzaErrori()
+    {
+        var layout = DemoLayouts.YuGiOhMonster();
+        var values = DemoLayouts.SampleValues();
+        using var resources = new StubResources();
+        var renderer = new CardRenderer(new TextEngine());
+
+        var request = new CardRenderRequest
+        {
+            Layout = layout,
+            Values = values,
+            Resources = resources,
+            Dpi = 150,
+            IncludeBleed = false,
+            Format = RenderOutputFormat.Png,
+        };
+
+        var result = renderer.Render(request);
+
+        Assert.NotNull(result);
+        Assert.Equal("image/png", result.ContentType);
+        Assert.True(result.WidthPx > 0);
+        Assert.True(result.HeightPx > 0);
+        Assert.NotEmpty(result.Content);
+
+        File.WriteAllBytes("/tmp/rendered_card.png", result.Content);
     }
 }
