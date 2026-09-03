@@ -24,20 +24,15 @@
                 <span class="cm-nav-icon">✨</span>
                 <span>Nuova Carta</span>
             </NavLink>
+            <NavLink class="cm-nav-link" href="guida">
+                <span class="cm-nav-icon">📖</span>
+                <span>Guida Utente</span>
+            </NavLink>
         </Authorized>
     </AuthorizeView>
 
-    <NavLink class="cm-nav-link" href="guida">
-        <span class="cm-nav-icon">📖</span>
-        <span>Guida Utente</span>
-    </NavLink>
-
     <AuthorizeView Roles="Admin">
         <div class="cm-nav-heading mt-3">Amministrazione</div>
-        <NavLink class="cm-nav-link" href="admin/guida">
-            <span class="cm-nav-icon">📘</span>
-            <span>Guida Admin</span>
-        </NavLink>
         <NavLink class="cm-nav-link" href="admin/content">
             <span class="cm-nav-icon">🗂️</span>
             <span>Gestione Contenuti</span>
@@ -69,6 +64,10 @@
         <NavLink class="cm-nav-link" href="admin/audit">
             <span class="cm-nav-icon">📜</span>
             <span>Registro Audit</span>
+        </NavLink>
+        <NavLink class="cm-nav-link" href="admin/guida">
+            <span class="cm-nav-icon">📘</span>
+            <span>Guida Admin</span>
         </NavLink>
     </AuthorizeView>
 

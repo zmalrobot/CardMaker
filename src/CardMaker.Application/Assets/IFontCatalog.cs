@@ -74,4 +74,36 @@ public static class FontRoleSuggestions
         "rush-type-line",
         "rush-maximum-atk",
     ];
+
+    public static readonly string[] Pokemon =
+    [
+        "pokemon-name",
+        "pokemon-hp",
+        "pokemon-stage",
+        "pokemon-evolves-from",
+        "pokemon-attack-name",
+        "pokemon-attack-damage",
+        "pokemon-attack-desc",
+        "pokemon-ability-label",
+        "pokemon-ability-name",
+        "pokemon-ability-desc",
+        "pokemon-weak-resist-label",
+        "pokemon-weak-resist-value",
+        "pokemon-retreat-label",
+        "pokemon-rule-box",
+        "pokemon-flavor",
+        "pokemon-collector",
+    ];
+
+    public static readonly string[] Mtg =
+    [
+        "mtg-name",
+        "mtg-cost",
+        "mtg-type-line",
+        "mtg-rules",
+        "mtg-flavor",
+        "mtg-pt",
+        "mtg-loyalty",
+        "mtg-collector",
+    ];
 }

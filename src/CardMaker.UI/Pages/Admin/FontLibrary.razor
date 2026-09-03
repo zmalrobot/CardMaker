@@ -26,7 +26,6 @@
             <div class="col-md-3">
                 <label class="form-label small fw-semibold" for="uploadGame">Gioco</label>
                 <select id="uploadGame" class="form-select" @bind="_uploadGameId">
-                    <option value="">(Condiviso / Globale)</option>
                     @foreach (var g in _games)
                     {
                         <option value="@g.Id">@g.NameIt</option>
@@ -38,7 +37,7 @@
                 <input id="alias" class="form-control" list="role-suggestions" @bind="_alias"
                        placeholder="es. card-name" />
                 <datalist id="role-suggestions">
-                    @foreach (var role in FontRoleSuggestions.YuGiOh)
+                    @foreach (var role in GetRoleSuggestions())
                     {
                         <option value="@role"></option>
                     }
@@ -73,7 +72,6 @@
             <span>Ruoli Assegnati (@_fonts.Count)</span>
             <select class="form-select form-select-sm w-auto" @bind="_filterGameId" @bind:after="RefreshAsync">
                 <option value="">Tutti i giochi</option>
-                <option value="shared">Condivisi (nessun gioco)</option>
                 @foreach (var g in _games)
                 {
                     <option value="@g.Id.ToString()">@g.NameIt</option>
@@ -145,12 +143,28 @@
     protected override async Task OnInitializedAsync()
     {
         _games = await ContentService.GetGamesAsync();
+        if (_games.Count > 0)
+        {
+            _uploadGameId = _games[0].Id;
+        }
         await RefreshAsync();
+    }
+
+    private IEnumerable<string> GetRoleSuggestions()
+    {
+        var game = _games.FirstOrDefault(g => g.Id == _uploadGameId);
+        var key = game?.Key?.ToLowerInvariant();
+        return key switch
+        {
+            "pokemon" => FontRoleSuggestions.Pokemon,
+            "mtg" => FontRoleSuggestions.Mtg,
+            _ => FontRoleSuggestions.YuGiOh,
+        };
     }
 
     private string GetGameName(Guid? gameId)
     {
-        if (!gameId.HasValue) return "Condiviso";
+        if (!gameId.HasValue) return "Nessuno";
         return _games.FirstOrDefault(g => g.Id == gameId.Value)?.NameIt ?? "Sconosciuto";
     }
 
@@ -158,16 +172,11 @@
     {
         if (Guid.TryParse(_filterGameId, out var gid))
         {
-            _fonts = await Fonts.ListAsync(gid);
-        }
-        else if (_filterGameId == "shared")
-        {
-            var all = await Fonts.ListAsync();
-            _fonts = all.Where(f => !f.GameId.HasValue).ToList();
+            _fonts = (await Fonts.ListAsync(gid)).ToList();
         }
         else
         {
-            _fonts = await Fonts.ListAsync();
+            _fonts = (await Fonts.ListAsync()).ToList();
         }
     }
 

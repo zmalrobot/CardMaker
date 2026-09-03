@@ -26,7 +26,6 @@
             <div class="col-md-3">
                 <label class="form-label small fw-semibold" for="uploadGame">Gioco</label>
                 <select id="uploadGame" class="form-select" @bind="_uploadGameId">
-                    <option value="">(Condiviso / Tutti i giochi)</option>
                     @foreach (var g in _games)
                     {
                         <option value="@g.Id">@g.NameIt</option>
@@ -71,9 +70,8 @@
         <div class="d-flex align-items-center gap-3">
             <span class="fw-bold">Asset presenti (@FilteredAssets.Count())</span>
             <input type="text" class="form-control form-control-sm w-auto" placeholder="Cerca per nome..." @bind="_searchQuery" @bind:event="oninput" />
-            <select class="form-select form-select-sm w-auto" @bind="_filterGameId">
+            <select class="form-select form-select-sm w-auto" @bind="_filterGameId" @bind:after="OnFilterChangedAsync">
                 <option value="">Tutti i giochi</option>
-                <option value="shared">Condivisi (nessun gioco)</option>
                 @foreach (var g in _games)
                 {
                     <option value="@g.Id.ToString()">@g.NameIt</option>
@@ -190,21 +188,26 @@
 
     private Asset? _replacingAsset;
 
+    private Guid? FilterGameGuid => Guid.TryParse(_filterGameId, out var gid) ? gid : null;
+
     private IEnumerable<Asset> FilteredAssets => _assets
         .Where(a => string.IsNullOrWhiteSpace(_searchQuery) || a.OriginalFileName.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase))
         .Where(a => string.IsNullOrWhiteSpace(_filterCategory) || a.Category.ToString() == _filterCategory)
-        .Where(a => string.IsNullOrWhiteSpace(_filterGameId) || 
-                    (_filterGameId == "shared" ? !a.GameId.HasValue : a.GameId.HasValue && a.GameId.Value.ToString() == _filterGameId));
+        .Where(a => !FilterGameGuid.HasValue || (a.GameId.HasValue && a.GameId.Value == FilterGameGuid.Value));
 
     protected override async Task OnInitializedAsync()
     {
         _games = await ContentService.GetGamesAsync();
+        if (_games.Count > 0)
+        {
+            _uploadGameId = _games[0].Id;
+        }
         await RefreshAsync();
     }
 
     private string GetGameName(Guid? gameId)
     {
-        if (!gameId.HasValue) return "Condiviso";
+        if (!gameId.HasValue) return "Nessuno";
         return _games.FirstOrDefault(g => g.Id == gameId.Value)?.NameIt ?? "Sconosciuto";
     }
 
@@ -302,7 +305,9 @@
         }
     }
 
-    private async Task RefreshAsync() => _assets = await Catalog.ListAsync(take: 1000);
+    private async Task OnFilterChangedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync() => _assets = await Catalog.ListAsync(FilterGameGuid, take: 5000);
 
     private void Show(string message, bool isError)
     {

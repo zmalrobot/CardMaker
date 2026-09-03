@@ -113,12 +113,18 @@ public sealed class AssetService(
         int take = 100,
         CancellationToken cancellationToken = default)
     {
-        return await db.Assets.AsNoTracking()
-            .Where(a => gameId == null || a.GameId == gameId)
+        var raw = await db.Assets.AsNoTracking()
             .OrderByDescending(a => a.CreatedAtUtc)
-            .Take(Math.Clamp(take, 1, 500))
+            .Take(Math.Clamp(take, 1, 5000))
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (gameId.HasValue)
+        {
+            return raw.Where(a => a.GameId == gameId.Value).ToList();
+        }
+
+        return raw;
     }
 
     public Task<Stream?> OpenContentAsync(string sha256, CancellationToken cancellationToken = default) =>

@@ -164,7 +164,20 @@
             var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
 
-            _result = await Seeder.SeedYuGiOhAsync(userId, _showGuides, gameId);
+            var key = CurrentGame?.Key?.ToLowerInvariant();
+            if (key == "pokemon")
+            {
+                _result = await Seeder.SeedPokemonAsync(userId, _showGuides, gameId);
+            }
+            else if (key == "mtg")
+            {
+                _result = await Seeder.SeedMtgAsync(userId, _showGuides, gameId);
+            }
+            else
+            {
+                _result = await Seeder.SeedYuGiOhAsync(userId, _showGuides, gameId);
+            }
+
             await RefreshAsync();
         }
         finally
@@ -176,7 +189,7 @@
     private async Task RefreshAsync()
     {
         Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
-        var all = await Catalog.ListAsync(gameId, 500);
+        var all = await Catalog.ListAsync(gameId, 5000);
         _generated = all
             .Where(a => a.OriginalFileName.StartsWith("placeholder-", StringComparison.Ordinal) ||
                         a.Category == AssetCategory.Placeholder ||

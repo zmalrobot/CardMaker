@@ -83,12 +83,18 @@ public sealed partial class FontService(
         Guid? gameId = null,
         CancellationToken cancellationToken = default)
     {
-        return await db.FontAssets.AsNoTracking()
+        var raw = await db.FontAssets.AsNoTracking()
             .Include(f => f.Asset)
-            .Where(f => gameId == null || f.GameId == gameId)
             .OrderBy(f => f.Alias)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (gameId.HasValue)
+        {
+            return raw.Where(f => f.GameId == gameId.Value).ToList();
+        }
+
+        return raw;
     }
 
     public async Task<FontAsset?> FindByAliasAsync(
