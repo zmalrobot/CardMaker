@@ -70,6 +70,7 @@ public static class DependencyInjection
         services.AddScoped<CardMaker.Application.Admin.ITemplateAdminService, CardMaker.Infrastructure.Admin.TemplateAdminService>();
         services.AddScoped<CardMaker.Application.Identity.IInvitationService, CardMaker.Infrastructure.Identity.InvitationService>();
         services.AddScoped<CardMaker.Application.Admin.IBackupService, CardMaker.Infrastructure.Admin.BackupService>();
+        services.AddScoped<CardMaker.Application.Admin.IDatabaseResetService, DatabaseResetService>();
         services.AddScoped<DatabaseInitializer>();
 
         return services;

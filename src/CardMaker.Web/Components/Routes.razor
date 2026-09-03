@@ -1,7 +1,10 @@
-﻿@using CardMaker.Web.Components.Account.Shared
+@using CardMaker.Web.Components.Account.Shared
 <Router AppAssembly="typeof(Program).Assembly"
         AdditionalAssemblies="_uiAssemblies"
         NotFoundPage="typeof(Pages.NotFound)">
+    <Navigating>
+        <div class="cm-page-loading-bar" role="progressbar" aria-label="Caricamento pagina"></div>
+    </Navigating>
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
             <NotAuthorized>

@@ -56,6 +56,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
     .AddDefaultTokenProviders();
 
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
+builder.Services.AddScoped<CardMaker.Application.Common.ILoadingService, CardMaker.UI.Services.LoadingService>();
 
 // Health Checks
 builder.Services.AddHealthChecks();

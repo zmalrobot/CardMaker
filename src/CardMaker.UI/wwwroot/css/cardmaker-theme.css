@@ -476,3 +476,94 @@ a:hover {
     }
 }
 
+/* ==========================================================================
+   Global Loading & Route Navigation Progress Bar
+   ========================================================================== */
+.cm-page-loading-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--cm-primary), #a855f7, var(--cm-accent));
+    background-size: 200% 100%;
+    animation: cm-page-bar-anim 1.2s infinite linear;
+    z-index: 99999;
+    pointer-events: none;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
+}
+
+@keyframes cm-page-bar-anim {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.cm-loading-backdrop {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(13, 17, 23, 0.65);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 99998;
+    user-select: none;
+    animation: cm-fade-in 0.15s ease-out;
+}
+
+.cm-loading-dialog {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 1.5rem 2rem;
+    background: var(--cm-surface);
+    color: var(--cm-text);
+    border: 1px solid var(--cm-border);
+    border-radius: 1rem;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    max-width: 480px;
+    width: 90%;
+    animation: cm-scale-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cm-loading-spinner-wrap {
+    position: relative;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cm-loading-spinner {
+    width: 44px !important;
+    height: 44px !important;
+    border-width: 3px !important;
+}
+
+.cm-loading-card-icon {
+    position: absolute;
+    font-size: 1.15rem;
+    animation: cm-pulse-icon 1.5s infinite ease-in-out;
+}
+
+.cm-loading-text {
+    flex: 1;
+    min-width: 0;
+}
+
+@keyframes cm-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes cm-scale-up {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+

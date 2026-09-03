@@ -1,4 +1,10 @@
 @page "/"
 @attribute [Authorize]
+@inject NavigationManager Navigation
 
-<CardMaker.UI.Pages.Cards.MyCards />
+@code {
+    protected override void OnInitialized()
+    {
+        Navigation.NavigateTo("cards", replace: true);
+    }
+}

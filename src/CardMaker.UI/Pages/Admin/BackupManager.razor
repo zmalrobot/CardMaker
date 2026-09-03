@@ -1,6 +1,10 @@
 @page "/admin/backups"
 @attribute [Authorize(Roles = "Admin")]
+@using CardMaker.Application.Admin
+@using CardMaker.Application.Common
 @inject IBackupService BackupService
+@inject IDatabaseResetService DatabaseResetService
+@inject ILoadingService LoadingService
 
 <PageTitle>Backup & Integrità — CardMaker Admin</PageTitle>
 
@@ -92,7 +96,85 @@
             </table>
         </div>
     </div>
+
+    <!-- ZONA PERICOLO / FACTORY RESET -->
+    <div class="card border-danger shadow-sm mt-5 mb-4">
+        <div class="card-header bg-danger text-white py-3 d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <span class="fs-4">⚠️</span>
+                <h5 class="card-title mb-0 fw-bold">ZONA PERICOLO — RIPRISTINO DI FABBRICA DATABASE</h5>
+            </div>
+            <span class="badge bg-dark text-white text-uppercase px-2 py-1">Azione Distruttiva</span>
+        </div>
+        <div class="card-body bg-danger-subtle text-danger-emphasis p-4">
+            <div class="row align-items-center">
+                <div class="col-lg-8">
+                    <h5 class="fw-bold mb-2">💥 Ripristino Completo allo Stato Iniziale</h5>
+                    <p class="mb-2">
+                        Questa operazione è <strong>completamente irreversibile</strong>. Il database corrente verrà cancellato e rigenerato da zero.
+                    </p>
+                    <ul class="small mb-0 ps-3">
+                        <li><strong>Cancellazione totale</strong> di tutte le carte create, bozze e asset caricati.</li>
+                        <li><strong>Ricreazione dello schema</strong> ed esecuzione automatica delle migrazioni EF Core.</li>
+                        <li><strong>Re-seeding completo di fabbrica</strong>: tutti i set e giochi ufficiali (Yu-Gi-Oh!, Pokémon, Magic: The Gathering), tutti i template e ruoli font ufficiali verranno ripristinati allo stato originale.</li>
+                    </ul>
+                </div>
+                <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+                    <button class="btn btn-danger btn-lg shadow fw-bold d-inline-flex align-items-center gap-2"
+                            @onclick="OpenResetModal"
+                            disabled="@IsProcessing">
+                        <span>🔥</span>
+                        <span>RIPRISTINA DATABASE</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
+@if (ShowResetModal)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);" role="dialog">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger shadow-lg">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold">⚠️ CONFERMA DISTRUZIONE E RIPRISTINO</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseResetModal" disabled="@IsProcessing"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+                        <span class="fs-3">💀</span>
+                        <div class="small">
+                            <strong>ATTENZIONE ESTREMA:</strong> Tutte le carte salvate e i dati attuali andranno persi definitivamente!
+                        </div>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        Per confermare l'intenzione di azzerare e ripristinare il database allo stato di fabbrica con i set e font ufficiali, digita la parola <strong>RIPRISTINA</strong> nel campo sottostante:
+                    </p>
+                    <div class="mb-3">
+                        <input type="text"
+                               class="form-control form-control-lg text-center font-monospace fw-bold @(ResetConfirmationInput == "RIPRISTINA" ? "is-valid" : "")"
+                               placeholder="Digita RIPRISTINA"
+                               @bind="ResetConfirmationInput"
+                               @bind:event="oninput"
+                               disabled="@IsProcessing" />
+                    </div>
+                </div>
+                <div class="modal-footer bg-light d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseResetModal" disabled="@IsProcessing">
+                        Annulla
+                    </button>
+                    <button type="button"
+                            class="btn btn-danger fw-bold px-4"
+                            @onclick="ExecuteDatabaseReset"
+                            disabled="@(ResetConfirmationInput != "RIPRISTINA" || IsProcessing)">
+                        💥 Confermo, Ripristina Ora
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -103,6 +185,9 @@
     private string? SuccessMessage;
     private bool IsProcessing;
     private string? CurrentUserId;
+
+    private bool ShowResetModal;
+    private string ResetConfirmationInput = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -126,9 +211,12 @@
         IsProcessing = true;
         try
         {
-            var info = await BackupService.CreateBackupAsync(CurrentUserId);
-            SuccessMessage = $"Snapshot creato con successo: {info.FileName} ({FormatBytes(info.SizeBytes)}).";
-            await LoadBackups();
+            using (LoadingService.BeginScope("Creazione snapshot atomico del database in corso..."))
+            {
+                var info = await BackupService.CreateBackupAsync(CurrentUserId);
+                SuccessMessage = $"Snapshot creato con successo: {info.FileName} ({FormatBytes(info.SizeBytes)}).";
+                await LoadBackups();
+            }
         }
         finally
         {
@@ -141,7 +229,10 @@
         IsProcessing = true;
         try
         {
-            IntegrityReport = await BackupService.VerifyDatabaseIntegrityAsync();
+            using (LoadingService.BeginScope("Verifica integrità PRAGMA SQLite in corso..."))
+            {
+                IntegrityReport = await BackupService.VerifyDatabaseIntegrityAsync();
+            }
         }
         finally
         {
@@ -154,9 +245,55 @@
         IsProcessing = true;
         try
         {
-            await BackupService.DeleteBackupAsync(fileName, CurrentUserId);
-            SuccessMessage = $"Snapshot {fileName} eliminato.";
-            await LoadBackups();
+            using (LoadingService.BeginScope("Eliminazione snapshot..."))
+            {
+                await BackupService.DeleteBackupAsync(fileName, CurrentUserId);
+                SuccessMessage = $"Snapshot {fileName} eliminato.";
+                await LoadBackups();
+            }
+        }
+        finally
+        {
+            IsProcessing = false;
+        }
+    }
+
+    private void OpenResetModal()
+    {
+        ResetConfirmationInput = "";
+        ShowResetModal = true;
+    }
+
+    private void CloseResetModal()
+    {
+        if (IsProcessing) return;
+        ShowResetModal = false;
+        ResetConfirmationInput = "";
+    }
+
+    private async Task ExecuteDatabaseReset()
+    {
+        if (ResetConfirmationInput != "RIPRISTINA" || IsProcessing) return;
+
+        IsProcessing = true;
+        try
+        {
+            using (LoadingService.BeginScope("Ripristino di fabbrica del database in corso... Ricreazione schema e seeding set..."))
+            {
+                var result = await DatabaseResetService.ResetDatabaseAsync();
+                if (result.Success)
+                {
+                    SuccessMessage = "Database ripristinato con successo allo stato di fabbrica! Tutti i template, set e font sono stati rigenerati.";
+                    IntegrityReport = null;
+                    await LoadBackups();
+                    ShowResetModal = false;
+                    ResetConfirmationInput = "";
+                }
+                else
+                {
+                    SuccessMessage = $"Errore durante il ripristino del database: {result.ErrorMessage}";
+                }
+            }
         }
         finally
         {
@@ -171,4 +308,5 @@
         return $"{bytes / (1024.0 * 1024.0):F2} MB";
     }
 }
+
 

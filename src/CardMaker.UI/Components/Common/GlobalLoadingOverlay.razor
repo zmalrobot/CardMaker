@@ -1,0 +1,74 @@
+@using CardMaker.Application.Common
+@inject ILoadingService LoadingService
+@inject NavigationManager NavigationManager
+@implements IDisposable
+
+@* Top page navigation progress bar (attivo durante i cambi rotta) *@
+@if (_isNavigating)
+{
+    <div class="cm-page-loading-bar" role="progressbar" aria-label="Caricamento pagina"></div>
+}
+
+@* Overlay modale a tutto schermo per operazioni lunghe o caricamenti bloccanti *@
+@if (LoadingService.IsLoading)
+{
+    <div class="cm-loading-backdrop" aria-live="assertive" role="alert">
+        <div class="cm-loading-dialog shadow-lg">
+            <div class="cm-loading-spinner-wrap">
+                <div class="spinner-border text-primary cm-loading-spinner" role="status">
+                    <span class="visually-hidden">Caricamento...</span>
+                </div>
+                <div class="cm-loading-card-icon">🃏</div>
+            </div>
+            <div class="cm-loading-text">
+                <h5 class="mb-1 fw-bold">Attendere prego</h5>
+                <p class="text-muted mb-0 small">@LoadingService.Message</p>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _isNavigating;
+    private CancellationTokenSource? _navigationCts;
+
+    protected override void OnInitialized()
+    {
+        LoadingService.OnChange += OnLoadingServiceChanged;
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLoadingServiceChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _navigationCts?.Cancel();
+        _navigationCts = new CancellationTokenSource();
+        var token = _navigationCts.Token;
+
+        _isNavigating = true;
+        StateHasChanged();
+
+        // Breve animazione della barra superiore completata
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(400, token);
+                _isNavigating = false;
+                await InvokeAsync(StateHasChanged);
+            }
+            catch (OperationCanceledException) { }
+        }, token);
+    }
+
+    public void Dispose()
+    {
+        LoadingService.OnChange -= OnLoadingServiceChanged;
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        _navigationCts?.Dispose();
+    }
+}
