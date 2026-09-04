@@ -61,7 +61,8 @@ public class AlignmentVisualTests
     [Fact]
     public void GenerateCardsForVisualInspection()
     {
-        var outDir = "/home/simone/.gemini/antigravity/brain/08342de4-3832-4f47-a194-0eb4c745aff3";
+        var outDir = Path.Combine(AppContext.BaseDirectory, "visual_tests_output");
+        Directory.CreateDirectory(outDir);
         var frameGen = new PlaceholderFrameGenerator();
         var symGen = new PlaceholderSymbolGenerator();
 

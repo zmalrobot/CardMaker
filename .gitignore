@@ -4,6 +4,8 @@ obj/
 [Dd]ebug/
 [Rr]elease/
 artifacts/
+publish/
+[Pp]ublish/
 *.user
 *.suo
 .vs/
@@ -17,6 +19,7 @@ data/
 ## Test
 TestResults/
 tests/**/actual/
+tests/**/visual_tests_output/
 
 ## Editor
 .idea/
