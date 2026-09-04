@@ -503,14 +503,13 @@ a:hover {
     inset: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(13, 17, 23, 0.65);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(13, 17, 23, 0.72);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 99998;
     user-select: none;
+    will-change: opacity;
     animation: cm-fade-in 0.15s ease-out;
 }
 
@@ -523,9 +522,11 @@ a:hover {
     color: var(--cm-text);
     border: 1px solid var(--cm-border);
     border-radius: 1rem;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
     max-width: 480px;
     width: 90%;
+    transform: translateZ(0);
+    will-change: transform, opacity;
     animation: cm-scale-up 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -543,11 +544,15 @@ a:hover {
     width: 44px !important;
     height: 44px !important;
     border-width: 3px !important;
+    transform: translateZ(0);
+    will-change: transform;
 }
 
 .cm-loading-card-icon {
     position: absolute;
     font-size: 1.15rem;
+    transform: translateZ(0);
+    will-change: transform;
     animation: cm-pulse-icon 1.5s infinite ease-in-out;
 }
 
@@ -564,6 +569,11 @@ a:hover {
 @keyframes cm-scale-up {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes cm-pulse-icon {
+    0%, 100% { transform: scale(1) translateZ(0); }
+    50% { transform: scale(1.15) translateZ(0); }
 }
 
 

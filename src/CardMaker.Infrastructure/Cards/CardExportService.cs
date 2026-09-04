@@ -53,18 +53,20 @@ public sealed class CardExportService(
             return new CardExportResult(false, null, null, null, "Layout front non valido.");
         }
 
-        using var frontResources = await LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-
-        var frontResult = await Task.Run(() => renderer.Render(new CardRenderRequest
+        var frontResult = await Task.Run(async () =>
         {
-            Layout = frontLayout,
-            Values = values,
-            Resources = frontResources,
-            Dpi = Math.Clamp(options.Dpi, 72, 1200),
-            IncludeBleed = options.IncludeBleed,
-            RoundCorners = options.RoundCorners,
-            Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
-        }), cancellationToken).ConfigureAwait(false);
+            using var frontResources = await LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+            return renderer.Render(new CardRenderRequest
+            {
+                Layout = frontLayout,
+                Values = values,
+                Resources = frontResources,
+                Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                IncludeBleed = options.IncludeBleed,
+                RoundCorners = options.RoundCorners,
+                Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
+            });
+        }, cancellationToken).ConfigureAwait(false);
 
         if (frontResult.Content is null || frontResult.Content.Length == 0)
         {
@@ -86,17 +88,20 @@ public sealed class CardExportService(
                 var backLayout = LayoutSerializer.Deserialize(card.BackTemplateVersion.LayoutJson);
                 if (backLayout is not null)
                 {
-                    using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                    backResult = await Task.Run(() => renderer.Render(new CardRenderRequest
+                    backResult = await Task.Run(async () =>
                     {
-                        Layout = backLayout,
-                        Values = values,
-                        Resources = backResources,
-                        Dpi = Math.Clamp(options.Dpi, 72, 1200),
-                        IncludeBleed = options.IncludeBleed,
-                        RoundCorners = options.RoundCorners,
-                        Format = RenderOutputFormat.Png,
-                    }), cancellationToken).ConfigureAwait(false);
+                        using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                        return renderer.Render(new CardRenderRequest
+                        {
+                            Layout = backLayout,
+                            Values = values,
+                            Resources = backResources,
+                            Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                            IncludeBleed = options.IncludeBleed,
+                            RoundCorners = options.RoundCorners,
+                            Format = RenderOutputFormat.Png,
+                        });
+                    }, cancellationToken).ConfigureAwait(false);
                 }
             }
 
@@ -109,17 +114,20 @@ public sealed class CardExportService(
             var backLayout = LayoutSerializer.Deserialize(card.BackTemplateVersion.LayoutJson);
             if (backLayout is not null)
             {
-                using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                var backResult = await Task.Run(() => renderer.Render(new CardRenderRequest
+                var backResult = await Task.Run(async () =>
                 {
-                    Layout = backLayout,
-                    Values = values,
-                    Resources = backResources,
-                    Dpi = Math.Clamp(options.Dpi, 72, 1200),
-                    IncludeBleed = options.IncludeBleed,
-                    RoundCorners = options.RoundCorners,
-                    Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
-                }), cancellationToken).ConfigureAwait(false);
+                    using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                    return renderer.Render(new CardRenderRequest
+                    {
+                        Layout = backLayout,
+                        Values = values,
+                        Resources = backResources,
+                        Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                        IncludeBleed = options.IncludeBleed,
+                        RoundCorners = options.RoundCorners,
+                        Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
+                    });
+                }, cancellationToken).ConfigureAwait(false);
 
                 var ext = options.Format == RenderFormat.Jpg ? "jpg" : "png";
                 var mime = options.Format == RenderFormat.Jpg ? "image/jpeg" : "image/png";

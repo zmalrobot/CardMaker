@@ -22,47 +22,50 @@ public sealed class CardPreviewService(
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        CardLayout? layout;
-        try
+        return await Task.Run(async () =>
         {
-            layout = LayoutSerializer.Deserialize(request.LayoutJson);
-        }
-        catch (System.Text.Json.JsonException ex)
-        {
-            return CardPreviewResult.Fail([$"Layout non leggibile: {ex.Message}"]);
-        }
+            CardLayout? layout;
+            try
+            {
+                layout = LayoutSerializer.Deserialize(request.LayoutJson);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                return CardPreviewResult.Fail([$"Layout non leggibile: {ex.Message}"]);
+            }
 
-        var validation = LayoutSerializer.Validate(layout);
-        if (!validation.IsValid)
-        {
-            return CardPreviewResult.Fail([.. validation.Issues.Select(i => $"{i.Code}: {i.Message}")]);
-        }
+            var validation = LayoutSerializer.Validate(layout);
+            if (!validation.IsValid)
+            {
+                return CardPreviewResult.Fail([.. validation.Issues.Select(i => $"{i.Code}: {i.Message}")]);
+            }
 
-        using var resources = await LoadResourcesAsync(layout!, request, cancellationToken).ConfigureAwait(false);
+            using var resources = await LoadResourcesAsync(layout!, request, cancellationToken).ConfigureAwait(false);
 
-        var result = await Task.Run(() => renderer.Render(new CardRenderRequest
-        {
-            Layout = layout!,
-            Values = request.Values,
-            Resources = resources,
-            Dpi = Math.Clamp(request.Dpi, 48, 1200),
-            IncludeBleed = request.IncludeBleed,
-            RoundCorners = request.RoundCorners,
-            ShowGuides = request.ShowGuides,
-            Format = string.Equals(request.Format, "jpg", StringComparison.OrdinalIgnoreCase)
-                ? RenderOutputFormat.Jpeg
-                : RenderOutputFormat.Png,
-        }), cancellationToken).ConfigureAwait(false);
+            var result = renderer.Render(new CardRenderRequest
+            {
+                Layout = layout!,
+                Values = request.Values,
+                Resources = resources,
+                Dpi = Math.Clamp(request.Dpi, 48, 1200),
+                IncludeBleed = request.IncludeBleed,
+                RoundCorners = request.RoundCorners,
+                ShowGuides = request.ShowGuides,
+                Format = string.Equals(request.Format, "jpg", StringComparison.OrdinalIgnoreCase)
+                    ? RenderOutputFormat.Jpeg
+                    : RenderOutputFormat.Png,
+            });
 
-        return new CardPreviewResult(
-            true,
-            result.Content,
-            result.ContentType,
-            result.WidthPx,
-            result.HeightPx,
-            [.. result.Warnings.Select(w => new PreviewWarning(w.Code, w.Message, w.LayerId))],
-            result.Duration.TotalMilliseconds,
-            []);
+            return new CardPreviewResult(
+                true,
+                result.Content,
+                result.ContentType,
+                result.WidthPx,
+                result.HeightPx,
+                [.. result.Warnings.Select(w => new PreviewWarning(w.Code, w.Message, w.LayerId))],
+                result.Duration.TotalMilliseconds,
+                []);
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<PreloadedRenderResources> LoadResourcesAsync(

@@ -66,6 +66,8 @@ else if (IsWizardStep && IsNew)
                 <label class="form-label small fw-semibold">Gioco</label>
                 <select class="form-select" @bind="CurrentGameKey" @bind:after="OnGameChangedAsync">
                     <option value="yugioh">Yu-Gi-Oh! (Classico & Rush Duel)</option>
+                    <option value="mtg">Magic: The Gathering</option>
+                    <option value="pokemon">Pokémon TCG</option>
                 </select>
             </div>
 
@@ -222,8 +224,6 @@ else
             var authState = await AuthProvider.GetAuthenticationStateAsync();
             var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            AvailableCardTypes = await CardService.GetGameCardTypesAsync(CurrentGameKey);
-
             if (Id.HasValue && !string.IsNullOrEmpty(userId))
             {
                 var card = await CardService.GetCardAsync(Id.Value, userId);
@@ -232,6 +232,7 @@ else
                     CardTitle = card.Title;
                     CurrentGameKey = card.GameKey;
                     CurrentGameId = card.GameId;
+                    AvailableCardTypes = await CardService.GetGameCardTypesAsync(CurrentGameKey);
                     SelectedCardTypeId = card.CardTypeId;
                     CurrentCardType = AvailableCardTypes.FirstOrDefault(c => c.Id == card.CardTypeId);
                     CardValues = new Dictionary<string, CardValue>(card.Values);
@@ -240,9 +241,13 @@ else
                     IsWizardStep = false;
                 }
             }
-            else if (AvailableCardTypes.Count > 0)
+            else
             {
-                SelectCardType(AvailableCardTypes[0]);
+                AvailableCardTypes = await CardService.GetGameCardTypesAsync(CurrentGameKey);
+                if (AvailableCardTypes.Count > 0)
+                {
+                    SelectCardType(AvailableCardTypes[0]);
+                }
             }
         }
         catch (Exception ex)
