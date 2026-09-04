@@ -3,6 +3,7 @@
 @attribute [Authorize]
 
 @using CardMaker.Application.Assets
+@using CardMaker.Application.Common
 @using CardMaker.Domain.Assets
 
 @inject ICardService CardService
@@ -11,6 +12,7 @@
 @inject ITemplateSelector TemplateSelector
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject ILoadingService LoadingService
 
 <PageTitle>@(IsNew ? "Nuova Carta" : $"Modifica {CardTitle}") — CardMaker</PageTitle>
 
@@ -156,7 +158,7 @@ else
             {
                 <DynamicCardForm Fields="@CurrentCardType.Fields" 
                                  Values="@CardValues" 
-                                 OnValuesChanged="@TriggerPreviewDebounced" />
+                                 OnValuesChanged="@OnFormValuesChanged" />
             }
         </FormContent>
 
@@ -234,6 +236,7 @@ else
                     CurrentCardType = AvailableCardTypes.FirstOrDefault(c => c.Id == card.CardTypeId);
                     CardValues = new Dictionary<string, CardValue>(card.Values);
                     SelectedTraits = [.. card.SelectedTraits];
+                    SyncTraitsToCardValues();
                     IsWizardStep = false;
                 }
             }
@@ -274,6 +277,7 @@ else
         {
             CardTitle = $"Nuovo {ct.Name}";
             CardValues.Clear();
+            SelectedTraits.Clear();
             foreach (var field in ct.Fields)
             {
                 if (!string.IsNullOrWhiteSpace(field.DefaultValueJson))
@@ -281,6 +285,7 @@ else
                     CardValues[field.Key] = CardValue.FromText(field.DefaultValueJson.Trim('"'));
                 }
             }
+            SyncTraitsToCardValues();
         }
     }
 
@@ -294,13 +299,146 @@ else
         {
             SelectedTraits.Add(traitKey);
         }
+        SyncTraitsToCardValues();
         _ = TriggerPreviewDebounced();
+    }
+
+    private void SyncTraitsToCardValues()
+    {
+        CardValues["selectedTraits"] = CardValue.FromList(SelectedTraits);
+        CardValues["traits"] = CardValue.FromList(SelectedTraits);
+
+        if (CurrentCardType is null) return;
+
+        var selectedTraitDtos = CurrentCardType.AllowedTraits
+            .Where(t => SelectedTraits.Contains(t.Key))
+            .ToList();
+
+        var traitNames = selectedTraitDtos.Select(t => t.Name).ToList();
+        var traitsText = string.Join(" / ", traitNames);
+        CardValues["traitsDisplay"] = CardValue.FromText(traitsText);
+        CardValues["abilities"] = CardValue.FromText(traitsText);
+
+        foreach (var t in CurrentCardType.AllowedTraits)
+        {
+            CardValues[$"trait_{t.Key}"] = CardValue.FromFlag(SelectedTraits.Contains(t.Key));
+        }
+
+        if (CurrentGameKey == "yugioh")
+        {
+            UpdateYuGiOhValues(traitNames);
+        }
+        else if (CurrentGameKey == "mtg")
+        {
+            UpdateMtgValues(traitNames);
+        }
+        else if (CurrentGameKey == "pokemon")
+        {
+            UpdatePokemonValues(traitNames);
+        }
+    }
+
+    private void UpdateYuGiOhValues(List<string> traitNames)
+    {
+        if (CurrentCardType is null) return;
+
+        var raceKey = CardValues.TryGetValue("race", out var rVal) ? rVal.AsText() : "dragon";
+        var raceField = CurrentCardType.Fields.FirstOrDefault(f => f.Key == "race");
+        var raceName = raceField?.Options.FirstOrDefault(o => o.Key == raceKey)?.Label ?? raceKey;
+        if (string.IsNullOrWhiteSpace(raceName) || raceName == "dragon")
+        {
+            raceName = "Drago";
+        }
+        CardValues["raceName"] = CardValue.FromText(raceName);
+
+        var isNormal = CurrentCardType.Key.Contains("normal", StringComparison.OrdinalIgnoreCase);
+        var isFusion = CurrentCardType.Key.Contains("fusion", StringComparison.OrdinalIgnoreCase);
+        var isSynchro = CurrentCardType.Key.Contains("synchro", StringComparison.OrdinalIgnoreCase);
+        var isXyz = CurrentCardType.Key.Contains("xyz", StringComparison.OrdinalIgnoreCase);
+        var isLink = CurrentCardType.Key.Contains("link", StringComparison.OrdinalIgnoreCase);
+        var isRitual = CurrentCardType.Key.Contains("ritual", StringComparison.OrdinalIgnoreCase);
+        var isPendulum = CurrentCardType.Key.Contains("pendulum", StringComparison.OrdinalIgnoreCase);
+
+        var effectFlag = isNormal
+            ? (traitNames.Count > 0 ? "Normale" : string.Empty)
+            : (isFusion ? "Fusione / Effetto" :
+               isSynchro ? "Synchro / Effetto" :
+               isXyz ? "Xyz / Effetto" :
+               isLink ? "Link / Effetto" :
+               isRitual ? "Rituale / Effetto" :
+               isPendulum ? "Pendulum / Effetto" : "Effetto");
+
+        CardValues["effectFlag"] = CardValue.FromText(effectFlag);
+
+        var parts = new List<string> { raceName };
+        parts.AddRange(traitNames);
+        if (!string.IsNullOrEmpty(effectFlag))
+        {
+            parts.Add(effectFlag);
+        }
+
+        CardValues["typeLine"] = CardValue.FromText($"[{string.Join(" / ", parts)}]");
+    }
+
+    private void UpdateMtgValues(List<string> traitNames)
+    {
+        if (!CardValues.TryGetValue("typeLine", out var tv) || string.IsNullOrWhiteSpace(tv.AsText()))
+        {
+            CardValues["typeLine"] = CardValue.FromText("Creatura — Angelo");
+        }
+
+        var current = CardValues["typeLine"].AsText();
+        var hasLegendary = SelectedTraits.Contains("legendary");
+
+        if (hasLegendary && !current.Contains("Leggendari", StringComparison.OrdinalIgnoreCase))
+        {
+            if (current.StartsWith("Creatura", StringComparison.OrdinalIgnoreCase))
+            {
+                current = "Creatura Leggendaria" + current[8..];
+            }
+            else
+            {
+                current = "Leggendario " + current;
+            }
+            CardValues["typeLine"] = CardValue.FromText(current);
+        }
+        else if (!hasLegendary && current.Contains("Creatura Leggendaria", StringComparison.OrdinalIgnoreCase))
+        {
+            current = "Creatura" + current.Substring("Creatura Leggendaria".Length);
+            CardValues["typeLine"] = CardValue.FromText(current);
+        }
+
+        CardValues["supertype"] = CardValue.FromText(string.Join(" ", traitNames));
+    }
+
+    private void UpdatePokemonValues(List<string> traitNames)
+    {
+        var traitsStr = string.Join(" ", traitNames);
+        CardValues["traitBadge"] = CardValue.FromText(traitsStr);
+        if (SelectedTraits.Count > 0)
+        {
+            CardValues["stageTraitSuffix"] = CardValue.FromText(" · " + traitsStr.ToUpperInvariant());
+        }
+        else
+        {
+            CardValues["stageTraitSuffix"] = CardValue.FromText(string.Empty);
+        }
+    }
+
+    private async Task OnFormValuesChanged()
+    {
+        SyncTraitsToCardValues();
+        await TriggerPreviewDebounced();
     }
 
     private async Task ProceedToEditor()
     {
-        IsWizardStep = false;
-        await TriggerPreviewDebounced();
+        using (await LoadingService.BeginScopeAsync("Caricamento editor e template..."))
+        {
+            IsWizardStep = false;
+            StateHasChanged();
+            await RenderLivePreviewAsync(CancellationToken.None);
+        }
     }
 
     private async Task TriggerPreviewDebounced()
@@ -328,6 +466,7 @@ else
 
         IsPreviewLoading = true;
         StateHasChanged();
+        await Task.Yield();
 
         try
         {
@@ -371,94 +510,97 @@ else
     {
         if (CurrentCardType is null) return;
 
-        IsSaving = true;
-        ErrorMessage = null;
-        SuccessMessage = null;
-
-        try
+        using (await LoadingService.BeginScopeAsync("Salvataggio carta e generazione anteprima..."))
         {
-            var authState = await AuthProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                ErrorMessage = "Utente non autenticato.";
-                return;
-            }
+            IsSaving = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
 
-            var template = TemplateSelector.SelectTemplate(CurrentCardType.Templates, CardValues);
-            var version = template?.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
-            if (version is null)
-            {
-                ErrorMessage = "Impossibile salvare: nessun template valido per questa configurazione.";
-                return;
-            }
-
-            Guid? thumbnailAssetId = null;
             try
             {
-                var previewRender = await PreviewService.RenderAsync(new CardPreviewRequest
+                var authState = await AuthProvider.GetAuthenticationStateAsync();
+                var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId))
                 {
-                    LayoutJson = version.LayoutJson,
-                    Values = CardValues,
-                    Dpi = 96,
-                    IncludeBleed = false,
-                });
+                    ErrorMessage = "Utente non autenticato.";
+                    return;
+                }
 
-                if (previewRender.Succeeded && previewRender.Content is not null)
+                var template = TemplateSelector.SelectTemplate(CurrentCardType.Templates, CardValues);
+                var version = template?.Versions.OrderByDescending(v => v.VersionNumber).FirstOrDefault();
+                if (version is null)
                 {
-                    using var stream = new MemoryStream(previewRender.Content);
-                    var uploadOutcome = await AssetCatalog.UploadAsync(stream, new AssetUploadRequest
+                    ErrorMessage = "Impossibile salvare: nessun template valido per questa configurazione.";
+                    return;
+                }
+
+                Guid? thumbnailAssetId = null;
+                try
+                {
+                    var previewRender = await PreviewService.RenderAsync(new CardPreviewRequest
                     {
-                        FileName = $"thumb_{Guid.NewGuid():N}.png",
-                        Category = AssetCategory.Other,
-                        LicenseNote = "Generated card thumbnail",
-                        GameId = CurrentCardType.GameId,
-                        UploadedByUserId = userId,
-                        Kind = UploadKind.Image
+                        LayoutJson = version.LayoutJson,
+                        Values = CardValues,
+                        Dpi = 96,
+                        IncludeBleed = false,
                     });
 
-                    if (uploadOutcome.Succeeded && uploadOutcome.Asset is not null)
+                    if (previewRender.Succeeded && previewRender.Content is not null)
                     {
-                        thumbnailAssetId = uploadOutcome.Asset.Id;
+                        using var stream = new MemoryStream(previewRender.Content);
+                        var uploadOutcome = await AssetCatalog.UploadAsync(stream, new AssetUploadRequest
+                        {
+                            FileName = $"thumb_{Guid.NewGuid():N}.png",
+                            Category = AssetCategory.Other,
+                            LicenseNote = "Generated card thumbnail",
+                            GameId = CurrentCardType.GameId,
+                            UploadedByUserId = userId,
+                            Kind = UploadKind.Image
+                        });
+
+                        if (uploadOutcome.Succeeded && uploadOutcome.Asset is not null)
+                        {
+                            thumbnailAssetId = uploadOutcome.Asset.Id;
+                        }
                     }
                 }
-            }
-            catch
-            {
-                // La mancata generazione della miniatura non blocca il salvataggio della carta
-            }
+                catch
+                {
+                    // La mancata generazione della miniatura non blocca il salvataggio della carta
+                }
 
-            var request = new SaveCardRequest
-            {
-                Title = string.IsNullOrWhiteSpace(CardTitle) ? "Senza Titolo" : CardTitle,
-                GameId = CurrentCardType.GameId,
-                CardTypeId = CurrentCardType.Id,
-                TemplateVersionId = version.Id,
-                Values = CardValues,
-                SelectedTraits = SelectedTraits,
-                ThumbnailAssetId = thumbnailAssetId,
-            };
+                var request = new SaveCardRequest
+                {
+                    Title = string.IsNullOrWhiteSpace(CardTitle) ? "Senza Titolo" : CardTitle,
+                    GameId = CurrentCardType.GameId,
+                    CardTypeId = CurrentCardType.Id,
+                    TemplateVersionId = version.Id,
+                    Values = CardValues,
+                    SelectedTraits = SelectedTraits,
+                    ThumbnailAssetId = thumbnailAssetId,
+                };
 
-            if (IsNew)
-            {
-                var created = await CardService.CreateCardAsync(request, userId);
-                Id = created.Id;
-                SuccessMessage = "Carta creata con successo!";
-                Navigation.NavigateTo($"/cards/edit/{created.Id}");
+                if (IsNew)
+                {
+                    var created = await CardService.CreateCardAsync(request, userId);
+                    Id = created.Id;
+                    SuccessMessage = "Carta creata con successo!";
+                    Navigation.NavigateTo($"/cards/edit/{created.Id}");
+                }
+                else
+                {
+                    await CardService.UpdateCardAsync(Id!.Value, request, userId);
+                    SuccessMessage = "Modifiche salvate con successo!";
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await CardService.UpdateCardAsync(Id!.Value, request, userId);
-                SuccessMessage = "Modifiche salvate con successo!";
+                ErrorMessage = ex.Message;
             }
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            IsSaving = false;
+            finally
+            {
+                IsSaving = false;
+            }
         }
     }
 
@@ -466,28 +608,34 @@ else
     {
         if (!Id.HasValue) return;
 
-        IsSaving = true;
-        try
+        using (await LoadingService.BeginScopeAsync("Duplicazione carta in corso..."))
         {
-            var authState = await AuthProvider.GetAuthenticationStateAsync();
-            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId)) return;
+            IsSaving = true;
+            try
+            {
+                var authState = await AuthProvider.GetAuthenticationStateAsync();
+                var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userId)) return;
 
-            var duplicated = await CardService.DuplicateCardAsync(Id.Value, userId);
-            Navigation.NavigateTo($"/cards/edit/{duplicated.Id}");
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            IsSaving = false;
+                var duplicated = await CardService.DuplicateCardAsync(Id.Value, userId);
+                Navigation.NavigateTo($"/cards/edit/{duplicated.Id}");
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                IsSaving = false;
+            }
         }
     }
 
-    private void GoBack()
+    private async Task GoBack()
     {
-        Navigation.NavigateTo("/cards");
+        using (await LoadingService.BeginScopeAsync("Caricamento collezione carte..."))
+        {
+            Navigation.NavigateTo("/cards");
+        }
     }
 }

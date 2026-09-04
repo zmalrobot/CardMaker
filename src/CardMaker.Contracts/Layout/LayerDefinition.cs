@@ -45,6 +45,9 @@ public abstract record LayerDefinition
     /// <summary>Coordinate normalizzate 0..1 rispetto al trim della carta (ADR-008).</summary>
     public NormalizedRect Rect { get; init; }
 
+    /// <summary>Se true, il layer si estende sull'intero Master Canvas inclusa l'abbondanza (frame, retro, overlay a piena pagina).</summary>
+    public bool FullBleed { get; init; }
+
     public LayerAnchor Anchor { get; init; } = LayerAnchor.TopLeft;
 
     public double RotationDeg { get; init; }

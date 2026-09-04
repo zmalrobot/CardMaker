@@ -377,7 +377,7 @@ public static class PokemonSeedData
             new StaticImageLayer
             {
                 Id = "frame", Name = "Frame", Z = 1,
-                Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = spec.FrameKey, Fit = ImageFit.Stretch,
+                Rect = new NormalizedRect(0, 0, 1, 1), FullBleed = true, AssetKey = spec.FrameKey, Fit = ImageFit.Stretch,
             },
             new TextLayer
             {
@@ -540,7 +540,7 @@ public static class PokemonSeedData
             Layers =
             [
                 new ImageSlotLayer { Id = "artwork", Name = "Illustrazione", Z = 0, Rect = regions.ArtWindow, FieldKey = "artwork", Fit = ImageFit.Cover },
-                new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = frameKey, Fit = ImageFit.Stretch },
+                new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), FullBleed = true, AssetKey = frameKey, Fit = ImageFit.Stretch },
                 new TextLayer { Id = "name", Name = "Nome Carta", Z = 2, Rect = regions.NameBox, Source = "{{name}}", Style = "pokemonName" },
                 new TextLayer { Id = "subtype", Name = "Sottotipo", Z = 2, Rect = regions.AttributeBox, Source = "{{trainerType}}", Style = "stage" },
                 new RichTextLayer { Id = "effect", Name = "Effetto", Z = 2, Rect = regions.EffectBox, Source = "{{effectText}}", Style = "attackEffect" },
@@ -560,7 +560,7 @@ public static class PokemonSeedData
             TextStyles = textStyles,
             Layers =
             [
-                new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = frameKey, Fit = ImageFit.Stretch },
+                new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), FullBleed = true, AssetKey = frameKey, Fit = ImageFit.Stretch },
                 new TextLayer { Id = "name", Name = "Nome Energia", Z = 2, Rect = regions.NameBox, Source = "{{name}}", Style = "pokemonName" },
                 new SymbolSlotLayer { Id = "energy-type", Name = "Tipo Energia", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = "pokemon-energy", FieldKey = "energyType" },
                 new SymbolSlotLayer { Id = "big-symbol", Name = "Simbolo Gigante", Z = 2, Rect = regions.ArtWindow, SymbolSetKey = "pokemon-energy", FieldKey = "energyType" },

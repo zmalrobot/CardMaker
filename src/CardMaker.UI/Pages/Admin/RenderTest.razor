@@ -6,6 +6,7 @@
 @inject IAssetCatalog Catalog
 @inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
+@inject CardMaker.Application.Common.ILoadingService LoadingService
 
 <PageTitle>Prova Motore — CardMaker</PageTitle>
 
@@ -532,125 +533,128 @@
         _errors = [];
         StateHasChanged();
 
-        try
+        using (await LoadingService.BeginScopeAsync($"Rendering carta a {_dpi} DPI in corso..."))
         {
-            Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
-            CardPreviewResult result;
-
-            if (IsMtg)
+            try
             {
-                var values = DemoLayouts.MtgSampleValues();
-                values["name"] = CardValue.FromText(_mtgName);
-                values["manaCost"] = CardValue.FromText(_mtgManaCost);
-                values["typeLine"] = CardValue.FromText(_mtgTypeLine);
-                values["rulesText"] = CardValue.FromText(_mtgRules);
-                values["flavorText"] = CardValue.FromText(_mtgFlavor);
-                values["power"] = CardValue.FromText(_mtgPower);
-                values["toughness"] = CardValue.FromText(_mtgToughness);
-                values["setRarity"] = CardValue.FromText(_mtgRarity);
-                values["collectorNumber"] = CardValue.FromText(_mtgCollectorNumber);
-                values["illustrator"] = CardValue.FromText(_mtgIllustrator);
-                values["copyright"] = CardValue.FromText(_mtgCopyright);
+                Guid? gameId = Guid.TryParse(_selectedGameId, out var gid) ? gid : null;
+                CardPreviewResult result;
 
-                if (_artworkAssetId.HasValue)
+                if (IsMtg)
                 {
-                    values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+                    var values = DemoLayouts.MtgSampleValues();
+                    values["name"] = CardValue.FromText(_mtgName);
+                    values["manaCost"] = CardValue.FromText(_mtgManaCost);
+                    values["typeLine"] = CardValue.FromText(_mtgTypeLine);
+                    values["rulesText"] = CardValue.FromText(_mtgRules);
+                    values["flavorText"] = CardValue.FromText(_mtgFlavor);
+                    values["power"] = CardValue.FromText(_mtgPower);
+                    values["toughness"] = CardValue.FromText(_mtgToughness);
+                    values["setRarity"] = CardValue.FromText(_mtgRarity);
+                    values["collectorNumber"] = CardValue.FromText(_mtgCollectorNumber);
+                    values["illustrator"] = CardValue.FromText(_mtgIllustrator);
+                    values["copyright"] = CardValue.FromText(_mtgCopyright);
+
+                    if (_artworkAssetId.HasValue)
+                    {
+                        values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+                    }
+
+                    result = await Preview.RenderAsync(new CardPreviewRequest
+                    {
+                        LayoutJson = LayoutSerializer.Serialize(DemoLayouts.MtgCreature()),
+                        Values = values,
+                        GameId = gameId,
+                        Dpi = _dpi,
+                        ShowGuides = _showGuides,
+                    });
+                }
+                else if (IsPokemon)
+                {
+                    var values = DemoLayouts.PokemonSampleValues();
+                    values["name"] = CardValue.FromText(_pkmnName);
+                    values["stage"] = CardValue.FromText(_pkmnStage);
+                    values["hp"] = CardValue.FromText(_pkmnHp);
+                    values["energyType"] = CardValue.FromText(_pkmnEnergy);
+                    values["pokedexEntry"] = CardValue.FromText(_pkmnPokedex);
+                    values["attack1Name"] = CardValue.FromText(_pkmnAtk1Name);
+                    values["attack1Damage"] = CardValue.FromText(_pkmnAtk1Dmg);
+                    values["attack1Effect"] = CardValue.FromText(_pkmnAtk1Effect);
+                    values["attack2Name"] = CardValue.FromText(_pkmnAtk2Name);
+                    values["attack2Damage"] = CardValue.FromText(_pkmnAtk2Dmg);
+                    values["attack2Effect"] = CardValue.FromText(_pkmnAtk2Effect);
+                    values["weakness"] = CardValue.FromText(_pkmnWeakness);
+                    values["weaknessValue"] = CardValue.FromText(_pkmnWeaknessVal);
+                    values["retreatCost"] = CardValue.FromText(_pkmnRetreat);
+                    values["flavorText"] = CardValue.FromText(_pkmnFlavor);
+                    values["illustrator"] = CardValue.FromText(_pkmnIllustrator);
+                    values["cardNumber"] = CardValue.FromText(_pkmnCardNum);
+                    values["copyright"] = CardValue.FromText(_pkmnCopyright);
+
+                    if (_artworkAssetId.HasValue)
+                    {
+                        values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+                    }
+
+                    result = await Preview.RenderAsync(new CardPreviewRequest
+                    {
+                        LayoutJson = LayoutSerializer.Serialize(DemoLayouts.PokemonBasic()),
+                        Values = values,
+                        GameId = gameId,
+                        Dpi = _dpi,
+                        ShowGuides = _showGuides,
+                    });
+                }
+                else
+                {
+                    var values = DemoLayouts.SampleValues();
+                    values["name"] = CardValue.FromText(_name);
+                    values["race"] = CardValue.FromText(_race);
+                    values["effectFlag"] = CardValue.FromText(_effectFlag);
+                    values["effectText"] = CardValue.FromText(_effect);
+                    values["atk"] = CardValue.FromText(_atk);
+                    values["def"] = CardValue.FromText(_def);
+                    values["setCode"] = CardValue.FromText(_setCode);
+                    values["edition"] = CardValue.FromText(_edition);
+                    values["passcode"] = CardValue.FromText(_passcode);
+                    values["copyright"] = CardValue.FromText(_copyright);
+                    values["summonMethod"] = CardValue.FromText(_summonMethod);
+
+                    if (_artworkAssetId.HasValue)
+                    {
+                        values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+                    }
+
+                    result = await Preview.RenderAsync(new CardPreviewRequest
+                    {
+                        LayoutJson = LayoutSerializer.Serialize(DemoLayouts.YuGiOhMonster()),
+                        Values = values,
+                        GameId = gameId,
+                        Dpi = _dpi,
+                        ShowGuides = _showGuides,
+                    });
                 }
 
-                result = await Preview.RenderAsync(new CardPreviewRequest
-                {
-                    LayoutJson = LayoutSerializer.Serialize(DemoLayouts.MtgCreature()),
-                    Values = values,
-                    GameId = gameId,
-                    Dpi = _dpi,
-                    ShowGuides = _showGuides,
-                });
-            }
-            else if (IsPokemon)
-            {
-                var values = DemoLayouts.PokemonSampleValues();
-                values["name"] = CardValue.FromText(_pkmnName);
-                values["stage"] = CardValue.FromText(_pkmnStage);
-                values["hp"] = CardValue.FromText(_pkmnHp);
-                values["energyType"] = CardValue.FromText(_pkmnEnergy);
-                values["pokedexEntry"] = CardValue.FromText(_pkmnPokedex);
-                values["attack1Name"] = CardValue.FromText(_pkmnAtk1Name);
-                values["attack1Damage"] = CardValue.FromText(_pkmnAtk1Dmg);
-                values["attack1Effect"] = CardValue.FromText(_pkmnAtk1Effect);
-                values["attack2Name"] = CardValue.FromText(_pkmnAtk2Name);
-                values["attack2Damage"] = CardValue.FromText(_pkmnAtk2Dmg);
-                values["attack2Effect"] = CardValue.FromText(_pkmnAtk2Effect);
-                values["weakness"] = CardValue.FromText(_pkmnWeakness);
-                values["weaknessValue"] = CardValue.FromText(_pkmnWeaknessVal);
-                values["retreatCost"] = CardValue.FromText(_pkmnRetreat);
-                values["flavorText"] = CardValue.FromText(_pkmnFlavor);
-                values["illustrator"] = CardValue.FromText(_pkmnIllustrator);
-                values["cardNumber"] = CardValue.FromText(_pkmnCardNum);
-                values["copyright"] = CardValue.FromText(_pkmnCopyright);
+                _errors = result.Errors;
+                _warnings = result.Warnings;
 
-                if (_artworkAssetId.HasValue)
+                if (result.Succeeded && result.Content is not null)
                 {
-                    values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
+                    _imageData = $"data:{result.ContentType};base64,{Convert.ToBase64String(result.Content)}";
+                    _width = result.WidthPx;
+                    _height = result.HeightPx;
+                    _elapsed = result.ElapsedMs;
                 }
-
-                result = await Preview.RenderAsync(new CardPreviewRequest
-                {
-                    LayoutJson = LayoutSerializer.Serialize(DemoLayouts.PokemonBasic()),
-                    Values = values,
-                    GameId = gameId,
-                    Dpi = _dpi,
-                    ShowGuides = _showGuides,
-                });
             }
-            else
+            catch (Exception ex)
             {
-                var values = DemoLayouts.SampleValues();
-                values["name"] = CardValue.FromText(_name);
-                values["race"] = CardValue.FromText(_race);
-                values["effectFlag"] = CardValue.FromText(_effectFlag);
-                values["effectText"] = CardValue.FromText(_effect);
-                values["atk"] = CardValue.FromText(_atk);
-                values["def"] = CardValue.FromText(_def);
-                values["setCode"] = CardValue.FromText(_setCode);
-                values["edition"] = CardValue.FromText(_edition);
-                values["passcode"] = CardValue.FromText(_passcode);
-                values["copyright"] = CardValue.FromText(_copyright);
-                values["summonMethod"] = CardValue.FromText(_summonMethod);
-
-                if (_artworkAssetId.HasValue)
-                {
-                    values["artwork"] = CardValue.FromText(_artworkAssetId.Value.ToString());
-                }
-
-                result = await Preview.RenderAsync(new CardPreviewRequest
-                {
-                    LayoutJson = LayoutSerializer.Serialize(DemoLayouts.YuGiOhMonster()),
-                    Values = values,
-                    GameId = gameId,
-                    Dpi = _dpi,
-                    ShowGuides = _showGuides,
-                });
+                _errors = [$"Errore durante il rendering: {ex.Message}"];
             }
-
-            _errors = result.Errors;
-            _warnings = result.Warnings;
-
-            if (result.Succeeded && result.Content is not null)
+            finally
             {
-                _imageData = $"data:{result.ContentType};base64,{Convert.ToBase64String(result.Content)}";
-                _width = result.WidthPx;
-                _height = result.HeightPx;
-                _elapsed = result.ElapsedMs;
+                _busy = false;
+                StateHasChanged();
             }
-        }
-        catch (Exception ex)
-        {
-            _errors = [$"Errore durante il rendering: {ex.Message}"];
-        }
-        finally
-        {
-            _busy = false;
-            StateHasChanged();
         }
     }
 }

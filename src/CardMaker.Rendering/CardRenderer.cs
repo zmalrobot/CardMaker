@@ -819,6 +819,15 @@ public sealed class CardRenderer(TextEngine textEngine)
 
     private static SKRect ResolveRect(LayerDefinition layer, CardGeometry geometry)
     {
+        if (layer.FullBleed ||
+            (layer.Rect.X == 0 && layer.Rect.Y == 0 && layer.Rect.Width == 1 && layer.Rect.Height == 1 &&
+             (layer.Id is "frame" or "back" ||
+              string.Equals(layer.Name, "Frame", StringComparison.OrdinalIgnoreCase) ||
+              string.Equals(layer.Name, "Retro", StringComparison.OrdinalIgnoreCase))))
+        {
+            return new SKRect(0, 0, geometry.MasterWidthPx, geometry.MasterHeightPx);
+        }
+
         var (x, y, width, height) = geometry.ToMasterPixels(layer.Rect);
 
         var left = layer.Anchor switch

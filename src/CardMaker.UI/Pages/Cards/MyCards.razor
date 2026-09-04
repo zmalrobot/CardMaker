@@ -4,6 +4,7 @@
 @inject ICardService CardService
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject CardMaker.Application.Common.ILoadingService LoadingService
 
 <PageTitle>Le mie Carte — CardMaker</PageTitle>
 
@@ -135,8 +136,11 @@ else
         var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return;
 
-        await CardService.DuplicateCardAsync(cardId, userId);
-        await LoadCardsAsync();
+        using (await LoadingService.BeginScopeAsync("Duplicazione carta in corso..."))
+        {
+            await CardService.DuplicateCardAsync(cardId, userId);
+            await LoadCardsAsync();
+        }
     }
 
     private async Task ConfirmDeleteAsync(Guid cardId, string title)
@@ -145,8 +149,11 @@ else
         var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrEmpty(userId)) return;
 
-        await CardService.DeleteCardAsync(cardId, userId);
-        await LoadCardsAsync();
+        using (await LoadingService.BeginScopeAsync("Eliminazione carta in corso..."))
+        {
+            await CardService.DeleteCardAsync(cardId, userId);
+            await LoadCardsAsync();
+        }
     }
 
     private void OpenExportModal(Guid cardId)

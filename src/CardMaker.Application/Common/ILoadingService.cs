@@ -12,4 +12,5 @@ public interface ILoadingService
     void Show(string message = "Caricamento in corso...");
     void Hide();
     IDisposable BeginScope(string message = "Caricamento in corso...");
+    Task<IDisposable> BeginScopeAsync(string message = "Caricamento in corso...");
 }

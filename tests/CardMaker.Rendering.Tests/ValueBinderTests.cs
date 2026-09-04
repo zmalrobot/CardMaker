@@ -93,4 +93,60 @@ public class ValueBinderTests
 
         Assert.Equal("LINK-3", binder.Get("linkRating")!.AsText());
     }
+
+    [Fact]
+    public void CandidateKeysFallbackUsaIlPrimoValoreNonVuoto()
+    {
+        var binderWithLabel = Build(new Dictionary<string, CardValue>(StringComparer.Ordinal)
+        {
+            ["raceName"] = CardValue.FromText("Drago"),
+            ["race"] = CardValue.FromText("dragon"),
+        });
+        Assert.Equal("Drago", binderWithLabel.Bind("{{raceName||race}}"));
+
+        var binderWithFallbackOnly = Build(new Dictionary<string, CardValue>(StringComparer.Ordinal)
+        {
+            ["race"] = CardValue.FromText("dragon"),
+        });
+        Assert.Equal("dragon", binderWithFallbackOnly.Bind("{{raceName||race}}"));
+    }
+
+    [Fact]
+    public void CalcolaTypeLineConTrattiSelezionati()
+    {
+        var computed = new ComputedField
+        {
+            Key = "typeLine",
+            Expr = new ComputedExpression
+            {
+                Op = ComputedOps.Join,
+                Separator = " / ",
+                Prefix = "[",
+                Suffix = "]",
+                Args = ["{{raceName||race}}", "{{traitsDisplay}}", "{{effectFlag}}"],
+            },
+        };
+
+        var binderConTratti = Build(
+            new Dictionary<string, CardValue>(StringComparer.Ordinal)
+            {
+                ["raceName"] = CardValue.FromText("Drago"),
+                ["traitsDisplay"] = CardValue.FromText("Tuner / Scoperta"),
+                ["effectFlag"] = CardValue.FromText("Effetto"),
+            },
+            computed);
+
+        Assert.Equal("[Drago / Tuner / Scoperta / Effetto]", binderConTratti.Get("typeLine")!.AsText());
+
+        var binderSenzaTratti = Build(
+            new Dictionary<string, CardValue>(StringComparer.Ordinal)
+            {
+                ["raceName"] = CardValue.FromText("Drago"),
+                ["traitsDisplay"] = CardValue.FromText(""),
+                ["effectFlag"] = CardValue.FromText("Effetto"),
+            },
+            computed);
+
+        Assert.Equal("[Drago / Effetto]", binderSenzaTratti.Get("typeLine")!.AsText());
+    }
 }

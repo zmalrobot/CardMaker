@@ -55,7 +55,7 @@ public sealed class CardExportService(
 
         using var frontResources = await LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
 
-        var frontResult = renderer.Render(new CardRenderRequest
+        var frontResult = await Task.Run(() => renderer.Render(new CardRenderRequest
         {
             Layout = frontLayout,
             Values = values,
@@ -64,7 +64,7 @@ public sealed class CardExportService(
             IncludeBleed = options.IncludeBleed,
             RoundCorners = options.RoundCorners,
             Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
-        });
+        }), cancellationToken).ConfigureAwait(false);
 
         if (frontResult.Content is null || frontResult.Content.Length == 0)
         {
@@ -87,7 +87,7 @@ public sealed class CardExportService(
                 if (backLayout is not null)
                 {
                     using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                    backResult = renderer.Render(new CardRenderRequest
+                    backResult = await Task.Run(() => renderer.Render(new CardRenderRequest
                     {
                         Layout = backLayout,
                         Values = values,
@@ -96,11 +96,11 @@ public sealed class CardExportService(
                         IncludeBleed = options.IncludeBleed,
                         RoundCorners = options.RoundCorners,
                         Format = RenderOutputFormat.Png,
-                    });
+                    }), cancellationToken).ConfigureAwait(false);
                 }
             }
 
-            var pdfBytes = pdfExporter.Export(frontResult, backResult);
+            var pdfBytes = await Task.Run(() => pdfExporter.Export(frontResult, backResult), cancellationToken).ConfigureAwait(false);
             return new CardExportResult(true, pdfBytes, "application/pdf", $"{safeTitle}.pdf", null);
         }
 
@@ -110,7 +110,7 @@ public sealed class CardExportService(
             if (backLayout is not null)
             {
                 using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                var backResult = renderer.Render(new CardRenderRequest
+                var backResult = await Task.Run(() => renderer.Render(new CardRenderRequest
                 {
                     Layout = backLayout,
                     Values = values,
@@ -119,7 +119,7 @@ public sealed class CardExportService(
                     IncludeBleed = options.IncludeBleed,
                     RoundCorners = options.RoundCorners,
                     Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
-                });
+                }), cancellationToken).ConfigureAwait(false);
 
                 var ext = options.Format == RenderFormat.Jpg ? "jpg" : "png";
                 var mime = options.Format == RenderFormat.Jpg ? "image/jpeg" : "image/png";

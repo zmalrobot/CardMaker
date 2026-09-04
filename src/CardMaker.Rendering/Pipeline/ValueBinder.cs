@@ -58,8 +58,17 @@ public sealed class ValueBinder
 
             result.Append(source, index, open - index);
 
-            var key = source[(open + 2)..close].Trim();
-            result.Append(Get(key)?.AsText() ?? string.Empty);
+            var rawKey = source[(open + 2)..close].Trim();
+            if (rawKey.Contains("||", StringComparison.Ordinal))
+            {
+                var candidates = rawKey.Split("||", StringSplitOptions.TrimEntries);
+                var found = candidates.Select(k => Get(k)?.AsText()).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+                result.Append(found ?? string.Empty);
+            }
+            else
+            {
+                result.Append(Get(rawKey)?.AsText() ?? string.Empty);
+            }
 
             index = close + 2;
         }

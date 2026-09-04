@@ -112,6 +112,8 @@
     {
         IsExporting = true;
         ErrorMessage = null;
+        StateHasChanged();
+        await Task.Delay(35);
 
         try
         {

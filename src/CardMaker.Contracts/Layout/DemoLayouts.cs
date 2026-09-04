@@ -139,6 +139,7 @@ public static class DemoLayouts
                 Name = "Frame",
                 Z = 20,
                 Rect = new NormalizedRect(0, 0, 1, 1),
+                FullBleed = true,
                 AssetKey = FrameAssetKey,
                 Fit = ImageFit.Stretch,
             },
@@ -150,6 +151,18 @@ public static class DemoLayouts
                 Rect = new NormalizedRect(0.820, 0.033, 0.110, 0.072),
                 SymbolSetKey = "attributes",
                 FieldKey = "attribute",
+            },
+            new SymbolRepeaterLayer
+            {
+                Id = "stars",
+                Name = "Livello",
+                Z = 30,
+                Rect = new NormalizedRect(0.100, 0.115, 0.800, 0.042),
+                SymbolSetKey = "stars",
+                SymbolKey = "level",
+                FieldKey = "level",
+                MaxCount = 12,
+                Direction = RepeaterDirection.RightToLeft,
             },
             new TextLayer
             {
@@ -368,6 +381,7 @@ public static class DemoLayouts
                 Name = "Frame",
                 Z = 20,
                 Rect = new NormalizedRect(0, 0, 1, 1),
+                FullBleed = true,
                 AssetKey = PokemonFrameAssetKey,
                 Fit = ImageFit.Stretch,
             },
@@ -664,6 +678,7 @@ public static class DemoLayouts
                 Name = "Frame",
                 Z = 20,
                 Rect = new NormalizedRect(0, 0, 1, 1),
+                FullBleed = true,
                 AssetKey = MtgFrameAssetKey,
                 Fit = ImageFit.Stretch,
             },

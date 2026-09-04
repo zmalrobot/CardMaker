@@ -5,6 +5,7 @@
 @inject IAssetCatalog Catalog
 @inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
+@inject CardMaker.Application.Common.ILoadingService LoadingService
 
 <PageTitle>Libreria Asset — CardMaker</PageTitle>
 
@@ -117,11 +118,11 @@
                                     @if (asset.ContentType.StartsWith("image/", StringComparison.Ordinal))
                                     {
                                         <CardMaker.UI.Components.Common.AssetImage AssetId="@asset.Id" Alt="@asset.OriginalFileName" Class="rounded border" Style="height:45px; width:45px; object-fit:contain;" />
+                                    }
                                 </td>
                                 <td><span class="fw-medium">@asset.OriginalFileName</span></td>
                                 <td>
-                                        @GetGameName(asset.GameId)
-                                    </span>
+                                    <span>@GetGameName(asset.GameId)</span>
                                 </td>
                                 <td><span class="badge bg-secondary-subtle text-secondary-emphasis">@asset.Category</span></td>
                                 <td>@(asset.PixelWidth > 0 ? $"{asset.PixelWidth} × {asset.PixelHeight} px" : "-")</td>
@@ -219,41 +220,44 @@
             return;
         }
 
-        var state = await AuthProvider.GetAuthenticationStateAsync();
-        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-        var files = e.GetMultipleFiles(50);
-        int successCount = 0;
-
-        foreach (var file in files)
+        using (await LoadingService.BeginScopeAsync("Caricamento ed elaborazione asset..."))
         {
-            await using var stream = file.OpenReadStream(MaxUploadBytes);
-            var outcome = await Catalog.UploadAsync(stream, new AssetUploadRequest
-            {
-                FileName = file.Name,
-                Category = _category,
-                LicenseNote = _licenseNote,
-                Kind = _kind,
-                GameId = _uploadGameId,
-                UploadedByUserId = userId,
-            });
+            var state = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            if (outcome.Succeeded)
+            var files = e.GetMultipleFiles(50);
+            int successCount = 0;
+
+            foreach (var file in files)
             {
-                successCount++;
+                await using var stream = file.OpenReadStream(MaxUploadBytes);
+                var outcome = await Catalog.UploadAsync(stream, new AssetUploadRequest
+                {
+                    FileName = file.Name,
+                    Category = _category,
+                    LicenseNote = _licenseNote,
+                    Kind = _kind,
+                    GameId = _uploadGameId,
+                    UploadedByUserId = userId,
+                });
+
+                if (outcome.Succeeded)
+                {
+                    successCount++;
+                }
             }
-        }
 
-        if (successCount == files.Count)
-        {
-            Show($"Caricati con successo {successCount} file.", isError: false);
-        }
-        else
-        {
-            Show($"Caricati {successCount} su {files.Count} file.", isError: true);
-        }
+            if (successCount == files.Count)
+            {
+                Show($"Caricati con successo {successCount} file.", isError: false);
+            }
+            else
+            {
+                Show($"Caricati {successCount} su {files.Count} file.", isError: true);
+            }
 
-        await RefreshAsync();
+            await RefreshAsync();
+        }
     }
 
     private void OpenReplaceModal(Asset asset)
@@ -267,38 +271,44 @@
         var file = e.File;
         if (file is null) return;
 
-        var state = await AuthProvider.GetAuthenticationStateAsync();
-        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-
-        await using var stream = file.OpenReadStream(MaxUploadBytes);
-        var result = await ContentService.ReplaceAssetBlobAsync(_replacingAsset.Id, stream, file.Name, userId);
-
-        if (result.Succeeded)
+        using (await LoadingService.BeginScopeAsync($"Sostituzione asset {_replacingAsset.OriginalFileName}..."))
         {
-            Show($"Asset '{_replacingAsset.OriginalFileName}' sostituito con successo!", isError: false);
-            _replacingAsset = null;
-            await RefreshAsync();
-        }
-        else
-        {
-            Show(result.ErrorMessage ?? "Errore durante la sostituzione.", isError: true);
+            var state = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            await using var stream = file.OpenReadStream(MaxUploadBytes);
+            var result = await ContentService.ReplaceAssetBlobAsync(_replacingAsset.Id, stream, file.Name, userId);
+
+            if (result.Succeeded)
+            {
+                Show($"Asset '{_replacingAsset.OriginalFileName}' sostituito con successo!", isError: false);
+                _replacingAsset = null;
+                await RefreshAsync();
+            }
+            else
+            {
+                Show(result.ErrorMessage ?? "Errore durante la sostituzione.", isError: true);
+            }
         }
     }
 
     private async Task SafeDeleteAsync(Guid assetId)
     {
-        try
+        using (await LoadingService.BeginScopeAsync("Eliminazione sicura asset in corso..."))
         {
-            var state = await AuthProvider.GetAuthenticationStateAsync();
-            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            try
+            {
+                var state = await AuthProvider.GetAuthenticationStateAsync();
+                var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            await ContentService.SafeDeleteAssetAsync(assetId, userId);
-            Show("Asset eliminato con successo.", isError: false);
-            await RefreshAsync();
-        }
-        catch (Exception ex)
-        {
-            Show(ex.Message, isError: true);
+                await ContentService.SafeDeleteAssetAsync(assetId, userId);
+                Show("Asset eliminato con successo.", isError: false);
+                await RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                Show(ex.Message, isError: true);
+            }
         }
     }
 

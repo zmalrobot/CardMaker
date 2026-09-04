@@ -36,6 +36,15 @@ public sealed class LoadingService : ILoadingService
         return new LoadingScope(this);
     }
 
+    public async Task<IDisposable> BeginScopeAsync(string message = "Caricamento in corso...")
+    {
+        Show(message);
+        // Cede brevemente l'esecuzione per consentire al renderer Blazor / WebKitGTK di aggiornare il DOM
+        // e mostrare l'overlay animato prima che partano operazioni pesanti su CPU o database
+        await Task.Delay(35);
+        return new LoadingScope(this);
+    }
+
     private void NotifyStateChanged() => OnChange?.Invoke();
 
     private sealed class LoadingScope(LoadingService service) : IDisposable

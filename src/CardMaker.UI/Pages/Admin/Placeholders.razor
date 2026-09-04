@@ -162,7 +162,7 @@
         _busy = true;
         try
         {
-            using (LoadingService.BeginScope($"Generazione segnaposto per {CurrentGameName}..."))
+            using (await LoadingService.BeginScopeAsync($"Generazione segnaposto per {CurrentGameName}..."))
             {
                 var state = await AuthProvider.GetAuthenticationStateAsync();
                 var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;

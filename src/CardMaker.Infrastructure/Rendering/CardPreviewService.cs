@@ -40,7 +40,7 @@ public sealed class CardPreviewService(
 
         using var resources = await LoadResourcesAsync(layout!, request, cancellationToken).ConfigureAwait(false);
 
-        var result = renderer.Render(new CardRenderRequest
+        var result = await Task.Run(() => renderer.Render(new CardRenderRequest
         {
             Layout = layout!,
             Values = request.Values,
@@ -52,7 +52,7 @@ public sealed class CardPreviewService(
             Format = string.Equals(request.Format, "jpg", StringComparison.OrdinalIgnoreCase)
                 ? RenderOutputFormat.Jpeg
                 : RenderOutputFormat.Png,
-        });
+        }), cancellationToken).ConfigureAwait(false);
 
         return new CardPreviewResult(
             true,
@@ -126,15 +126,43 @@ public sealed class CardPreviewService(
                 .Select(s => new { Sha = s.Asset!.Sha256 })
                 .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
 
-            if (symbol is null)
+            if (symbol is not null)
             {
-                continue;
+                var image = await GetOrDecodeAsync(symbol.Sha, cancellationToken).ConfigureAwait(false);
+                if (image is not null)
+                {
+                    resources.AddSymbol(setKey, symbolKey, image, owned: false);
+                    continue;
+                }
             }
 
-            var image = await GetOrDecodeAsync(symbol.Sha, cancellationToken).ConfigureAwait(false);
-            if (image is not null)
+            // Fallback 1: cerca asset con nome file segnaposto
+            var symbolFileName = $"placeholder-symbol-{setKey}-{symbolKey}.png";
+            var fallbackAsset = await db.Assets.AsNoTracking()
+                .Where(a => a.OriginalFileName == symbolFileName)
+                .Select(a => new { a.Sha256 })
+                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+
+            if (fallbackAsset is not null)
             {
-                resources.AddSymbol(setKey, symbolKey, image, owned: false);
+                var fallbackImg = await GetOrDecodeAsync(fallbackAsset.Sha256, cancellationToken).ConfigureAwait(false);
+                if (fallbackImg is not null)
+                {
+                    resources.AddSymbol(setKey, symbolKey, fallbackImg, owned: false);
+                    continue;
+                }
+            }
+
+            // Fallback 2: genera al volo il simbolo procedurale
+            try
+            {
+                var placeholderGen = new CardMaker.Rendering.Placeholders.PlaceholderSymbolGenerator();
+                var generatedBytes = placeholderGen.Generate(setKey, symbolKey, 256);
+                resources.AddSymbol(setKey, symbolKey, generatedBytes);
+            }
+            catch
+            {
+                // Ignora se non gestito dal generatore di segnaposto
             }
         }
 

@@ -5,6 +5,7 @@
 @inject IFontCatalog Fonts
 @inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
+@inject CardMaker.Application.Common.ILoadingService LoadingService
 
 <PageTitle>Ruoli Font — CardMaker</PageTitle>
 
@@ -181,35 +182,41 @@
 
     private async Task OnFileSelectedAsync(InputFileChangeEventArgs e)
     {
-        var state = await AuthProvider.GetAuthenticationStateAsync();
-        var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        using (await LoadingService.BeginScopeAsync($"Registrazione font '{_alias}'..."))
+        {
+            var state = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = state.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-        await using var stream = e.File.OpenReadStream(MaxFontBytes);
-        var outcome = await Fonts.RegisterAsync(stream, new FontRegistrationRequest
-        {
-            FileName = e.File.Name,
-            Alias = _alias,
-            LicenseNote = _licenseNote,
-            GameId = _uploadGameId,
-            UploadedByUserId = userId,
-        });
+            await using var stream = e.File.OpenReadStream(MaxFontBytes);
+            var outcome = await Fonts.RegisterAsync(stream, new FontRegistrationRequest
+            {
+                FileName = e.File.Name,
+                Alias = _alias,
+                LicenseNote = _licenseNote,
+                GameId = _uploadGameId,
+                UploadedByUserId = userId,
+            });
 
-        if (outcome.Succeeded)
-        {
-            Show($"Font '{outcome.Font!.FamilyName}' assegnato al ruolo '{outcome.Font.Alias}'.", isError: false);
-            _alias = string.Empty;
-            await RefreshAsync();
-        }
-        else
-        {
-            Show(Describe(outcome.ErrorCode!), isError: true);
+            if (outcome.Succeeded)
+            {
+                Show($"Font '{outcome.Font!.FamilyName}' assegnato al ruolo '{outcome.Font.Alias}'.", isError: false);
+                _alias = string.Empty;
+                await RefreshAsync();
+            }
+            else
+            {
+                Show(Describe(outcome.ErrorCode!), isError: true);
+            }
         }
     }
 
     private async Task RemoveAsync(Guid id)
     {
-        await Fonts.RemoveAsync(id);
-        await RefreshAsync();
+        using (await LoadingService.BeginScopeAsync("Rimozione ruolo font..."))
+        {
+            await Fonts.RemoveAsync(id);
+            await RefreshAsync();
+        }
     }
 
     private void Show(string message, bool isError)

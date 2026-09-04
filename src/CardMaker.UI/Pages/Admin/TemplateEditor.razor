@@ -9,6 +9,7 @@
 @inject ICardPreviewService PreviewService
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject CardMaker.Application.Common.ILoadingService LoadingService
 
 <PageTitle>@(Template?.Name ?? "Editor Template") — CardMaker Studio</PageTitle>
 
@@ -378,29 +379,32 @@ else if (Template is not null && CurrentLayout is not null)
     {
         if (Template is null || CurrentLayout is null || CurrentVersionDto is null) return;
 
-        IsSaving = true;
-        ErrorMessage = null;
-        SuccessMessage = null;
-
-        try
+        using (await LoadingService.BeginScopeAsync("Salvataggio template in corso..."))
         {
-            var auth = await AuthProvider.GetAuthenticationStateAsync();
-            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            IsSaving = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
 
-            CurrentLayout = CurrentLayout with { Layers = LayersList };
-            var json = LayoutSerializer.Serialize(CurrentLayout);
+            try
+            {
+                var auth = await AuthProvider.GetAuthenticationStateAsync();
+                var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            var updated = await TemplateService.CreateVersionAsync(Template.Id, json, $"Salvataggio manuale v{CurrentVersionDto.VersionNumber}", uid);
-            SuccessMessage = $"Layout salvato con successo come bozza v{updated.VersionNumber}!";
-            await LoadStudioAsync();
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        finally
-        {
-            IsSaving = false;
+                CurrentLayout = CurrentLayout with { Layers = LayersList };
+                var json = LayoutSerializer.Serialize(CurrentLayout);
+
+                var updated = await TemplateService.CreateVersionAsync(Template.Id, json, $"Salvataggio manuale v{CurrentVersionDto.VersionNumber}", uid);
+                SuccessMessage = $"Layout salvato con successo come bozza v{updated.VersionNumber}!";
+                await LoadStudioAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+            }
+            finally
+            {
+                IsSaving = false;
+            }
         }
     }
 
@@ -414,22 +418,25 @@ else if (Template is not null && CurrentLayout is not null)
     {
         if (Template is null || CurrentLayout is null) return;
 
-        try
+        using (await LoadingService.BeginScopeAsync("Creazione nuova versione template..."))
         {
-            var auth = await AuthProvider.GetAuthenticationStateAsync();
-            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            try
+            {
+                var auth = await AuthProvider.GetAuthenticationStateAsync();
+                var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            CurrentLayout = CurrentLayout with { Layers = LayersList };
-            var json = LayoutSerializer.Serialize(CurrentLayout);
+                CurrentLayout = CurrentLayout with { Layers = LayersList };
+                var json = LayoutSerializer.Serialize(CurrentLayout);
 
-            var created = await TemplateService.CreateVersionAsync(Template.Id, json, NewVersionChangeNotes, uid);
-            ShowNewVersionModal = false;
-            SuccessMessage = $"Creata nuova versione v{created.VersionNumber}!";
-            await LoadStudioAsync();
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
+                var created = await TemplateService.CreateVersionAsync(Template.Id, json, NewVersionChangeNotes, uid);
+                ShowNewVersionModal = false;
+                SuccessMessage = $"Creata nuova versione v{created.VersionNumber}!";
+                await LoadStudioAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+            }
         }
     }
 
@@ -437,18 +444,21 @@ else if (Template is not null && CurrentLayout is not null)
     {
         if (CurrentVersionDto is null) return;
 
-        try
+        using (await LoadingService.BeginScopeAsync("Pubblicazione versione template in corso..."))
         {
-            var auth = await AuthProvider.GetAuthenticationStateAsync();
-            var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            try
+            {
+                var auth = await AuthProvider.GetAuthenticationStateAsync();
+                var uid = auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
 
-            await TemplateService.PublishVersionAsync(CurrentVersionDto.Id, uid);
-            SuccessMessage = $"Versione v{CurrentVersionDto.VersionNumber} pubblicata con successo!";
-            await LoadStudioAsync();
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = ex.Message;
+                await TemplateService.PublishVersionAsync(CurrentVersionDto.Id, uid);
+                SuccessMessage = $"Versione v{CurrentVersionDto.VersionNumber} pubblicata con successo!";
+                await LoadStudioAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorMessage = ex.Message;
+            }
         }
     }
 }

@@ -44,8 +44,8 @@ public sealed class DatabaseInitializer(
         // Assicura che i template, i frame e i font di default di Yu-Gi-Oh, Pokémon e Magic siano sempre presenti al primo avvio
         try
         {
-            await placeholderSeeder.SeedYuGiOhAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             await yugiohSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
+            await placeholderSeeder.SeedYuGiOhAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             await fontSeeder.SeedDefaultFontsAsync(cancellationToken).ConfigureAwait(false);
 
             await pokemonSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);

@@ -490,7 +490,7 @@ public static class YuGiOhSeedData
         var layers = new List<LayerDefinition>
         {
             new ImageSlotLayer { Id = "artwork", Name = "Illustrazione", Z = 0, Rect = regions.ArtWindow, FieldKey = "artwork", Fit = ImageFit.Cover, MinSourceWidth = 900, MinSourceHeight = 900 },
-            new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = spec.FrameKey, Fit = ImageFit.Stretch },
+            new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), FullBleed = true, AssetKey = spec.FrameKey, Fit = ImageFit.Stretch },
             new SymbolSlotLayer { Id = "attribute", Name = "Attributo", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = "attributes", FieldKey = "attribute" },
         };
 
@@ -527,9 +527,9 @@ public static class YuGiOhSeedData
         }
 
         layers.Add(new TextLayer { Id = "name", Name = "Nome carta", Z = 3, Rect = regions.NameBox, Source = "{{name}}", Style = "cardName" });
-        layers.Add(new TextLayer { Id = "edition", Name = "Edizione", Z = 3, Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016), Source = "{{edition}}", Style = "edition" });
-        layers.Add(new TextLayer { Id = "set-code", Name = "Codice set", Z = 3, Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016), Source = "{{setCode}}", Style = "smallPrint" });
-        layers.Add(new TextLayer { Id = "type-line", Name = "Type line", Z = 3, Rect = regions.TypeLineBox, Source = "[{{race}}]", Style = "typeLine" });
+        layers.Add(new TextLayer { Id = "edition", Name = "Edizione", Z = 3, Rect = new NormalizedRect(0.080, 0.718, 0.350, 0.022), Source = "{{edition}}", Style = "edition" });
+        layers.Add(new TextLayer { Id = "set-code", Name = "Codice set", Z = 3, Rect = new NormalizedRect(0.550, 0.718, 0.360, 0.022), Source = "{{setCode}}", Style = "smallPrint" });
+        layers.Add(new TextLayer { Id = "type-line", Name = "Type line", Z = 3, Rect = regions.TypeLineBox, Source = "{{typeLine}}", Style = "typeLine" });
 
         if (spec.HasPendulum && regions.PendulumBox is { } pendulumBox)
         {
@@ -551,6 +551,21 @@ public static class YuGiOhSeedData
         {
             Canvas = CanvasDefinition.FromGeometry(CardGeometry.YuGiOh()),
             TextStyles = textStyles,
+            Computed =
+            [
+                new ComputedField
+                {
+                    Key = "typeLine",
+                    Expr = new ComputedExpression
+                    {
+                        Op = ComputedOps.Join,
+                        Separator = " / ",
+                        Prefix = "[",
+                        Suffix = "]",
+                        Args = ["{{raceName||race}}", "{{traitsDisplay}}", "{{effectFlag}}"],
+                    },
+                },
+            ],
             Layers = layers,
         };
     }
@@ -565,11 +580,11 @@ public static class YuGiOhSeedData
             Layers =
             [
                 new ImageSlotLayer { Id = "artwork", Name = "Illustrazione", Z = 0, Rect = regions.ArtWindow, FieldKey = "artwork", Fit = ImageFit.Cover },
-                new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), AssetKey = spec.FrameKey, Fit = ImageFit.Stretch },
+                new StaticImageLayer { Id = "frame", Name = "Frame", Z = 1, Rect = new NormalizedRect(0, 0, 1, 1), FullBleed = true, AssetKey = spec.FrameKey, Fit = ImageFit.Stretch },
                 new SymbolSlotLayer { Id = "property", Name = "Proprietà", Z = 2, Rect = regions.AttributeBox, SymbolSetKey = spec.SymbolSetKey, FieldKey = "property" },
                 new TextLayer { Id = "name", Name = "Nome", Z = 2, Rect = regions.NameBox, Source = "{{name}}", Style = "cardName" },
-                new TextLayer { Id = "edition", Name = "Edizione", Z = 2, Rect = new NormalizedRect(0.080, 0.734, 0.350, 0.016), Source = "{{edition}}", Style = "edition" },
-                new TextLayer { Id = "set-code", Name = "Codice set", Z = 2, Rect = new NormalizedRect(0.550, 0.734, 0.360, 0.016), Source = "{{setCode}}", Style = "smallPrint" },
+                new TextLayer { Id = "edition", Name = "Edizione", Z = 2, Rect = new NormalizedRect(0.080, 0.718, 0.350, 0.022), Source = "{{edition}}", Style = "edition" },
+                new TextLayer { Id = "set-code", Name = "Codice set", Z = 2, Rect = new NormalizedRect(0.550, 0.718, 0.360, 0.022), Source = "{{setCode}}", Style = "smallPrint" },
                 new RichTextLayer { Id = "effect", Name = "Testo effetto", Z = 2, Rect = regions.EffectBox, Source = "{{effectText}}", Style = "effectText" },
                 new TextLayer { Id = "passcode", Name = "Numero seriale / Passcode", Z = 2, Rect = new NormalizedRect(0.065, 0.962, 0.250, 0.018), Source = "{{passcode}}", Style = "passcode" },
                 new TextLayer { Id = "copyright", Name = "Copyright", Z = 2, Rect = new NormalizedRect(0.400, 0.962, 0.520, 0.018), Source = "{{copyright}}", Style = "copyright" },

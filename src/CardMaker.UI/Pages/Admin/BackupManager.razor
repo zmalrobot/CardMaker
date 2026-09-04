@@ -211,7 +211,7 @@
         IsProcessing = true;
         try
         {
-            using (LoadingService.BeginScope("Creazione snapshot atomico del database in corso..."))
+            using (await LoadingService.BeginScopeAsync("Creazione snapshot atomico del database in corso..."))
             {
                 var info = await BackupService.CreateBackupAsync(CurrentUserId);
                 SuccessMessage = $"Snapshot creato con successo: {info.FileName} ({FormatBytes(info.SizeBytes)}).";
@@ -229,7 +229,7 @@
         IsProcessing = true;
         try
         {
-            using (LoadingService.BeginScope("Verifica integrità PRAGMA SQLite in corso..."))
+            using (await LoadingService.BeginScopeAsync("Verifica integrità PRAGMA SQLite in corso..."))
             {
                 IntegrityReport = await BackupService.VerifyDatabaseIntegrityAsync();
             }
@@ -245,7 +245,7 @@
         IsProcessing = true;
         try
         {
-            using (LoadingService.BeginScope("Eliminazione snapshot..."))
+            using (await LoadingService.BeginScopeAsync("Eliminazione snapshot..."))
             {
                 await BackupService.DeleteBackupAsync(fileName, CurrentUserId);
                 SuccessMessage = $"Snapshot {fileName} eliminato.";
@@ -278,7 +278,7 @@
         IsProcessing = true;
         try
         {
-            using (LoadingService.BeginScope("Ripristino di fabbrica del database in corso... Ricreazione schema e seeding set..."))
+            using (await LoadingService.BeginScopeAsync("Ripristino di fabbrica del database in corso... Ricreazione schema e seeding set..."))
             {
                 var result = await DatabaseResetService.ResetDatabaseAsync();
                 if (result.Success)
