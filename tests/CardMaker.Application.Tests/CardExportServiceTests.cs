@@ -44,7 +44,7 @@ public sealed class CardExportServiceTests : IDisposable
         var renderer = new CardRenderer(textEngine);
         var pdfExporter = new PdfExporter();
 
-        _sut = new CardExportService(_db, store, fonts, cache, renderer, pdfExporter);
+        _sut = new CardExportService(_db, new RenderResourceLoader(_db, store, fonts, cache), renderer, pdfExporter);
         _cardService = new CardService(_db);
     }
 

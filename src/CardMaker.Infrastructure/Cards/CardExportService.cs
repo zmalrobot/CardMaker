@@ -22,7 +22,6 @@ public sealed class CardExportService : ICardExportService
     private readonly PdfExporter _pdfExporter;
     private readonly ILogger<CardExportService>? _logger;
 
-    [ActivatorUtilitiesConstructor]
     public CardExportService(
         CardMakerDbContext db,
         IRenderResourceLoader resourceLoader,
@@ -35,18 +34,6 @@ public sealed class CardExportService : ICardExportService
         _renderer = renderer;
         _pdfExporter = pdfExporter;
         _logger = logger;
-    }
-
-    public CardExportService(
-        CardMakerDbContext db,
-        IAssetStore store,
-        IFontCatalog fonts,
-        IDecodedImageCache imageCache,
-        CardRenderer renderer,
-        PdfExporter pdfExporter,
-        ILogger<CardExportService>? logger = null)
-        : this(db, new RenderResourceLoader(db, store, fonts, imageCache), renderer, pdfExporter, logger)
-    {
     }
 
     private static readonly JsonSerializerOptions JsonOptions = LayoutSerializer.Options;
