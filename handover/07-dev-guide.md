@@ -83,31 +83,48 @@ Per ripartire da zero basta cancellare la cartella `data`.
 
 | Rotta | Chi | Cosa |
 |---|---|---|
-| `/` | tutti | home |
-| `/Account/Login` | tutti | accesso |
-| `/admin/assets` | Admin | libreria asset: upload, elenco, anteprima |
-| `/admin/fonts` | Admin | font per ruolo: upload, alias, anteprima renderizzata |
-| `/admin/placeholders` | Admin | genera i frame segnaposto Yu-Gi-Oh! |
-| `/admin/render-test` | Admin | prova interattiva del motore di rendering |
-| `/assets/{id}` | autenticati | contenuto di un asset (con autorizzazione, non da `wwwroot`) |
-| `/fonts/{id}/preview.png` | Admin | campione di testo renderizzato con quel font |
+| `/` | Tutti | Home page e panoramica |
+| `/cards` | Autenticati | Collezione "Le mie carte" (ordinamento, filtri, duplicazione, eliminazione) |
+| `/cards/create` | Autenticati | Wizard di creazione nuova carta con selezione guidata gioco e tipo |
+| `/cards/edit/{id}` | Autenticati | Editor carta con form dinamico, selettore tratti, anteprima live 60 FPS ed export multiformato |
+| `/guida` | Tutti | Guida utente dettagliata sui campi, sintassi simboli `{sym:...}` e formati supportati |
+| `/disclaimer` | Tutti | Note legali e disclaimer non-commerciale fan-made |
+| `/design` | Tutti | Galleria e documentazione dei componenti del Design System |
+| `/admin/content` | Admin | Gestione CRUD giochi, tipi carta, tratti, simboli e opzioni per gioco |
+| `/admin/schema/{id}` | Admin | Editor interattivo dei campi del tipo carta con anteprima live |
+| `/admin/templates/{id}` | Admin | Template Studio WYSIWYG a 3 pannelli per la progettazione visiva dei layer |
+| `/admin/audit` | Admin | Registro immutabile degli eventi di audit (creazioni, modifiche, export, login) |
+| `/admin/invitations` | Admin | Generazione e gestione inviti con token SHA-256 e scadenza |
+| `/admin/backups` | Admin | Snapshot online SQLite (`VACUUM INTO`) con verifica integrità (`PRAGMA integrity_check`) |
+| `/admin/assets` | Admin | Libreria asset con filtri per gioco, anteprima e sostituzione sicura |
+| `/admin/fonts` | Admin | Catalogo font per ruolo, upload TTF/OTF e anteprima campione renderizzata |
+| `/admin/placeholders` | Admin | Generatore procedurale frame e simboli segnaposto per tutti i giochi |
+| `/admin/render-test` | Admin | Banco di prova interattivo del motore SkiaSharp |
+| `/admin/guida` | Admin | Manuale operativo avanzato per amministratori |
+| `/Account/Login` | Tutti | Accesso (in Desktop il bypass è automatico in-process) |
+| `/Account/Register` | Con Token | Registrazione rigorosamente protetta da token di invito valido |
+| `/healthz` | Sistema | Endpoint di probe per Kubernetes / monitoraggio (HTTP 200 OK) |
 
-## Convenzioni di codice
+## Convenzioni di codice e Logging
 
 - Codice, identificatori e commenti in **inglese**; documentazione in **italiano**.
-- `TreatWarningsAsErrors` è attivo: un avviso blocca la build.
-- Le migrazioni EF sono escluse dagli analizzatori tramite
-  `src/CardMaker.Infrastructure/Persistence/Migrations/.editorconfig`.
-- Le porte (interfacce) stanno in `CardMaker.Application`; la UI non referenzia mai `Infrastructure`.
-- **Prima di ricompilare, fermare l'app**: `Get-Process CardMaker.Web | Stop-Process -Force`,
-  altrimenti i DLL restano bloccati e la build fallisce con MSB3027.
+- `TreatWarningsAsErrors` è attivo: qualsiasi avviso blocca la compilazione.
+- Le porte (interfacce) risiedono in `CardMaker.Application`; la UI non referenzia mai `CardMaker.Infrastructure`.
+- **Logging Pulito**:
+  - In Photino Desktop la verbosità IPC è impostata a `0` (`SetLogVerbosity(0)`), evitando qualsiasi dump di dati Base64 su console.
+  - I servizi utilizzano `ILogger<T>` strutturato con prefissi standard:
+    - `[Preview]` per i render di anteprima (DPI, dimensioni, tempo di calcolo, avvisi).
+    - `[Export]` per le esportazioni di file PNG/JPG/PDF.
+    - `[Card]` per il ciclo di vita delle carte (creazione, modifica, duplicazione, cancellazione).
+    - `[Asset]` per l'upload e la verifica di risorse grafiche e font.
+  - Nessun log stampa mai payload di immagini o stringhe Base64.
 
-## Debito tecnico noto
+## Stato del Debito Tecnico
 
-| Voce | Da risolvere in |
+| Voce | Risoluzione |
 |---|---|
-| La registrazione pubblica (`/Account/Register`) è ancora attiva: va sostituita dagli inviti | F9 |
-| `IdentityNoOpEmailSender`: le email non vengono realmente inviate | F9 |
-| Le pagine Identity generate dal template sono in inglese e non seguono il design system | F4 / F10 |
-| L'interfaccia usa ancora il Bootstrap di default del template | F4 |
-| Nessuna cache dei render: ogni anteprima ricalcola da zero | F2 |
+| Registrazione pubblica senza controllo | **Risolta (F9)**: Registrazione unicamente su invito tramite token SHA-256 a consumo singolo. |
+| Pagine Identity non allineate al design system | **Risolta (F4/F10)**: Pagine localizzate in italiano e stilizzate con i token CSS del Design System. |
+| Interfaccia e layout scattosi durante il render | **Risolta (F13)**: Pipeline Skia/SQLite incapsulata in `Task.Run` e accelerazione hardware CSS a 60 FPS. |
+| Cache delle immagini Skia | **Risolta (F2)**: `IDecodedImageCache` implementata con cache LRU content-addressed per SHA-256. |
+| Invio effettivo email di benvenuto | Non bloccante: `IdentityNoOpEmailSender` preservato per semplicità e privacy; i link di invito vengono forniti direttamente dall'interfaccia admin. |

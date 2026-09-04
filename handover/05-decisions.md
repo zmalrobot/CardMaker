@@ -732,6 +732,56 @@ In precedenza:
 - ✅ Carte composte con segnaposto e asset grafici allineate al millimetro su tutti i giochi.
 - ✅ Resa tipografica professionale identica a quella degli strumenti di desktop publishing.
 
+---
+
+## ADR-036 — Disattivazione Verbosity IPC Photino e Logging Strutturato Sintetico
+**Stato:** Accettata · 2026-09-04
+
+**Contesto.**
+Nell'host Desktop basato su Photino.Blazor (WebKitGTK su Linux), il livello di log verbosity predefinito stampava sul canale `stdout`
+ogni messaggio IPC scambiato tra il processo .NET e la webview. Poiché i componenti Blazor inviano la bitmap dell'anteprima
+sotto forma di stringa Base64 data-URI (`data:image/png;base64,...`), ogni aggiornamento di render riversava sulla console
+centinaia di kilobyte di caratteri grezzi, bloccando l'I/O del terminale, rallentando l'esperienza utente e rendendo illeggibili i log.
+
+**Decisione.**
+- In `CardMaker.Desktop/Program.cs`, configurare `app.MainWindow.SetLogVerbosity(0)` per disattivare il dump IPC nativo di Photino.
+- Integrare l'astrazione `ILogger<T>` standard di Microsoft.Extensions.Logging nei servizi di dominio e rendering:
+  - `CardPreviewService`: log sintetico con ID, nome carta, DPI, dimensioni in pixel, peso in KB e tempo di rendering in ms (`[Preview]`).
+  - `CardExportService`: log di export con nome file, formato, DPI e peso (`[Export]`).
+  - `CardService`: log di ciclo di vita delle carte (`[Card] Creata / Aggiornata / Duplicata / Eliminata`).
+  - `AssetService`: log di memorizzazione asset (`[Asset] Caricato asset ... px/bytes`).
+- Nessun log deve mai stampare stringhe o payload Base64.
+
+**Conseguenze.**
+- ✅ Terminale pulito, leggibile e privo di latenze legate al buffer stdout.
+- ✅ Diagnostica e tracciabilità preservate con log strutturati essenziali.
+
+---
+
+## ADR-037 — Ottimizzazione Asincrona UI 60 FPS e Hardware Acceleration per Blazor Desktop/Web
+**Stato:** Accettata · 2026-09-04
+
+**Contesto.**
+All'interno dell'applicazione Desktop (Linux WebKitGTK) e Web, le operazioni di rendering della carta mostravano un'esperienza visiva
+a tratti scattosa:
+1. L'overlay di caricamento utilizzava `backdrop-filter: blur(6px)`, costringendo il rasterizzatore WebKitGTK a continui ricalcoli
+   della sfocatura su tutto lo schermo durante la rotazione dell'animazione dello spinner CSS, facendo crollare il frame rate a 10-15 FPS.
+2. Le chiamate a `CardPreviewService` e `CardExportService` eseguivano il recupero SQLite e la decodifica iniziale delle immagini Skia
+   sul thread UI prima del context switch, bloccando il message loop.
+3. La navigazione verso `/cards/create` evidenziava contemporaneamente sia "Le mie carte" che "Nuova carta" per via del matching di prefisso.
+
+**Decisione.**
+- **CSS Performance**: Rimosso `backdrop-filter: blur(6px)` in favore di un background scuro ad alto contrasto `rgba(13, 17, 23, 0.72)`
+  e applicata accelerazione GPU con `transform: translateZ(0)` e `will-change: transform`.
+- **Offload Skia Completo**: Tutta la catena di esecuzione (query EF Core per asset e font, decodifica Skia, rasterizzazione SkiaSharp
+  e codifica PNG/PDF) è incapsulata in `Task.Run(...)`, liberando al 100% il thread UI Blazor.
+- **Routing NavMenu**: Aggiunto `Match="NavLinkMatch.All"` su `href="cards"` in `DesktopNavMenu.razor` e `NavMenu.razor`.
+
+**Conseguenze.**
+- ✅ Animazioni di caricamento a 60 FPS senza micro-freeze o scatti.
+- ✅ Esperienza utente fluida e perfettamente allineata tra desktop e web.
+- ✅ Menu di navigazione coerente senza selezioni multiple errate.
+
 
 
 

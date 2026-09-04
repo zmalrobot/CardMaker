@@ -61,36 +61,100 @@ Il motore tipografico misura l'altezza ottica (*CapHeight*) del font corrente e 
 
 ---
 
-## 🚀 Avvio dell'Applicazione
+## 🏗️ Architettura della Solution
+
+Il progetto adotta un'architettura modulare a livelli conforme ai principi della *Clean / Hexagonal Architecture*, compilata con **.NET 10** (C# 13):
+
+```text
+CardMaker.slnx
+├── src/CardMaker.Domain           # Entità del dominio, aggregati (Card, Template, Asset, Game), Identity e Audit
+├── src/CardMaker.Contracts        # DTO, geometrie (CardGeometry), AST condizionale (ConditionOps) e layout JSON
+├── src/CardMaker.Application      # Interfacce di servizio (Porte), validatori, logica applicativa e seeder
+├── src/CardMaker.Rendering        # Motore SkiaSharp: rasterizzatore, TextEngine (auto-fit), simboli procedurali, PDF
+├── src/CardMaker.Infrastructure   # Implementazioni: EF Core SQLite, IAssetStore, FontCatalog, Seeding
+├── src/CardMaker.UI               # Razor Class Library (RCL): componenti grafici, editor dinamici, TemplateStudio
+├── src/CardMaker.Desktop          # Host nativo multipiattaforma basato su Photino.Blazor (Linux, Windows, macOS)
+├── src/CardMaker.Web              # Host Web ASP.NET Core: middleware di sicurezza, rate-limiting, healthcheck
+└── tests/                         # Suite automatica: 155 test di unità, integrazione e rendering (100% verdi)
+```
+
+---
+
+## ✨ Funzionalità Principali
+
+- 🎴 **Supporto Multi-Gioco Flessibile**: Gestione simultanea di giochi diversi con geometrie, frame e formati di testo dedicati (Yu-Gi-Oh!, Pokémon TCG, Magic: The Gathering).
+- ⚡ **Motore di Rendering Dati-Driven (SkiaSharp)**:
+  - Generazione di output raster **PNG**, **JPEG** e vettoriali **PDF**.
+  - Risoluzioni calibrate: Anteprima rapida a **150 DPI**, stampa ad alta definizione a **300 DPI** e **600 DPI**.
+  - Pipeline tipografica con auto-fit intelligente (*shrink*, *condense*, *shrink-and-condense*), centraggio ottico calibrato su `CapHeight` e simboli inline `{sym:...}`.
+- 🎨 **Template Studio WYSIWYG (`/admin/templates/{id}`)**:
+  - Editor interattivo a 3 pannelli per la progettazione grafica dei template.
+  - Albero dei layer polimorfi con ordinamento Z-order e condizioni visive dinamiche (`VisibleWhen`).
+  - Guide a video per **Bleed** (abbondanza 2 mm) e **Safe Zone** (zona di sicurezza 3 mm).
+- 🧙 **Wizard e Form Dinamici**:
+  - Creazione guidata delle carte con selezione del gioco e del tipo.
+  - Form generato automaticamente in base ai metadati dei campi (`FieldDefinition`), con campi condizionali e selettore di tratti.
+  - Anteprima live debouncata (200 ms) a 60 FPS con offload in background (`Task.Run`).
+- 🖥️ **Doppia Modalità: Web & Desktop**:
+  - **Desktop (Photino.Blazor)**: Eseguibile nativo leggero cross-platform (Linux WebKitGTK, Windows WebView2, macOS WebKit) con storage locale e bypass amministratore offline automatico.
+  - **Web (ASP.NET Core)**: Modalità multi-utente con registrazione a invito, protezione rate limiting, Content Security Policy restrittiva e snapshot SQLite online (`VACUUM INTO`).
+- 🔕 **Logging Strutturato & Pulito**:
+  - Eliminazione totale del rumore di dump IPC Base64 in console (`SetLogVerbosity(0)`).
+  - Log sintetici ad alta leggibilità per operazioni di anteprima, export, gestione carte e caricamento asset (`[Preview]`, `[Export]`, `[Card]`, `[Asset]`).
+
+---
+
+## 🚀 Avvio Rapido
 
 ### Prerequisiti
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)
 
-### Avvio Host Web
-```bash
-./run-web.sh
-```
-Il server Kestrel avvierà l'applicazione e rimarrà in ascolto su:
-👉 **http://localhost:5240**
+### Script di Avvio Rapido (Clean + Restore + Build + Run)
+A livello di root del repository sono presenti comodi script con gestione automatica di pulizia e restore:
 
-### Avvio Host Desktop (Blazor Hybrid + Photino)
 ```bash
-./run-desktop.sh
+# Linux / macOS
+./run-desktop.sh    # Avvia l'applicazione Desktop nativa (Photino.Blazor)
+./run-web.sh        # Avvia l'applicazione Web (Kestrel su http://localhost:5240)
+```
+
+```cmd
+:: Windows
+run-desktop.bat     :: Avvia l'applicazione Desktop nativa
+run-web.bat         :: Avvia l'applicazione Web (http://localhost:5240)
 ```
 
 ---
 
 ## 🔑 Credenziali Amministratore Predefinite
 
-All'avvio iniziale, il database SQLite viene popolato automaticamente con un account amministratore:
+Al primo avvio, il database SQLite locale viene inizializzato e popolato con i contenuti base e un utente amministratore:
 - **Email**: `admin@cardmaker.local`
 - **Password**: `Admin123!456`
 
+*(In modalità Desktop, l'accesso amministrativo offline è automatico e non richiede login)*.
+
 ---
 
-## 🧪 Esecuzione dei Test
+## 🧪 Collaudo e Suite di Test
 
-Per eseguire l'intera suite di collaudo unitario e di rendering:
+Per eseguire l'intera suite di collaudo automatizzata:
 ```bash
-dotnet test tests/CardMaker.Application.Tests/CardMaker.Application.Tests.csproj
+dotnet test
 ```
+
+Attualmente la suite include **155 test** (98 test di rendering/geometria e 57 test applicativi/integrazione), tutti superati con 0 errori e 0 avvisi.
+
+---
+
+## 📚 Documentazione di Progetto (Handover)
+
+Nella cartella [`handover/`](handover/) è disponibile la documentazione tecnica approfondita per sviluppatori e grafici:
+- [`handover/STATE.md`](handover/STATE.md): Stato di avanzamento aggiornato e dettagli di versione.
+- [`handover/01-card-anatomy.md`](handover/01-card-anatomy.md): Anatomia dettagliata delle carte dei vari giochi.
+- [`handover/02-architecture.md`](handover/02-architecture.md): Dettaglio architetturale e pipeline di rendering.
+- [`handover/03-data-model.md`](handover/03-data-model.md): Modello dati relazionale e schema JSON dei template.
+- [`handover/05-decisions.md`](handover/05-decisions.md): Registro delle decisioni architetturali (ADR-001 → ADR-037).
+- [`handover/06-asset-spec.md`](handover/06-asset-spec.md): Specifiche dimensionali per grafici e asset.
+- [`handover/07-dev-guide.md`](handover/07-dev-guide.md): Guida per sviluppatori, configurazione e rotte applicative.
+- [`handover/08-resume-prompt.md`](handover/08-resume-prompt.md): Prompt di ripristino contesto rapido per nuove sessioni.

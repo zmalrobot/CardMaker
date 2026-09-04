@@ -2,8 +2,8 @@
 
 > **Leggi questo file per primo.** Riassume dove siamo e cosa fare dopo.
 
-**Ultimo aggiornamento:** 2026-09-03
-**Fase attiva:** **v2 completata al 100% (F0 → F12)**: Yu-Gi-Oh! (classico + Rush Duel), Pokémon TCG, e Magic: The Gathering pienamente operativi con rendering, font, simboli procedurali e allineamenti perfezionati.
+**Ultimo aggiornamento:** 2026-09-04
+**Fase attiva:** **v2 completata al 100% (F0 → F12) + Ottimizzazioni UX & Performance**: Yu-Gi-Oh! (classico + Rush Duel), Pokémon TCG, e Magic: The Gathering pienamente operativi con rendering, font, simboli procedurali, allineamenti calibrati, pipeline asincrona a 60 FPS e logging pulito.
 
 ---
 
@@ -20,9 +20,10 @@ CardMaker è un generatore di carte personalizzate per **Yu-Gi-Oh!** (classico e
 - ✅ Architettura tecnica, stack e hardening → [`02-architecture.md`](02-architecture.md)
 - ✅ Modello dati e schema del layout → [`03-data-model.md`](03-data-model.md)
 - ✅ Roadmap a fasi (F0 → F12) → [`04-roadmap.md`](04-roadmap.md)
-- ✅ Decisioni architetturali motivate (ADR-001 → ADR-035) → [`05-decisions.md`](05-decisions.md)
+- ✅ Decisioni architetturali motivate (ADR-001 → ADR-037) → [`05-decisions.md`](05-decisions.md)
 - ✅ Specifica asset per il grafico, font inclusi → [`06-asset-spec.md`](06-asset-spec.md)
 - ✅ Guida operativa (comandi, primo avvio, dati) → [`07-dev-guide.md`](07-dev-guide.md)
+- ✅ Prompt di ripresa rapida per nuove sessioni → [`08-resume-prompt.md`](08-resume-prompt.md)
 - ✅ **F0 — Fondamenta**: solution .NET 10, dominio, SQLite + Identity, asset store, font, segnaposto
 - ✅ **F1 — Motore di rendering**: layout data-driven, pipeline a 6 fasi, auto-fit del testo, export PNG/JPEG
 - ✅ **F2 — Layer avanzati**: ripetitori, frecce Link, rich text, foil, PDF, golden test
@@ -37,6 +38,9 @@ CardMaker è un generatore di carte personalizzate per **Yu-Gi-Oh!** (classico e
 - ✅ **F11 — v2: Pokémon TCG**: Poker Size (63x88mm), seeding completo (Base, Fase 1, Fase 2, EX, GX, V, VMAX, Trainer, Energia), simboli procedurali energia (Erba, Fuoco, Acqua, Lampo, Psico, Lotta, Oscurità, Metallo, Incolore), font incorporati (`GillSansBold`, `GillSansItalic`, `GillSans`, `Futura-Bold`), layout demo e test visivi
 - ✅ **F12 — v2: Magic: The Gathering**: Poker Size (63x88mm), seeding completo (Creatura, Planeswalker, Istantaneo, Stregoneria, Incantesimo, Artefatto, Terra), simboli procedurali di mana ({W}, {U}, {B}, {R}, {G}, {C}, numeri 0-9, {X}, {T}), simboli rarità (Comune, Non comune, Rara, Mitica), font incorporati (`Beleren2016-Bold`, `Beleren2016SmallCaps-Bold`, `Mplantin`), layout demo e test visivi
 - ✅ **Allineamento & Calibrazione Tipografica**: algoritmo di centraggio ottico su `CapHeight` in `CardRenderer`, mappatura automatica 1:1 dei frame master a piena abbondanza (eliminazione compressione bleed nel trim), calibrazione delle altezze di caselle e testi per evitare sovrapposizioni e clipping dei tratti
+- ✅ **UI 60 FPS & Offload Asincrono (ADR-037)**: Rimozione `backdrop-filter: blur` in Linux WebKitGTK, accelerazione GPU su overlay di caricamento (`will-change: transform`), incapsulamento completo di SQLite e SkiaSharp in `Task.Run(...)` per garantire reattività istantanea dell'interfaccia.
+- ✅ **Correzione Navigazione & Selezione Voci**: Risolto bug di selezione congiunta di *Le mie carte* e *Nuova carta* tramite `Match="NavLinkMatch.All"` in `DesktopNavMenu.razor` e `NavMenu.razor`.
+- ✅ **Logging Strutturato & Azzeramento Spam Base64 (ADR-036)**: `SetLogVerbosity(0)` in Photino per silenziare il dump raw del canale IPC e adozione di log sintetici essenziali per `[Preview]`, `[Export]`, `[Card]` e `[Asset]`.
 
 ### Cosa esiste nel codice
 
@@ -50,7 +54,7 @@ CardMaker.slnx
 ├─ src/CardMaker.UI               pagine utente (/cards, /cards/create, /cards/edit/{id}, /guida), admin (/admin/content, /admin/schema/{id}, /admin/audit, /admin/templates/{id}, /admin/invitations, /admin/backups, /admin/assets, /admin/fonts, /admin/placeholders, /admin/render-test, /admin/guida), componenti form dinamici, preview e TemplateStudio
 ├─ src/CardMaker.Web              host ASP.NET Core per deployment web con security headers, rate limiting, healthcheck e fail-fast check
 ├─ src/CardMaker.Desktop          host Photino.Blazor cross-platform (Win/macOS/Linux) + bypass admin locale offline
-└─ tests/                         152 test verdi (95 rendering + 57 application/integration), 0 warning, 0 errori
+└─ tests/                         155 test verdi (98 rendering + 57 application/integration), 0 warning, 0 errori
 ```
 
 ---
@@ -72,17 +76,17 @@ CardMaker.slnx
 | F10 | Rifiniture finali e localizzazione | ✅ |
 | F11 | **v2 — Pokémon TCG** | ✅ |
 | F12 | **v2 — Magic: The Gathering** | ✅ |
-
-**Al motore mancano 6 tipi di layer** per coprire tutti e tre i giochi: l'elenco completo, con quale
-gioco li richiede, è nella sezione *"Sintesi: cosa manca al motore"* di
-[`04-roadmap.md`](04-roadmap.md).
+| F13 | **Rifinitura UX, 60 FPS Asincrono & Logging Pulito** | ✅ |
 
 ---
 
 ## Prossimo passo
 
-Avviare la **v2**: **fase F11 — Pokémon TCG** (formato Poker Size 63x88mm, layout a flusso verticale, energia/costi attacco e debolezze/resistenze).
-Dettaglio in [`04-roadmap.md`](04-roadmap.md).
+Il core del sistema e tutte le fasi pianificate della v2 sono complete e stabili.
+Le attività future opzionali / di mantenimento includono:
+1. **Asset Grafici Artistici**: Sostituzione facoltativa dei frame e simboli procedurali con asset grafici ad alta risoluzione disegnati da artisti (utilizzando [`06-asset-spec.md`](06-asset-spec.md)).
+2. **Supporto Giochi Aggiuntivi**: Eventuale estensione a One Piece Card Game o Lorcana seguendo il pattern modulare consolidato (Domain Seeder + Font Seeder + Simboli procedurali).
+3. **Distribuzione Installer Nativo**: Confezionamento di installer MSIX per Windows, `.deb`/AppImage per Linux e `.dmg` per macOS.
 
 **In parallelo, lavoro non bloccante:** produzione degli asset e dei font seguendo
 [`06-asset-spec.md`](06-asset-spec.md). Bastano 4 font e 2 frame per vedere una carta credibile.

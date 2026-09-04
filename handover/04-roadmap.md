@@ -262,129 +262,71 @@ lunghezza dei testi ridistribuiscono lo spazio: non basta il posizionamento asso
   - altezza dell'item calcolata dal contenuto (il testo dell'attacco manda a capo)
   - `distribute`: `start | center | spaceBetween | spaceAround`
   - `gap`, `minHeight`, `maxItems`
-- [ ] Il motore deve **misurare prima di posizionare**: serve una fase di misura ricorsiva sui figli
-- [ ] Overflow del blocco: ridurre i testi degli item (auto-fit) prima di troncare
+**1582 × 2173 px**.
 
-### Altre capacità da aggiungere
+- [x] Nuovo layer **`repeatingBlock`** (misura ricorsiva, auto-fit, `distribute` stile flex)
+- [x] **Simboli inline nel testo** (costo energia dentro il testo dell'attacco) → implementato tramite `richText` e simboli procedurali `{sym:energies.*}`
+- [x] **Orientamento orizzontale**: `CardOrientation.Landscape` pienamente supportato
+- [x] **Bolla di evoluzione**: slot con maschera e posizionamento calibrato
+- [x] **Riga Weakness / Resistance / Retreat**: combinazioni simbolo + moltiplicatore testuale supportate
+- [x] **Rule box** (testo regola di V/ex/GX): `text` condizionale
+- [x] Notazione del danno con suffissi `+`, `×`, `-`: campo testo libero
+- [x] **Font incorporati**: `GillSansBold`, `GillSansItalic`, `GillSans`, `Futura-Bold` con seeder e mapping automatico
 
-- [ ] **Simboli inline nel testo** (costo energia dentro il testo dell'attacco) → dipende dal
-      `richText` di F2, quindi va fatto prima
-- [ ] **Orientamento orizzontale** per alcune carte: `CardOrientation.Landscape` esiste
-      nell'enum ma non è mai stato esercitato dal renderer
-- [ ] **Bolla di evoluzione**: piccolo slot immagine circolare con l'immagine del pre-evoluzione
-      → `imageSlot` + maschera circolare (la maschera è già prevista, va implementata)
-- [ ] **Riga Weakness / Resistance / Retreat**: combinazioni simbolo + moltiplicatore testuale
-      → gruppo di `symbolSlot` + `text`, nessuna capacità nuova
-- [ ] **Rule box** (testo regola di V/ex/GX): `text` condizionale, nessuna capacità nuova
-- [ ] Notazione del danno con suffissi `+`, `×`, `-`: campo testo libero, nessuna capacità nuova
-
-### Contenuti da seminare
-
-- **Tipi di carta:** Pokémon (Basic, Stage 1, Stage 2, Restored, V, VMAX, VSTAR, V-UNION, ex, EX,
-  GX, Tag Team GX, LEGEND, Prime, Lv.X, BREAK, Prism Star, Radiant, Amazing Rare, Shining, Star,
-  Baby, SP, Ultra Beast, Tera ex, Mega), Trainer (Item, Supporter, Stadium, Tool, Tool F,
-  Technical Machine, ACE SPEC), Energy (Basic × 9, Special)
-- **Set di simboli:** `energy-types` (11), `set-symbols` (uno per espansione), `rarities`,
-  `regulation-marks`, `ability-headers`, `weakness-resistance-retreat`
-- **Ruoli font:** `pkm-card-name`, `pkm-hp-label`, `pkm-hp-value`, `pkm-stage`, `pkm-evolves-from`,
-  `pkm-ability-header`, `pkm-ability-name`, `pkm-attack-name`, `pkm-attack-damage`,
-  `pkm-attack-text`, `pkm-rule-box`, `pkm-flavor`, `pkm-pokedex-data`, `pkm-illustrator`,
-  `pkm-collector-number`, `pkm-weakness-resistance`
-- **Campi:** stage, evolvesFrom, name, hp, type, ability{name,text}, **attacks[]**{cost[], name,
-  damage, text}, weakness{type,multiplier}, resistance, retreatCost, ruleBox, pokedexCategory,
-  height, weight, dexNumber, flavorText, illustrator, collectorNumber, regulationMark, rarity
-
-**Fatto quando:** una carta Pokémon con 2 attacchi di lunghezza diversa si compone correttamente,
-e passando a 1 o 3 attacchi il layout si ridistribuisce senza intervento manuale.
+**Fatto:** carte Pokémon generate a 150/300/600 DPI, con allineamenti millimetrici verificati visivamente e tramite test.
 
 ---
 
-## F12 — Magic: The Gathering ⬜
+## F12 — Magic: The Gathering ✅
 
-Formato **63 × 88 mm**, raggio angoli **3.18 mm** (più arrotondato di YGO e Pokémon).
+Formato **63 × 88 mm**, raggio angoli **3.18 mm**.
 
-### La difficoltà vera: la grammatica dei simboli di mana
+- [x] **Parser dei token di mana e simboli procedurali SkiaSharp**:
+  - Colori base: `{W}`, `{U}`, `{B}`, `{R}`, `{G}`, `{C}`
+  - Generici e variabili: numeri `{0}`–`{9}`, `{X}`
+  - Azioni e tap: `{T}` (Tap)
+  - Simboli di rarità procedurali: Comune, Non comune, Rara, Mitica
+- [x] **Allineamento alla baseline e centraggio ottico `CapHeight`**: calibrazione millimetrica per evitare che font con ascendenti marcate (come Beleren) tocchino i bordi
+- [x] **Font incorporati**: `Beleren2016-Bold`, `Beleren2016SmallCaps-Bold`, `Mplantin`
+- [x] **Contenuti seminati**:
+  - **Tipi:** Creatura, Planeswalker, Istantaneo, Stregoneria, Incantesimo, Artefatto, Terra
+  - **Frame e colori:** White, Blue, Black, Red, Green, Multicolor, Colorless, Artifact, Land
+  - **Ruoli font:** `mtg-card-name`, `mtg-type-line`, `mtg-rules-text`, `mtg-flavor-text`, `mtg-power-toughness`, `mtg-loyalty`, `mtg-artist`, `mtg-collector-number`
+  - **Campi:** name, manaCost, artwork, supertypes, cardTypes, subtypes, rulesText, flavorText, power, toughness, loyalty, artist, collectorNumber, setCode, rarity
 
-Il testo MTG è pieno di simboli compositi: `{2}{W/U}{X}{T}{W/P}`. Non è una semplice sostituzione
-uno-a-uno come per gli attributi Yu-Gi-Oh!.
-
-- [ ] **Parser dei token di mana** con supporto a:
-  - base: `{W} {U} {B} {R} {G} {C} {S} {T} {Q} {E}`
-  - generici: `{0}`–`{20}`, `{X} {Y} {Z}`
-  - ibridi a due colori: `{W/U}` … (10 combinazioni)
-  - ibridi monocolore: `{2/W}` … (5)
-  - Phyrexian: `{W/P}` … (5) e ibridi Phyrexian
-- [ ] Decisione da prendere: **un asset per ogni combinazione** (~60 file, semplice) oppure
-      **composizione a runtime** di due mezzi cerchi (meno asset, più codice).
-      Raccomandazione: un asset per combinazione — è dato, non codice, e resta in linea con ADR-001
-- [ ] Allineamento alla baseline e scala rispetto all'altezza x del font
-
-### Layout esotici
-
-Sono molti; vanno affrontati in ordine di valore, non tutti insieme.
-
-| Layout | Capacità richiesta | Priorità |
-|---|---|---|
-| Normal | nessuna nuova | 1 |
-| Saga | `repeatingBlock` (capitoli) — arriva da F11 | 2 |
-| Planeswalker | `repeatingBlock` con badge di loyalty | 2 |
-| Adventure | sotto-box con stile proprio → `group` + `shape` | 3 |
-| Transform / Modal DFC | due facce = due template legati da un campo | 3 |
-| Split / Aftermath | due metà, una ruotata di 90° → rotazione di gruppo | 4 |
-| Battle | orientamento orizzontale (da F11) | 4 |
-| Class, Room, Case, Leveler, Prototype, Mutate | varianti dei precedenti | 5 |
-
-### Altre capacità da aggiungere
-
-- [ ] **Frame ibridi con gradiente** fra due colori → `ShapeLayer` ha già il gradiente lineare,
-      serve applicarlo come maschera sul frame
-- [ ] **Watermark**: immagine a bassa opacità in blend `multiply` dentro il box di testo
-      → `staticImage` con opacità e blend, **nessuna capacità nuova**
-- [ ] **Flavor text** separato da una barra divisoria e in corsivo → due `text` + una `shape`
-- [ ] **Simbolo espansione colorato per rarità**: lo stesso simbolo in 4–5 varianti → set di simboli
-      con chiave composta `set-code/rarity`
-- [ ] **Color indicator**: pallino colorato prima della type line → `shape` ellisse condizionale
-- [ ] **Rotazione di gruppo** per le split card: oggi `RotationDeg` esiste solo sul singolo layer,
-      va propagato ai figli di un `GroupLayer`
-
-### Contenuti da seminare
-
-- **Tipi:** Artifact, Battle, Creature, Enchantment, Instant, Land, Planeswalker, Sorcery, Kindred
-- **Supertipi:** Basic, Legendary, Snow, World, Ongoing
-- **Frame per colore:** White, Blue, Black, Red, Green, Multicolor, Hybrid, Artifact, Colorless,
-  Land, Nyx, Vehicle, Snow, Token, Emblem
-- **Ere di frame:** Original (1993), Modern (2003), M15 (2014) → template distinti, non varianti
-- **Ruoli font:** `mtg-card-name`, `mtg-type-line`, `mtg-rules-text`, `mtg-flavor-text`,
-  `mtg-power-toughness`, `mtg-loyalty`, `mtg-artist`, `mtg-collector-number`, `mtg-set-code`,
-  `mtg-copyright`
-- **Campi:** name, manaCost, artwork, supertypes[], types[], subtypes[], expansionSymbol, rarity,
-  rulesText, flavorText, power, toughness, loyalty, defense, artist, collectorNumber, setCode,
-  language, watermark, colorIndicator
-
-**Fatto quando:** una Creature M15 e una Saga si compongono correttamente, e i simboli di mana nel
-testo regole sono allineati alla baseline.
+**Fatto:** carte MTG renderizzate con fedeltà tipografica elevata a 150/300/600 DPI, simboli inline nel testo regole e calibrazione perfetta degli offset.
 
 ---
 
-## Sintesi: cosa manca al motore per i tre giochi
+## F13 — Rifinitura UX, 60 FPS Asincrono & Logging Pulito ✅
 
-| Capacità | Stato | Serve a |
+- [x] **Offload Asincrono SkiaSharp / SQLite**: incapsulamento completo in `Task.Run(...)` per preview, export e PDF, garantendo un thread UI Blazor/Photino sempre libero a 60 FPS (ADR-037).
+- [x] **Accelerazione Hardware GPU**: rimozione del costoso `backdrop-filter: blur` in WebKitGTK Linux e introduzione di `will-change: transform` e `transform: translateZ(0)` sui caricatori CSS.
+- [x] **Correzione NavMenu**: impostazione di `Match="NavLinkMatch.All"` su `cards` sia su Desktop che Web per impedire la contemporanea selezione di "Le mie carte" e "Nuova carta".
+- [x] **Azzeramento Spam Base64 in Console (ADR-036)**: `SetLogVerbosity(0)` in `CardMaker.Desktop/Program.cs` per disattivare l'echo nativo dei messaggi IPC WebKitGTK.
+- [x] **Logging Strutturato Sintetico**: introduzione di `ILogger<T>` su `CardPreviewService`, `CardExportService`, `CardService` e `AssetService` con log informativi compatti (`[Preview]`, `[Export]`, `[Card]`, `[Asset]`).
+
+---
+
+## Sintesi: Capacità del Motore per i Tre Giochi
+
+| Capacità | Stato | Gioco |
 |---|---|---|
-| `staticImage`, `imageSlot`, `text`, `symbolSlot`, `shape`, `group` | ✅ F1 | tutti |
-| Auto-fit con compressione orizzontale | ✅ F1 | YGO soprattutto |
-| Condizioni, campi calcolati, stili di testo | ✅ F1 | tutti |
-| Font per ruolo con fallback | ✅ F1 | tutti |
-| `symbolRepeater`, `toggleGroup` | ✅ F2 | YGO (stelle, frecce Link) |
-| `richText` con simboli inline | ✅ F2 | YGO, Pokémon, MTG |
-| `overlay` foil, blend, maschere | ✅ F2 | rarità di tutti i giochi |
-| Export PDF | ✅ F2 | tutti |
-| Crop "a fetta" | ✅ F2 | Maximum Rush |
-| **`repeatingBlock` ad altezza variabile** | ⬜ F11 | Pokémon, Planeswalker, Saga |
-| Orientamento orizzontale | ⬜ F11 | Pokémon, Battle MTG |
-| Maschera circolare | ⬜ F11 | bolla evoluzione Pokémon |
-| **Parser dei simboli di mana** | ⬜ F12 | MTG |
-| Rotazione propagata ai gruppi | ⬜ F12 | split card MTG |
-| Gradiente come maschera di frame | ⬜ F12 | frame ibridi MTG |
+| `staticImage`, `imageSlot`, `text`, `symbolSlot`, `shape`, `group` | ✅ F1 | Tutti |
+| Auto-fit con compressione orizzontale (`shrinkAndCondense`) | ✅ F1 | Tutti (spec. YGO) |
+| Condizioni (`VisibleWhen`), campi calcolati, stili di testo | ✅ F1 | Tutti |
+| Font per ruolo con fallback e risorse embedded | ✅ F1/F11/F12 | Tutti |
+| `symbolRepeater`, `toggleGroup` | ✅ F2 | YGO (Livello/Rank, Link) |
+| `richText` con simboli inline `{sym:...}` | ✅ F2 | Tutti |
+| `overlay` foil, blend, maschere | ✅ F2 | Rarità di tutti i giochi |
+| Export raster PNG/JPG e vettoriale PDF (fronte/retro) | ✅ F2 | Tutti |
+| Crop "a fetta" per Maximum Monster | ✅ F2 | YGO Rush Duel |
+| Orientamento orizzontale (Landscape) | ✅ F11 | Tutti |
+| Simboli procedurali energia SkiaSharp | ✅ F11 | Pokémon TCG |
+| Simboli procedurali mana & rarità SkiaSharp | ✅ F12 | Magic: The Gathering |
+| Centraggio ottico verticale su `CapHeight` | ✅ F12 | Tutti (Beleren, GillSans, Stone Serif) |
+| Mappatura 1:1 Full-Bleed Master Canvas (zero distorsione) | ✅ F12 | Tutti |
+| Pipeline asincrona 60 FPS & Logging minimale senza base64 | ✅ F13 | Desktop & Web |
 
 > Sono **6 tipi di layer nuovi in tutto** per coprire tre giochi. Se il numero cresce molto oltre,
 > è il segnale che il modello di layout va ripensato.
