@@ -74,6 +74,7 @@ public sealed partial class FontService(
 
         db.FontAssets.Add(font);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        FontBytesCache.Clear();
 
         font.Asset = upload.Asset;
         return FontRegistrationOutcome.Ok(font);
@@ -126,22 +127,39 @@ public sealed partial class FontService(
         return font is null ? null : await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
     }
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte[]> FontBytesCache = new(StringComparer.OrdinalIgnoreCase);
+
     public async Task<byte[]?> GetBytesByAliasAsync(
         Guid? gameId,
         string roleAlias,
         CancellationToken cancellationToken = default)
     {
+        var normalized = NormalizeAlias(roleAlias);
+        if (normalized is null)
+        {
+            return null;
+        }
+
+        var cacheKey = $"{gameId}_{normalized}";
+        if (FontBytesCache.TryGetValue(cacheKey, out var cached))
+        {
+            return cached;
+        }
+
+        byte[]? bytes = null;
         var font = await FindByAliasAsync(gameId, roleAlias, cancellationToken).ConfigureAwait(false);
         if (font is not null)
         {
-            var bytes = await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
-            if (bytes is not null && bytes.Length > 0)
-            {
-                return bytes;
-            }
+            bytes = await ReadAssetAsync(font.Asset.Sha256, cancellationToken).ConfigureAwait(false);
         }
 
-        return GetEmbeddedFontBytes(roleAlias);
+        bytes ??= GetEmbeddedFontBytes(roleAlias);
+        if (bytes is not null && bytes.Length > 0)
+        {
+            FontBytesCache[cacheKey] = bytes;
+        }
+
+        return bytes;
     }
 
     public static byte[]? GetEmbeddedFontBytes(string roleAlias)
@@ -198,6 +216,7 @@ public sealed partial class FontService(
 
         db.FontAssets.Remove(font);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        FontBytesCache.Clear();
         return true;
     }
 

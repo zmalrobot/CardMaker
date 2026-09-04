@@ -13,7 +13,8 @@ public sealed class PdfExporter
     {
         ArgumentNullException.ThrowIfNull(front);
 
-        using var stream = new MemoryStream();
+        var estimatedCapacity = front.Content.Length + (back?.Content.Length ?? 0) + 4096;
+        using var stream = new MemoryStream(estimatedCapacity);
         using (var document = SKDocument.CreatePdf(stream))
         {
             DrawPage(document, front);
@@ -31,8 +32,8 @@ public sealed class PdfExporter
         var widthPt = page.WidthPx * 72f / page.Dpi;
         var heightPt = page.HeightPx * 72f / page.Dpi;
 
-        using var bitmap = SKBitmap.Decode(page.Content);
-        using var image = SKImage.FromBitmap(bitmap);
+        using var data = SKData.CreateCopy(page.Content);
+        using var image = SKImage.FromEncodedData(data);
 
         var canvas = document.BeginPage(widthPt, heightPt);
         canvas.DrawImage(image, new SKRect(0, 0, widthPt, heightPt), new SKSamplingOptions(SKCubicResampler.Mitchell));

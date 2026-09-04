@@ -85,16 +85,16 @@ public sealed class CardExportService : ICardExportService
                 var backLayout = LayoutSerializer.Deserialize(card.BackTemplateVersion.LayoutJson);
                 if (backLayout is not null)
                 {
-                    // Carica risorse sequenzialmente per garantire thread-safety su DbContext (CON-001)
-                    using var frontResources = await _resourceLoader.LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                    using var backResources = await _resourceLoader.LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                    // PAR-PERF-001: Carica risorse congiuntamente in un'unica tornata batch per fronte e retro
+                    using var sharedResources = await _resourceLoader.LoadResourcesAsync(
+                        [frontLayout, backLayout], values, card.GameId, cancellationToken).ConfigureAwait(false);
 
                     // Esegue il render SkiaSharp in parallelo (CPU-bound) per dimezzare i tempi di esportazione (CON-001)
                     var frontTask = Task.Run(() => _renderer.Render(new CardRenderRequest
                     {
                         Layout = frontLayout,
                         Values = values,
-                        Resources = frontResources,
+                        Resources = sharedResources,
                         Dpi = Math.Clamp(options.Dpi, 72, 1200),
                         IncludeBleed = options.IncludeBleed,
                         RoundCorners = options.RoundCorners,
@@ -105,7 +105,7 @@ public sealed class CardExportService : ICardExportService
                     {
                         Layout = backLayout,
                         Values = values,
-                        Resources = backResources,
+                        Resources = sharedResources,
                         Dpi = Math.Clamp(options.Dpi, 72, 1200),
                         IncludeBleed = options.IncludeBleed,
                         RoundCorners = options.RoundCorners,

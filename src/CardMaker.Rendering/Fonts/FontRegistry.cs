@@ -22,8 +22,7 @@ public interface IFontSource
 public sealed class FontRegistry(IFontSource source) : IDisposable
 {
     private readonly ConcurrentDictionary<string, SKTypeface?> _cache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<SKTypeface> _owned = [];
-    private readonly Lock _gate = new();
+    private readonly ConcurrentBag<SKTypeface> _owned = [];
     private bool _disposed;
 
     /// <summary>Font di ripiego: sempre disponibile, mai proprietario.</summary>
@@ -62,11 +61,7 @@ public sealed class FontRegistry(IFontSource source) : IDisposable
             return null;
         }
 
-        lock (_gate)
-        {
-            _owned.Add(typeface);
-        }
-
+        _owned.Add(typeface);
         return typeface;
     }
 
@@ -78,14 +73,9 @@ public sealed class FontRegistry(IFontSource source) : IDisposable
         }
 
         _disposed = true;
-        lock (_gate)
+        while (_owned.TryTake(out var typeface))
         {
-            foreach (var typeface in _owned)
-            {
-                typeface.Dispose();
-            }
-
-            _owned.Clear();
+            typeface.Dispose();
         }
 
         _cache.Clear();

@@ -11,7 +11,7 @@ internal static class RenderPostProcessor
         if (request.IncludeBleed)
         {
             // Con l'abbondanza gli angoli non vanno arrotondati: quell'area serve proprio a essere tagliata.
-            return SKImage.FromEncodedData(source.Encode(SKEncodedImageFormat.Png, 100)) ?? source;
+            return source.ToRasterImage() ?? source;
         }
 
         var trim = new SKRectI(
@@ -20,12 +20,12 @@ internal static class RenderPostProcessor
             geometry.BleedPx + geometry.TrimWidthPx,
             geometry.BleedPx + geometry.TrimHeightPx);
 
-        using var cropped = source.Subset(trim) ?? source;
-
         if (!request.RoundCorners || geometry.CornerRadiusPx <= 0)
         {
-            return SKImage.FromEncodedData(cropped.Encode(SKEncodedImageFormat.Png, 100)) ?? cropped;
+            return source.Subset(trim) ?? source.ToRasterImage() ?? source;
         }
+
+        using var cropped = source.Subset(trim) ?? source;
 
         var info = new SKImageInfo(geometry.TrimWidthPx, geometry.TrimHeightPx, SKColorType.Rgba8888, SKAlphaType.Premul);
         using var surface = SKSurface.Create(info);

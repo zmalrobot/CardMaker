@@ -18,8 +18,12 @@ public sealed class CardDerivedValuesService : ICardDerivedValuesService
             return;
         }
 
+        var traitsSet = selectedTraits is HashSet<string> hs
+            ? hs
+            : new HashSet<string>(selectedTraits, StringComparer.OrdinalIgnoreCase);
+
         var selectedTraitDtos = cardType.AllowedTraits
-            .Where(t => selectedTraits.Contains(t.Key))
+            .Where(t => traitsSet.Contains(t.Key))
             .ToList();
 
         var traitNames = selectedTraitDtos.Select(t => t.Name).ToList();

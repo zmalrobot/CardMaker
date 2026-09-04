@@ -143,3 +143,5 @@ app.MapGet("/SetCulture", (string culture, string? redirectUri, HttpContext cont
 });
 
 app.Run();
+
+public partial class Program { }

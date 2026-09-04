@@ -10,66 +10,73 @@ public sealed class CardPreviewService(
     CardRenderer renderer,
     ILogger<CardPreviewService>? logger = null) : ICardPreviewService
 {
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, (CardLayout Layout, LayoutValidationResult Validation)> LayoutCache = new();
+
     public async Task<CardPreviewResult> RenderAsync(
         CardPreviewRequest request,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return await Task.Run(async () =>
+        var cacheKey = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(request.LayoutJson)));
+        if (!LayoutCache.TryGetValue(cacheKey, out var entry))
         {
-            CardLayout? layout;
+            CardLayout? parsed;
             try
             {
-                layout = LayoutSerializer.Deserialize(request.LayoutJson);
+                parsed = LayoutSerializer.Deserialize(request.LayoutJson);
             }
             catch (System.Text.Json.JsonException ex)
             {
                 return CardPreviewResult.Fail([$"Layout non leggibile: {ex.Message}"]);
             }
 
-            var validation = LayoutSerializer.Validate(layout);
-            if (!validation.IsValid)
-            {
-                return CardPreviewResult.Fail([.. validation.Issues.Select(i => $"{i.Code}: {i.Message}")]);
-            }
+            var val = LayoutSerializer.Validate(parsed);
+            entry = (parsed!, val);
+            LayoutCache.TryAdd(cacheKey, entry);
+        }
 
-            using var resources = await resourceLoader.LoadResourcesAsync(layout!, request.Values, request.GameId, cancellationToken).ConfigureAwait(false);
+        if (!entry.Validation.IsValid)
+        {
+            return CardPreviewResult.Fail([.. entry.Validation.Issues.Select(i => $"{i.Code}: {i.Message}")]);
+        }
 
-            var result = renderer.Render(new CardRenderRequest
-            {
-                Layout = layout!,
-                Values = request.Values,
-                Resources = resources,
-                Dpi = Math.Clamp(request.Dpi, 48, 1200),
-                IncludeBleed = request.IncludeBleed,
-                RoundCorners = request.RoundCorners,
-                ShowGuides = request.ShowGuides,
-                Format = string.Equals(request.Format, "jpg", StringComparison.OrdinalIgnoreCase)
-                    ? RenderOutputFormat.Jpeg
-                    : RenderOutputFormat.Png,
-            });
+        var layout = entry.Layout;
+        using var resources = await resourceLoader.LoadResourcesAsync(layout, request.Values, request.GameId, cancellationToken).ConfigureAwait(false);
 
-            var sizeKb = (result.Content?.Length ?? 0) / 1024.0;
-            logger?.LogInformation(
-                "[Preview] Render {Width}x{Height} px ({Format} @ {Dpi} DPI) | {SizeKb:F1} KB | {DurationMs:F1} ms | {WarningCount} avvisi",
-                result.WidthPx,
-                result.HeightPx,
-                request.Format,
-                request.Dpi,
-                sizeKb,
-                result.Duration.TotalMilliseconds,
-                result.Warnings.Count);
+        var result = await Task.Run(() => renderer.Render(new CardRenderRequest
+        {
+            Layout = layout,
+            Values = request.Values,
+            Resources = resources,
+            Dpi = Math.Clamp(request.Dpi, 48, 1200),
+            IncludeBleed = request.IncludeBleed,
+            RoundCorners = request.RoundCorners,
+            ShowGuides = request.ShowGuides,
+            Format = string.Equals(request.Format, "jpg", StringComparison.OrdinalIgnoreCase)
+                ? RenderOutputFormat.Jpeg
+                : RenderOutputFormat.Png,
+        }), cancellationToken).ConfigureAwait(false);
 
-            return new CardPreviewResult(
-                true,
-                result.Content,
-                result.ContentType,
-                result.WidthPx,
-                result.HeightPx,
-                [.. result.Warnings.Select(w => new PreviewWarning(w.Code, w.Message, w.LayerId))],
-                result.Duration.TotalMilliseconds,
-                []);
-        }, cancellationToken).ConfigureAwait(false);
+        var sizeKb = (result.Content?.Length ?? 0) / 1024.0;
+        logger?.LogInformation(
+            "[Preview] Render {Width}x{Height} px ({Format} @ {Dpi} DPI) | {SizeKb:F1} KB | {DurationMs:F1} ms | {WarningCount} avvisi",
+            result.WidthPx,
+            result.HeightPx,
+            request.Format,
+            request.Dpi,
+            sizeKb,
+            result.Duration.TotalMilliseconds,
+            result.Warnings.Count);
+
+        return new CardPreviewResult(
+            true,
+            result.Content,
+            result.ContentType,
+            result.WidthPx,
+            result.HeightPx,
+            [.. result.Warnings.Select(w => new PreviewWarning(w.Code, w.Message, w.LayerId))],
+            result.Duration.TotalMilliseconds,
+            []);
     }
 }

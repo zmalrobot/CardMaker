@@ -23,6 +23,9 @@
     <ProjectReference Include="..\..\src\CardMaker.Domain\CardMaker.Domain.csproj" />
     <ProjectReference Include="..\..\src\CardMaker.Infrastructure\CardMaker.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CardMaker.Desktop\CardMaker.Desktop.csproj" />
+    <ProjectReference Include="..\..\src\CardMaker.Rendering\CardMaker.Rendering.csproj" />
+    <ProjectReference Include="..\..\src\CardMaker.UI\CardMaker.UI.csproj" />
+    <ProjectReference Include="..\..\src\CardMaker.Web\CardMaker.Web.csproj" />
   </ItemGroup>
 
 </Project>

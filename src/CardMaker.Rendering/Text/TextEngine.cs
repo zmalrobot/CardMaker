@@ -69,21 +69,32 @@ public sealed class TextEngine
         var lineHeight = (float)style.LineHeight;
         var minLineHeight = canShrink ? Math.Min(lineHeight, (float)autoFit.MinLineHeight) : lineHeight;
 
-        // 1. Corpo piu' grande che entra concedendo la compressione massima.
-        var size = FindLargestFittingSize(text, typeface, style, minPx, basePx, minScaleX, lineHeight, maxWidthPx, maxHeightPx, dpi);
+        var rawParagraphs = text.Split('\n');
+        var paragraphs = new string[rawParagraphs.Length][];
+        for (var i = 0; i < rawParagraphs.Length; i++)
+        {
+            var p = rawParagraphs[i];
+            paragraphs[i] = p.Length == 0 ? [] : p.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        }
+
+        using var font = new SKFont(typeface, basePx) { ScaleX = maxScaleX, Subpixel = true };
+        var linesBuffer = new List<TextLine>();
+
+        // 1. Corpo piu' grande che entra concedendo la compressione massima (ALG-PERF-003, CPU-PERF-003).
+        var size = FindLargestFittingSize(paragraphs, font, style, minPx, basePx, minScaleX, lineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer);
 
         var usedLineHeight = lineHeight;
         if (size is null && minLineHeight < lineHeight)
         {
             // 2. Ultima risorsa prima di dichiarare l'overflow: stringere l'interlinea.
-            size = FindLargestFittingSize(text, typeface, style, minPx, basePx, minScaleX, minLineHeight, maxWidthPx, maxHeightPx, dpi);
+            size = FindLargestFittingSize(paragraphs, font, style, minPx, basePx, minScaleX, minLineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer);
             usedLineHeight = minLineHeight;
         }
 
         if (size is null)
         {
             // Anche in overflow il numero di righe va rispettato: altrimenti il testo esce dalla casella.
-            var forced = Layout(text, typeface, style, minPx, minScaleX, minLineHeight, maxWidthPx, dpi, style.MaxLines)
+            var forced = Layout(paragraphs, font, style, minPx, minScaleX, minLineHeight, maxWidthPx, dpi, style.MaxLines)
                 .Take(Math.Max(1, style.MaxLines))
                 .ToList();
 
@@ -94,9 +105,9 @@ public sealed class TextEngine
         }
 
         // 3. Compressione minore che continua a entrare a quel corpo.
-        var scaleX = FindLargestFittingScale(text, typeface, style, size.Value, minScaleX, maxScaleX, usedLineHeight, maxWidthPx, maxHeightPx, dpi);
+        var scaleX = FindLargestFittingScale(paragraphs, font, style, size.Value, minScaleX, maxScaleX, usedLineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer);
 
-        var lines = Layout(text, typeface, style, size.Value, scaleX, usedLineHeight, maxWidthPx, dpi, style.MaxLines);
+        var lines = Layout(paragraphs, font, style, size.Value, scaleX, usedLineHeight, maxWidthPx, dpi, style.MaxLines);
         return new FittedText(lines, size.Value, scaleX, size.Value * usedLineHeight, Overflowed: false)
         {
             GlyphHeightPx = GlyphHeight(typeface, size.Value),
@@ -113,16 +124,16 @@ public sealed class TextEngine
     public static float PointsToPixels(double points, int dpi) => (float)(points / 72.0 * dpi);
 
     private float? FindLargestFittingSize(
-        string text, SKTypeface typeface, TextStyle style,
+        string[][] paragraphs, SKFont font, TextStyle style,
         float minPx, float maxPx, float scaleX, float lineHeight,
-        float maxWidthPx, float maxHeightPx, int dpi)
+        float maxWidthPx, float maxHeightPx, int dpi, List<TextLine> linesBuffer)
     {
-        if (Fits(text, typeface, style, maxPx, scaleX, lineHeight, maxWidthPx, maxHeightPx, dpi))
+        if (Fits(paragraphs, font, style, maxPx, scaleX, lineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer))
         {
             return maxPx;
         }
 
-        if (!Fits(text, typeface, style, minPx, scaleX, lineHeight, maxWidthPx, maxHeightPx, dpi))
+        if (!Fits(paragraphs, font, style, minPx, scaleX, lineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer))
         {
             return null;
         }
@@ -132,7 +143,7 @@ public sealed class TextEngine
         while (high - low > SizeTolerancePx)
         {
             var mid = (low + high) / 2f;
-            if (Fits(text, typeface, style, mid, scaleX, lineHeight, maxWidthPx, maxHeightPx, dpi))
+            if (Fits(paragraphs, font, style, mid, scaleX, lineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer))
             {
                 low = mid;
             }
@@ -146,11 +157,11 @@ public sealed class TextEngine
     }
 
     private float FindLargestFittingScale(
-        string text, SKTypeface typeface, TextStyle style,
+        string[][] paragraphs, SKFont font, TextStyle style,
         float sizePx, float minScaleX, float maxScaleX, float lineHeight,
-        float maxWidthPx, float maxHeightPx, int dpi)
+        float maxWidthPx, float maxHeightPx, int dpi, List<TextLine> linesBuffer)
     {
-        if (Fits(text, typeface, style, sizePx, maxScaleX, lineHeight, maxWidthPx, maxHeightPx, dpi))
+        if (Fits(paragraphs, font, style, sizePx, maxScaleX, lineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer))
         {
             return maxScaleX;
         }
@@ -160,7 +171,7 @@ public sealed class TextEngine
         while (high - low > ScaleTolerance)
         {
             var mid = (low + high) / 2f;
-            if (Fits(text, typeface, style, sizePx, mid, lineHeight, maxWidthPx, maxHeightPx, dpi))
+            if (Fits(paragraphs, font, style, sizePx, mid, lineHeight, maxWidthPx, maxHeightPx, dpi, linesBuffer))
             {
                 low = mid;
             }
@@ -174,42 +185,56 @@ public sealed class TextEngine
     }
 
     private bool Fits(
-        string text, SKTypeface typeface, TextStyle style,
+        string[][] paragraphs, SKFont font, TextStyle style,
         float sizePx, float scaleX, float lineHeight,
-        float maxWidthPx, float maxHeightPx, int dpi)
+        float maxWidthPx, float maxHeightPx, int dpi, List<TextLine> linesBuffer)
     {
-        var lines = Layout(text, typeface, style, sizePx, scaleX, lineHeight, maxWidthPx, dpi, style.MaxLines);
-        if (lines.Count == 0)
+        linesBuffer.Clear();
+        font.Size = sizePx;
+        font.ScaleX = scaleX;
+        var letterSpacing = PointsToPixels(style.LetterSpacingPt, dpi);
+
+        for (var i = 0; i < paragraphs.Length; i++)
+        {
+            WrapParagraph(paragraphs[i], font, letterSpacing, maxWidthPx, linesBuffer, style.MaxLines);
+            if (linesBuffer.Count > style.MaxLines)
+            {
+                return false;
+            }
+        }
+
+        if (linesBuffer.Count == 0)
         {
             return true;
         }
 
-        if (lines.Count > style.MaxLines)
+        var maxAllowed = maxWidthPx + 0.5f;
+        // LINQ-PERF-002: Indexed loop instead of lines.Any(...)
+        for (var i = 0; i < linesBuffer.Count; i++)
         {
-            return false;
+            if (linesBuffer[i].WidthPx > maxAllowed)
+            {
+                return false;
+            }
         }
 
-        if (lines.Any(l => l.WidthPx > maxWidthPx + 0.5f))
-        {
-            return false;
-        }
-
-        var totalHeight = ((lines.Count - 1) * sizePx * lineHeight) + sizePx;
+        var totalHeight = ((linesBuffer.Count - 1) * sizePx * lineHeight) + sizePx;
         return totalHeight <= maxHeightPx + 0.5f;
     }
 
-    private List<TextLine> Layout(
-        string text, SKTypeface typeface, TextStyle style,
+    private static List<TextLine> Layout(
+        string[][] paragraphs, SKFont font, TextStyle style,
         float sizePx, float scaleX, float lineHeight,
         float maxWidthPx, int dpi, int maxLines)
     {
-        using var font = new SKFont(typeface, sizePx) { ScaleX = scaleX, Subpixel = true };
+        font.Size = sizePx;
+        font.ScaleX = scaleX;
         var letterSpacing = PointsToPixels(style.LetterSpacingPt, dpi);
 
         var lines = new List<TextLine>();
-        foreach (var paragraph in text.Split('\n'))
+        for (var i = 0; i < paragraphs.Length; i++)
         {
-            WrapParagraph(paragraph, font, letterSpacing, maxWidthPx, lines, maxLines);
+            WrapParagraph(paragraphs[i], font, letterSpacing, maxWidthPx, lines, maxLines);
             if (lines.Count > maxLines)
             {
                 break;
@@ -220,16 +245,9 @@ public sealed class TextEngine
     }
 
     private static void WrapParagraph(
-        string paragraph, SKFont font, float letterSpacing, float maxWidthPx,
+        string[] words, SKFont font, float letterSpacing, float maxWidthPx,
         List<TextLine> lines, int maxLines)
     {
-        if (paragraph.Length == 0)
-        {
-            lines.Add(new TextLine(string.Empty, 0));
-            return;
-        }
-
-        var words = paragraph.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (words.Length == 0)
         {
             lines.Add(new TextLine(string.Empty, 0));
@@ -237,20 +255,25 @@ public sealed class TextEngine
         }
 
         var current = string.Empty;
+        var currentWidth = 0f;
 
-        foreach (var word in words)
+        for (var i = 0; i < words.Length; i++)
         {
+            var word = words[i];
             var candidate = current.Length == 0 ? word : current + " " + word;
-            if (Measure(candidate, font, letterSpacing) <= maxWidthPx)
+            var candidateWidth = Measure(candidate, font, letterSpacing);
+            if (candidateWidth <= maxWidthPx)
             {
                 current = candidate;
+                currentWidth = candidateWidth;
                 continue;
             }
 
             if (current.Length > 0)
             {
-                lines.Add(new TextLine(current, Measure(current, font, letterSpacing)));
+                lines.Add(new TextLine(current, currentWidth));
                 current = string.Empty;
+                currentWidth = 0f;
                 if (lines.Count > maxLines)
                 {
                     return;
@@ -262,7 +285,8 @@ public sealed class TextEngine
             while (Measure(remaining, font, letterSpacing) > maxWidthPx && remaining.Length > 1)
             {
                 var cut = FindBreakPoint(remaining, font, letterSpacing, maxWidthPx);
-                lines.Add(new TextLine(remaining[..cut], Measure(remaining[..cut], font, letterSpacing)));
+                var sub = remaining[..cut];
+                lines.Add(new TextLine(sub, Measure(sub, font, letterSpacing)));
                 remaining = remaining[cut..];
                 if (lines.Count > maxLines)
                 {
@@ -271,11 +295,12 @@ public sealed class TextEngine
             }
 
             current = remaining;
+            currentWidth = Measure(current, font, letterSpacing);
         }
 
         if (current.Length > 0)
         {
-            lines.Add(new TextLine(current, Measure(current, font, letterSpacing)));
+            lines.Add(new TextLine(current, currentWidth));
         }
     }
 

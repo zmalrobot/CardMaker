@@ -12,6 +12,7 @@ public sealed class LruCache<TKey, TValue>(int capacity, bool disposeOnEviction 
     private readonly Lock _gate = new();
     private readonly Dictionary<TKey, LinkedListNode<(TKey Key, TValue Value)>> _map = [];
     private readonly LinkedList<(TKey Key, TValue Value)> _order = new();
+    private readonly Stack<LinkedListNode<(TKey Key, TValue Value)>> _nodePool = new();
 
     public int Count
     {
@@ -51,9 +52,24 @@ public sealed class LruCache<TKey, TValue>(int capacity, bool disposeOnEviction 
                 {
                     DisposeIfPossible(existing.Value.Value);
                 }
+
+                existing.Value = (key, value);
+                _order.AddFirst(existing);
+                return;
             }
 
-            var node = new LinkedListNode<(TKey, TValue)>((key, value));
+            // COLL-PERF-002: Node pooling to avoid continuous LinkedListNode heap allocations
+            LinkedListNode<(TKey Key, TValue Value)> node;
+            if (_nodePool.Count > 0)
+            {
+                node = _nodePool.Pop();
+                node.Value = (key, value);
+            }
+            else
+            {
+                node = new LinkedListNode<(TKey, TValue)>((key, value));
+            }
+
             _order.AddFirst(node);
             _map[key] = node;
 
@@ -66,6 +82,9 @@ public sealed class LruCache<TKey, TValue>(int capacity, bool disposeOnEviction 
                 {
                     DisposeIfPossible(last.Value.Value);
                 }
+
+                last.Value = default;
+                _nodePool.Push(last);
             }
         }
     }
@@ -77,6 +96,8 @@ public sealed class LruCache<TKey, TValue>(int capacity, bool disposeOnEviction 
             foreach (var node in _map.Values)
             {
                 DisposeIfPossible(node.Value.Value);
+                node.Value = default;
+                _nodePool.Push(node);
             }
 
             _map.Clear();

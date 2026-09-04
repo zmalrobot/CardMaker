@@ -31,12 +31,34 @@ public sealed class FileSystemAssetStore : IAssetStore
     {
         ArgumentNullException.ThrowIfNull(content);
 
+        // Fast path for MemoryStream (seeders, placeholders, in-memory generated images)
+        if (content is MemoryStream ms && ms.TryGetBuffer(out var memSegment))
+        {
+            var hashBytes = SHA256.HashData(memSegment.AsSpan());
+            var hashHex = Convert.ToHexStringLower(hashBytes);
+            var destPath = GetPath(hashHex);
+
+            if (File.Exists(destPath))
+            {
+                return new StoredBlob(hashHex, memSegment.Count);
+            }
+
+            Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+            await using (var dest = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
+            {
+                await dest.WriteAsync(memSegment.AsMemory(), cancellationToken).ConfigureAwait(false);
+            }
+
+            _logger.LogInformation("Asset memorizzato {Hash} ({Size} byte)", hashHex, memSegment.Count);
+            return new StoredBlob(hashHex, memSegment.Count);
+        }
+
         var temporaryPath = Path.Combine(_root, $".tmp-{Guid.CreateVersion7():N}");
         string hash;
         long size;
 
         await using (var temporary = new FileStream(
-                         temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+                         temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, useAsync: true))
         {
             using var sha = SHA256.Create();
             await using var hashing = new CryptoStream(temporary, sha, CryptoStreamMode.Write, leaveOpen: true);
@@ -66,13 +88,24 @@ public sealed class FileSystemAssetStore : IAssetStore
 
     public Task<Stream?> OpenReadAsync(string sha256, CancellationToken cancellationToken = default)
     {
-        if (!TryGetValidatedPath(sha256, out var path) || !File.Exists(path))
+        if (!TryGetValidatedPath(sha256, out var path))
         {
             return Task.FromResult<Stream?>(null);
         }
 
-        Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
-        return Task.FromResult<Stream?>(stream);
+        try
+        {
+            Stream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            return Task.FromResult<Stream?>(stream);
+        }
+        catch (FileNotFoundException)
+        {
+            return Task.FromResult<Stream?>(null);
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return Task.FromResult<Stream?>(null);
+        }
     }
 
     public bool Exists(string sha256) => TryGetValidatedPath(sha256, out var path) && File.Exists(path);

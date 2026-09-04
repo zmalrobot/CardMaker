@@ -19,21 +19,31 @@ public sealed class CardService(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
 
-        var cards = await db.Cards.AsNoTracking()
-            .Include(c => c.Game)
-            .Include(c => c.CardType)
+        var cardData = await db.Cards.AsNoTracking()
             .Where(c => c.OwnerUserId == userId)
             .OrderByDescending(c => c.UpdatedAtUtc ?? c.CreatedAtUtc)
+            .Select(c => new
+            {
+                c.Id,
+                c.Title,
+                GameKey = c.Game.Key,
+                GameName = c.Game.Name,
+                CardTypeKey = c.CardType.Key,
+                CardTypeName = c.CardType.Name,
+                c.ThumbnailAssetId,
+                c.CreatedAtUtc,
+                c.UpdatedAtUtc,
+            })
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return cards.Select(c => new CardSummaryDto(
+        return cardData.Select(c => new CardSummaryDto(
             c.Id,
             c.Title,
-            c.Game.Key,
-            c.Game.Name.Get(),
-            c.CardType.Key,
-            c.CardType.Name.Get(),
+            c.GameKey,
+            c.GameName.Get(),
+            c.CardTypeKey,
+            c.CardTypeName.Get(),
             c.ThumbnailAssetId,
             c.CreatedAtUtc,
             c.UpdatedAtUtc ?? c.CreatedAtUtc)).ToList();

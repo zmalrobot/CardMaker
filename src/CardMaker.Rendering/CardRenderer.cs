@@ -14,15 +14,12 @@ namespace CardMaker.Rendering;
 /// </summary>
 public sealed class CardRenderer(TextEngine textEngine)
 {
-    private readonly ILayerPainter[] _painters =
-    [
-        new ImageLayerPainter(),
-        new SymbolLayerPainter(),
-        new ShapeLayerPainter(),
-        new TextLayerPainter(textEngine),
-        new ContainerLayerPainter(),
-        new OverlayLayerPainter(),
-    ];
+    private readonly ImageLayerPainter _imagePainter = new();
+    private readonly SymbolLayerPainter _symbolPainter = new();
+    private readonly ShapeLayerPainter _shapePainter = new();
+    private readonly TextLayerPainter _textPainter = new(textEngine);
+    private readonly ContainerLayerPainter _containerPainter = new();
+    private readonly OverlayLayerPainter _overlayPainter = new();
 
     public CardRenderResult Render(CardRenderRequest request)
     {
@@ -79,8 +76,18 @@ public sealed class CardRenderer(TextEngine textEngine)
         ConditionEvaluator evaluator,
         double inheritedOpacity)
     {
-        var result = new List<(LayerDefinition, double)>();
+        var result = new List<(LayerDefinition Layer, double Opacity)>();
+        CollectVisibleLayersRecursive(layers, evaluator, inheritedOpacity, result);
+        result.Sort(static (a, b) => a.Layer.Z.CompareTo(b.Layer.Z));
+        return result;
+    }
 
+    private static void CollectVisibleLayersRecursive(
+        IReadOnlyList<LayerDefinition> layers,
+        ConditionEvaluator evaluator,
+        double inheritedOpacity,
+        List<(LayerDefinition Layer, double Opacity)> accumulator)
+    {
         foreach (var layer in layers)
         {
             if (!evaluator.IsSatisfied(layer.VisibleWhen))
@@ -92,15 +99,13 @@ public sealed class CardRenderer(TextEngine textEngine)
 
             if (layer is GroupLayer group)
             {
-                result.AddRange(CollectVisibleLayers(group.Children, evaluator, opacity));
+                CollectVisibleLayersRecursive(group.Children, evaluator, opacity, accumulator);
             }
             else
             {
-                result.Add((layer, opacity));
+                accumulator.Add((layer, opacity));
             }
         }
-
-        return [.. result.OrderBy(item => item.Item1.Z)];
     }
 
     private void PaintLayer(SKCanvas canvas, LayerDefinition layer, double opacity, PaintContext context)
@@ -119,13 +124,27 @@ public sealed class CardRenderer(TextEngine textEngine)
                 canvas.RotateDegrees((float)layer.RotationDeg, dest.MidX, dest.MidY);
             }
 
-            foreach (var painter in _painters)
+            // LOOP-PERF-002: Direct type switch dispatch with zero array enumeration and no interface dispatch
+            switch (layer)
             {
-                if (painter.CanPaint(layer))
-                {
-                    painter.Paint(canvas, layer, dest, opacity, context);
+                case StaticImageLayer or ImageSlotLayer:
+                    _imagePainter.Paint(canvas, layer, dest, opacity, context);
                     break;
-                }
+                case SymbolSlotLayer or SymbolRepeaterLayer:
+                    _symbolPainter.Paint(canvas, layer, dest, opacity, context);
+                    break;
+                case ShapeLayer:
+                    _shapePainter.Paint(canvas, layer, dest, opacity, context);
+                    break;
+                case TextLayer or RichTextLayer:
+                    _textPainter.Paint(canvas, layer, dest, opacity, context);
+                    break;
+                case ToggleGroupLayer:
+                    _containerPainter.Paint(canvas, layer, dest, opacity, context);
+                    break;
+                case OverlayLayer:
+                    _overlayPainter.Paint(canvas, layer, dest, opacity, context);
+                    break;
             }
         }
         finally

@@ -376,10 +376,6 @@ else
     {
         if (CurrentCardType is null || CurrentCardType.Templates.Count == 0) return;
 
-        IsPreviewLoading = true;
-        StateHasChanged();
-        await Task.Yield();
-
         try
         {
             var template = TemplateSelector.SelectTemplate(CurrentCardType.Templates, CardValues);
@@ -390,6 +386,8 @@ else
                 return;
             }
 
+            if (cancellationToken.IsCancellationRequested) return;
+
             var result = await PreviewService.RenderAsync(new CardPreviewRequest
             {
                 LayoutJson = version.LayoutJson,
@@ -397,6 +395,8 @@ else
                 Dpi = 150,
                 IncludeBleed = false,
             }, cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested) return;
 
             if (result.Succeeded && result.Content is not null)
             {
@@ -406,6 +406,10 @@ else
                 RenderDuration = TimeSpan.FromMilliseconds(result.ElapsedMs);
             }
             PreviewWarnings = result.Warnings;
+        }
+        catch (OperationCanceledException)
+        {
+            // Ignora cancellazioni da debounce
         }
         catch (Exception ex)
         {

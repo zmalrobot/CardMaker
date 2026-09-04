@@ -11,9 +11,25 @@ namespace CardMaker.Infrastructure.Rendering;
 /// </summary>
 public sealed class PreloadedRenderResources : IRenderResources, IDisposable
 {
+    private readonly record struct SymbolResourceKey(string SetKey, string SymbolKey);
+
+    private sealed class SymbolResourceKeyComparer : IEqualityComparer<SymbolResourceKey>
+    {
+        public static readonly SymbolResourceKeyComparer Instance = new();
+        public bool Equals(SymbolResourceKey x, SymbolResourceKey y) =>
+            string.Equals(x.SetKey, y.SetKey, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(x.SymbolKey, y.SymbolKey, StringComparison.OrdinalIgnoreCase);
+
+        public int GetHashCode(SymbolResourceKey obj) =>
+            HashCode.Combine(
+                string.GetHashCode(obj.SetKey, StringComparison.OrdinalIgnoreCase),
+                string.GetHashCode(obj.SymbolKey, StringComparison.OrdinalIgnoreCase));
+    }
+
     private readonly Dictionary<Guid, SKImage> _byId = [];
     private readonly Dictionary<string, SKImage> _byKey = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, SKImage> _symbols = new(StringComparer.OrdinalIgnoreCase);
+    // STR-PERF-002: Struct key avoids string concatenation allocations on every symbol lookup
+    private readonly Dictionary<SymbolResourceKey, SKImage> _symbols = new(SymbolResourceKeyComparer.Instance);
     private readonly Dictionary<string, SKTypeface> _fonts = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<SKImage> _owned = [];
     private bool _disposed;
@@ -70,19 +86,32 @@ public sealed class PreloadedRenderResources : IRenderResources, IDisposable
 
     public void AddSymbol(string symbolSetKey, string symbolKey, SKImage image, bool owned)
     {
-        _symbols[SymbolKey(symbolSetKey, symbolKey)] = image;
+        _symbols[new SymbolResourceKey(symbolSetKey, symbolKey)] = image;
         if (owned)
         {
             _owned.Add(image);
         }
     }
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, SKTypeface> TypefaceCache = new(StringComparer.Ordinal);
+    private readonly List<SKTypeface> _ownedTypefaces = [];
+
     public void AddFont(string roleAlias, byte[] bytes)
     {
-        var typeface = FontRegistry.FromBytes(bytes);
+        var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        var typeface = TypefaceCache.GetOrAdd(hash, _ => FontRegistry.FromBytes(bytes)!);
         if (typeface is not null)
         {
             _fonts[roleAlias] = typeface;
+        }
+    }
+
+    public void AddFont(string roleAlias, SKTypeface typeface, bool owned)
+    {
+        _fonts[roleAlias] = typeface;
+        if (owned)
+        {
+            _ownedTypefaces.Add(typeface);
         }
     }
 
@@ -91,7 +120,7 @@ public sealed class PreloadedRenderResources : IRenderResources, IDisposable
     public SKImage? GetImageByKey(string assetKey) => _byKey.GetValueOrDefault(assetKey);
 
     public SKImage? GetSymbol(string symbolSetKey, string symbolKey) =>
-        _symbols.GetValueOrDefault(SymbolKey(symbolSetKey, symbolKey));
+        _symbols.GetValueOrDefault(new SymbolResourceKey(symbolSetKey, symbolKey));
 
     public SKTypeface ResolveFont(string? roleAlias, out bool isFallback)
     {
@@ -104,8 +133,6 @@ public sealed class PreloadedRenderResources : IRenderResources, IDisposable
         isFallback = true;
         return FontRegistry.Fallback;
     }
-
-    private static string SymbolKey(string setKey, string symbolKey) => setKey + "/" + symbolKey;
 
     private static SKImage? Decode(byte[]? bytes)
     {
@@ -133,7 +160,7 @@ public sealed class PreloadedRenderResources : IRenderResources, IDisposable
             image.Dispose();
         }
 
-        foreach (var typeface in _fonts.Values)
+        foreach (var typeface in _ownedTypefaces)
         {
             typeface.Dispose();
         }
@@ -143,6 +170,7 @@ public sealed class PreloadedRenderResources : IRenderResources, IDisposable
         _symbols.Clear();
         _fonts.Clear();
         _owned.Clear();
+        _ownedTypefaces.Clear();
     }
 }
 
@@ -150,76 +178,84 @@ public sealed class PreloadedRenderResources : IRenderResources, IDisposable
 internal static class LayoutReferences
 {
     public static (HashSet<Guid> AssetIds, HashSet<string> AssetKeys, HashSet<string> FontAliases,
-        List<(string Set, string Key)> Symbols) Collect(
-        CardLayout layout, IReadOnlyDictionary<string, CardValue> values)
+        HashSet<(string Set, string Key)> Symbols) Collect(
+        IEnumerable<CardLayout> layouts, IReadOnlyDictionary<string, CardValue> values)
     {
         var assetIds = new HashSet<Guid>();
         var assetKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var fontAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var symbols = new List<(string, string)>();
+        var symbols = new HashSet<(string, string)>();
 
-        foreach (var style in layout.TextStyles.Values)
+        foreach (var layout in layouts)
         {
-            if (!string.IsNullOrWhiteSpace(style.Font))
+            foreach (var style in layout.TextStyles.Values)
             {
-                fontAliases.Add(style.Font);
+                if (!string.IsNullOrWhiteSpace(style.Font))
+                {
+                    fontAliases.Add(style.Font);
+                }
             }
-        }
 
-        foreach (var layer in layout.EnumerateLayers())
-        {
-            switch (layer)
+            foreach (var layer in layout.EnumerateLayers())
             {
-                case StaticImageLayer image:
-                    if (image.AssetId is { } id)
-                    {
-                        assetIds.Add(id);
-                    }
+                switch (layer)
+                {
+                    case StaticImageLayer image:
+                        if (image.AssetId is { } id)
+                        {
+                            assetIds.Add(id);
+                        }
 
-                    if (!string.IsNullOrWhiteSpace(image.AssetKey))
-                    {
-                        assetKeys.Add(image.AssetKey);
-                    }
+                        if (!string.IsNullOrWhiteSpace(image.AssetKey))
+                        {
+                            assetKeys.Add(image.AssetKey);
+                        }
 
-                    break;
+                        break;
 
-                case ImageSlotLayer slot:
-                    if (slot.PlaceholderAssetId is { } placeholder)
-                    {
-                        assetIds.Add(placeholder);
-                    }
+                    case ImageSlotLayer slot:
+                        if (slot.PlaceholderAssetId is { } placeholder)
+                        {
+                            assetIds.Add(placeholder);
+                        }
 
-                    if (values.TryGetValue(slot.FieldKey, out var value)
-                        && Guid.TryParse(value.AsText(), out var artworkId))
-                    {
-                        assetIds.Add(artworkId);
-                    }
+                        if (values.TryGetValue(slot.FieldKey, out var value)
+                            && Guid.TryParse(value.AsText(), out var artworkId))
+                        {
+                            assetIds.Add(artworkId);
+                        }
 
-                    break;
+                        break;
 
-                case SymbolSlotLayer symbol:
-                    var key = symbol.FieldKey is { } field
-                        ? values.GetValueOrDefault(field)?.AsText()
-                        : symbol.SymbolKey;
+                    case SymbolSlotLayer symbol:
+                        var key = symbol.FieldKey is { } field
+                            ? values.GetValueOrDefault(field)?.AsText()
+                            : symbol.SymbolKey;
 
-                    if (!string.IsNullOrWhiteSpace(key))
-                    {
-                        symbols.Add((symbol.SymbolSetKey, key));
-                    }
+                        if (!string.IsNullOrWhiteSpace(key))
+                        {
+                            symbols.Add((symbol.SymbolSetKey, key));
+                        }
 
-                    break;
+                        break;
 
-                case TextLayer text:
-                    var alias = text.StyleOverrides?.Font;
-                    if (!string.IsNullOrWhiteSpace(alias))
-                    {
-                        fontAliases.Add(alias);
-                    }
+                    case TextLayer text:
+                        var alias = text.StyleOverrides?.Font;
+                        if (!string.IsNullOrWhiteSpace(alias))
+                        {
+                            fontAliases.Add(alias);
+                        }
 
-                    break;
+                        break;
+                }
             }
         }
 
         return (assetIds, assetKeys, fontAliases, symbols);
     }
+
+    public static (HashSet<Guid> AssetIds, HashSet<string> AssetKeys, HashSet<string> FontAliases,
+        HashSet<(string Set, string Key)> Symbols) Collect(
+        CardLayout layout, IReadOnlyDictionary<string, CardValue> values) =>
+        Collect([layout], values);
 }

@@ -198,12 +198,23 @@
     [Parameter] public Dictionary<string, CardValue> Values { get; set; } = [];
     [Parameter] public EventCallback OnValuesChanged { get; set; }
 
-    private IEnumerable<KeyValuePair<string, List<FieldDefinitionDto>>> GetGroupedFields()
+    private IReadOnlyList<FieldDefinitionDto>? _cachedFields;
+    private List<KeyValuePair<string, List<FieldDefinitionDto>>> _groupedFields = [];
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Condition?> ConditionCache = new(StringComparer.Ordinal);
+
+    protected override void OnParametersSet()
     {
-        return Fields
-            .GroupBy(f => f.GroupName ?? "Informazioni Principali")
-            .Select(g => new KeyValuePair<string, List<FieldDefinitionDto>>(g.Key, g.OrderBy(f => f.SortOrder).ToList()));
+        if (!ReferenceEquals(_cachedFields, Fields))
+        {
+            _cachedFields = Fields;
+            _groupedFields = Fields
+                .GroupBy(f => f.GroupName ?? "Informazioni Principali")
+                .Select(g => new KeyValuePair<string, List<FieldDefinitionDto>>(g.Key, g.OrderBy(f => f.SortOrder).ToList()))
+                .ToList();
+        }
     }
+
+    private IEnumerable<KeyValuePair<string, List<FieldDefinitionDto>>> GetGroupedFields() => _groupedFields;
 
     private string GetColumnClass(FieldDefinitionDto field) => field.Kind switch
     {
@@ -293,19 +304,23 @@
             return true;
         }
 
-        try
+        var condition = ConditionCache.GetOrAdd(field.VisibleWhenJson, static json =>
         {
-            var condition = JsonSerializer.Deserialize<Condition>(field.VisibleWhenJson, LayoutSerializer.Options);
-            if (condition is null) return true;
+            try
+            {
+                return JsonSerializer.Deserialize<Condition>(json, LayoutSerializer.Options);
+            }
+            catch
+            {
+                return null;
+            }
+        });
 
-            var binder = new ValueBinder(Values, []);
-            var evaluator = new ConditionEvaluator(binder);
-            return evaluator.IsSatisfied(condition);
-        }
-        catch
-        {
-            return true;
-        }
+        if (condition is null) return true;
+
+        var binder = new ValueBinder(Values, []);
+        var evaluator = new ConditionEvaluator(binder);
+        return evaluator.IsSatisfied(condition);
     }
 }
 

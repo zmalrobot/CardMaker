@@ -21,6 +21,12 @@ public interface IRenderResourceLoader
         IReadOnlyDictionary<string, CardValue> values,
         Guid? gameId,
         CancellationToken cancellationToken = default);
+
+    Task<PreloadedRenderResources> LoadResourcesAsync(
+        IEnumerable<CardLayout> layouts,
+        IReadOnlyDictionary<string, CardValue> values,
+        Guid? gameId,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class RenderResourceLoader(
@@ -29,14 +35,21 @@ public sealed class RenderResourceLoader(
     IFontCatalog fonts,
     IDecodedImageCache imageCache) : IRenderResourceLoader
 {
-    public async Task<PreloadedRenderResources> LoadResourcesAsync(
+    public Task<PreloadedRenderResources> LoadResourcesAsync(
         CardLayout layout,
+        IReadOnlyDictionary<string, CardValue> values,
+        Guid? gameId,
+        CancellationToken cancellationToken = default) =>
+        LoadResourcesAsync([layout], values, gameId, cancellationToken);
+
+    public async Task<PreloadedRenderResources> LoadResourcesAsync(
+        IEnumerable<CardLayout> layouts,
         IReadOnlyDictionary<string, CardValue> values,
         Guid? gameId,
         CancellationToken cancellationToken = default)
     {
         var resources = new PreloadedRenderResources();
-        var (assetIds, assetKeys, fontAliases, symbols) = LayoutReferences.Collect(layout, values);
+        var (assetIds, assetKeys, fontAliases, symbols) = LayoutReferences.Collect(layouts, values);
 
         if (assetIds.Count > 0)
         {
@@ -55,76 +68,116 @@ public sealed class RenderResourceLoader(
             }
         }
 
-        foreach (var key in assetKeys)
+        if (assetKeys.Count > 0)
         {
-            var fileName = key + ".png";
-            var placeholderName = key.StartsWith("placeholder-", StringComparison.Ordinal)
-                ? fileName
-                : "placeholder-" + key + ".png";
-
-            var asset = await db.Assets.AsNoTracking()
-                .Where(a => a.OriginalFileName == fileName || a.OriginalFileName == placeholderName)
-                .OrderBy(a => a.OriginalFileName == fileName ? 0 : 1)
-                .ThenByDescending(a => a.CreatedAtUtc)
-                .Select(a => new { a.Sha256 })
-                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-            if (asset is not null)
+            var targetFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var key in assetKeys)
             {
-                var image = await GetOrDecodeAsync(asset.Sha256, cancellationToken).ConfigureAwait(false);
-                if (image is not null)
+                targetFileNames.Add(key + ".png");
+                targetFileNames.Add(key.StartsWith("placeholder-", StringComparison.Ordinal)
+                    ? key + ".png"
+                    : "placeholder-" + key + ".png");
+            }
+
+            var matchingAssets = await db.Assets.AsNoTracking()
+                .Where(a => targetFileNames.Contains(a.OriginalFileName))
+                .OrderByDescending(a => a.CreatedAtUtc)
+                .Select(a => new { a.OriginalFileName, a.Sha256 })
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            var assetsByFile = matchingAssets
+                .GroupBy(a => a.OriginalFileName, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().Sha256, StringComparer.OrdinalIgnoreCase);
+
+            foreach (var key in assetKeys)
+            {
+                var fileName = key + ".png";
+                var placeholderName = key.StartsWith("placeholder-", StringComparison.Ordinal)
+                    ? fileName
+                    : "placeholder-" + key + ".png";
+
+                if (assetsByFile.TryGetValue(fileName, out var sha) ||
+                    assetsByFile.TryGetValue(placeholderName, out sha))
                 {
-                    resources.AddImageKey(key, image, owned: false);
+                    var image = await GetOrDecodeAsync(sha, cancellationToken).ConfigureAwait(false);
+                    if (image is not null)
+                    {
+                        resources.AddImageKey(key, image, owned: false);
+                    }
                 }
             }
         }
 
-        foreach (var (setKey, symbolKey) in symbols)
+        if (symbols.Count > 0)
         {
-            var symbol = await db.Symbols.AsNoTracking()
-                .Include(s => s.SymbolSet)
-                .Include(s => s.Asset)
-                .Where(s => s.SymbolSet.Key == setKey && s.Key == symbolKey && s.Asset != null)
-                .Select(s => new { Sha = s.Asset!.Sha256 })
-                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
+            var setKeys = symbols.Select(s => s.Set).Distinct().ToList();
+            var symbolKeys = symbols.Select(s => s.Key).Distinct().ToList();
 
-            if (symbol is not null)
+            var dbSymbols = await db.Symbols.AsNoTracking()
+                .Where(s => setKeys.Contains(s.SymbolSet.Key) && symbolKeys.Contains(s.Key) && s.Asset != null)
+                .Select(s => new { SetKey = s.SymbolSet.Key, s.Key, Sha = s.Asset!.Sha256 })
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+            var symbolMap = dbSymbols
+                .GroupBy(s => (s.SetKey, s.Key))
+                .ToDictionary(g => g.Key, g => g.First().Sha);
+
+            var missingForFallback = new List<(string Set, string Key)>();
+
+            foreach (var (setKey, symbolKey) in symbols)
             {
-                var image = await GetOrDecodeAsync(symbol.Sha, cancellationToken).ConfigureAwait(false);
-                if (image is not null)
+                if (symbolMap.TryGetValue((setKey, symbolKey), out var sha))
                 {
-                    resources.AddSymbol(setKey, symbolKey, image, owned: false);
-                    continue;
+                    var image = await GetOrDecodeAsync(sha, cancellationToken).ConfigureAwait(false);
+                    if (image is not null)
+                    {
+                        resources.AddSymbol(setKey, symbolKey, image, owned: false);
+                        continue;
+                    }
                 }
+                missingForFallback.Add((setKey, symbolKey));
             }
 
-            // Fallback 1: cerca asset con nome file segnaposto
-            var symbolFileName = $"placeholder-symbol-{setKey}-{symbolKey}.png";
-            var fallbackAsset = await db.Assets.AsNoTracking()
-                .Where(a => a.OriginalFileName == symbolFileName)
-                .Select(a => new { a.Sha256 })
-                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-            if (fallbackAsset is not null)
+            if (missingForFallback.Count > 0)
             {
-                var fallbackImg = await GetOrDecodeAsync(fallbackAsset.Sha256, cancellationToken).ConfigureAwait(false);
-                if (fallbackImg is not null)
+                var fallbackNames = missingForFallback
+                    .Select(s => $"placeholder-symbol-{s.Set}-{s.Key}.png")
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                var fallbackAssets = await db.Assets.AsNoTracking()
+                    .Where(a => fallbackNames.Contains(a.OriginalFileName))
+                    .Select(a => new { a.OriginalFileName, a.Sha256 })
+                    .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+                var fallbackMap = fallbackAssets
+                    .GroupBy(a => a.OriginalFileName, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(g => g.Key, g => g.First().Sha256, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var (setKey, symbolKey) in missingForFallback)
                 {
-                    resources.AddSymbol(setKey, symbolKey, fallbackImg, owned: false);
-                    continue;
-                }
-            }
+                    var symbolFileName = $"placeholder-symbol-{setKey}-{symbolKey}.png";
+                    if (fallbackMap.TryGetValue(symbolFileName, out var fallbackSha))
+                    {
+                        var fallbackImg = await GetOrDecodeAsync(fallbackSha, cancellationToken).ConfigureAwait(false);
+                        if (fallbackImg is not null)
+                        {
+                            resources.AddSymbol(setKey, symbolKey, fallbackImg, owned: false);
+                            continue;
+                        }
+                    }
 
-            // Fallback 2: genera al volo il simbolo procedurale
-            try
-            {
-                var placeholderGen = new PlaceholderSymbolGenerator();
-                var generatedBytes = placeholderGen.Generate(setKey, symbolKey, 256);
-                resources.AddSymbol(setKey, symbolKey, generatedBytes);
-            }
-            catch
-            {
-                // Ignora se non gestito dal generatore di segnaposto
+                    // Fallback 2: genera al volo il simbolo procedurale
+                    try
+                    {
+                        var placeholderGen = new PlaceholderSymbolGenerator();
+                        var generatedBytes = placeholderGen.Generate(setKey, symbolKey, 256);
+                        resources.AddSymbol(setKey, symbolKey, generatedBytes);
+                    }
+                    catch
+                    {
+                        // Ignora se non gestito dal generatore di segnaposto
+                    }
+                }
             }
         }
 
@@ -156,9 +209,9 @@ public sealed class RenderResourceLoader(
 
         await using (stream.ConfigureAwait(false))
         {
-            using var buffer = new MemoryStream();
+            using var buffer = stream.CanSeek ? new MemoryStream((int)stream.Length) : new MemoryStream();
             await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-            using var data = SKData.CreateCopy(buffer.ToArray());
+            using var data = SKData.CreateCopy(buffer.GetBuffer().AsSpan(0, (int)buffer.Length));
             var image = SKImage.FromEncodedData(data);
             if (image is not null)
             {
