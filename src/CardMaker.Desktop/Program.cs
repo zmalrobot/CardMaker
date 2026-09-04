@@ -19,6 +19,7 @@ public static class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        PlatformBranding.Initialize();
         EnsureWwwrootDirectory();
 
         var appBuilder = PhotinoBlazorAppBuilder.CreateDefault(args);
@@ -58,12 +59,19 @@ public static class Program
         var app = appBuilder.Build();
 
         // 5. Configure Desktop Window
+        var iconFile = OperatingSystem.IsWindows()
+            ? Path.Combine(AppContext.BaseDirectory, "wwwroot", "icon.ico")
+            : Path.Combine(AppContext.BaseDirectory, "wwwroot", "icon.png");
+
         app.MainWindow
             .SetLogVerbosity(0)
-            .SetTitle("CardMaker Studio Desktop")
+            .SetTitle("CardMaker")
+            .SetIconFile(File.Exists(iconFile) ? iconFile : "wwwroot/icon.ico")
             .SetSize(1280, 850)
             .SetUseOsDefaultSize(false)
             .SetResizable(true);
+
+        Console.WriteLine($"[CardMaker Host] Window Title: '{app.MainWindow.Title}', IconFile: '{iconFile}' (Exists: {File.Exists(iconFile)})");
 
         AppDomain.CurrentDomain.UnhandledException += (sender, error) =>
         {

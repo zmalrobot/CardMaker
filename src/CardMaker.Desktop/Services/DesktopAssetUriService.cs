@@ -55,7 +55,7 @@ public sealed class DesktopAssetUriService(
             return string.Empty;
         }
 
-        var sampleText = string.IsNullOrWhiteSpace(sample) ? "CardMaker Studio 12345" : sample;
+        var sampleText = string.IsNullOrWhiteSpace(sample) ? "CardMaker 12345" : sample;
         var cacheKey = $"desktop_font_{fontId}_{sampleText}";
         if (cache.TryGetValue(cacheKey, out string? cached) && cached is not null)
         {

@@ -35,7 +35,7 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: 4. Avvio dell'applicazione Desktop
-echo [3/3] Compilazione e avvio di CardMaker.Desktop...
+echo [3/3] Compilazione e avvio di CardMaker...
 echo Apertura finestra desktop nativa in-process (Photino.Blazor)...
 echo --------------------------------------------------
 
@@ -43,6 +43,6 @@ dotnet run --project src\CardMaker.Desktop\CardMaker.Desktop.csproj
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo [CardMaker.Desktop terminato con codice %ERRORLEVEL%]
+    echo [CardMaker terminato con codice %ERRORLEVEL%]
     pause
 )

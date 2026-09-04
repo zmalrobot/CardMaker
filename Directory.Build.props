@@ -11,6 +11,9 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <InvariantGlobalization>false</InvariantGlobalization>
     <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+    <Product>CardMaker</Product>
+    <Company>CardMaker</Company>
+    <Authors>CardMaker</Authors>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

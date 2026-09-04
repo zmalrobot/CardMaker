@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=CardMaker
+GenericName=CardMaker
+Comment=CardMaker
+Exec=CardMaker
+Icon=cardmaker
+Terminal=false
+Type=Application
+Categories=Graphics;2DGraphics;
+StartupWMClass=CardMaker
+StartupNotify=true
+

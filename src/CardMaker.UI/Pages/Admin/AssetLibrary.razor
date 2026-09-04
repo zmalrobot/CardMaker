@@ -1,11 +1,13 @@
 @page "/admin/assets"
 @attribute [Authorize(Roles = "Admin")]
 
+@using System.IO.Compression
 @using CardMaker.Domain.Games
 @inject IAssetCatalog Catalog
 @inject IAdminContentService ContentService
 @inject AuthenticationStateProvider AuthProvider
 @inject CardMaker.Application.Common.ILoadingService LoadingService
+@inject IJSRuntime JS
 
 <PageTitle>Libreria Asset — CardMaker</PageTitle>
 
@@ -85,7 +87,15 @@
                 }
             </select>
         </div>
-        <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Aggiorna</button>
+        <div class="d-flex align-items-center gap-2">
+            @if (FilteredAssets.Any())
+            {
+                <button class="btn btn-sm btn-outline-primary" @onclick="DownloadAllFilteredZipAsync" title="Scarica tutti gli asset filtrati in un archivio ZIP">
+                    Scarica ZIP (@FilteredAssets.Count())
+                </button>
+            }
+            <button class="btn btn-sm btn-outline-secondary" @onclick="RefreshAsync">Aggiorna</button>
+        </div>
     </div>
     <div class="card-body p-0">
         @if (!FilteredAssets.Any())
@@ -128,7 +138,8 @@
                                 <td>@(asset.PixelWidth > 0 ? $"{asset.PixelWidth} × {asset.PixelHeight} px" : "-")</td>
                                 <td>@FormatSize(asset.ByteSize)</td>
                                 <td><code>@asset.Sha256[..12]</code></td>
-                                <td class="text-end pe-3">
+                                <td class="text-end pe-3 text-nowrap">
+                                    <button class="btn btn-outline-secondary btn-sm py-0 px-2 me-1" title="Scarica file originale" @onclick="() => DownloadAssetAsync(asset)">Scarica</button>
                                     <button class="btn btn-outline-primary btn-sm py-0 px-2 me-1" @onclick="() => OpenReplaceModal(asset)">Sostituisci</button>
                                     <button class="btn btn-outline-danger btn-sm py-0 px-2" @onclick="() => SafeDeleteAsync(asset.Id)">Elimina</button>
                                 </td>
@@ -328,4 +339,88 @@
         _ when bytes < 1024 * 1024 => $"{bytes / 1024.0:F1} KB",
         _ => $"{bytes / (1024.0 * 1024):F1} MB",
     };
+
+    private async Task DownloadAssetAsync(Asset asset)
+    {
+        using (await LoadingService.BeginScopeAsync($"Download di {asset.OriginalFileName}..."))
+        {
+            try
+            {
+                await using var stream = await Catalog.OpenContentAsync(asset.Sha256);
+                if (stream is null)
+                {
+                    Show($"Contenuto per '{asset.OriginalFileName}' non trovato nello storage.", isError: true);
+                    return;
+                }
+
+                using var ms = new MemoryStream();
+                await stream.CopyToAsync(ms);
+                var base64 = Convert.ToBase64String(ms.ToArray());
+                await JS.InvokeVoidAsync("cardMaker.downloadFile", asset.OriginalFileName, asset.ContentType, base64);
+            }
+            catch (Exception ex)
+            {
+                Show($"Errore durante il download: {ex.Message}", isError: true);
+            }
+        }
+    }
+
+    private async Task DownloadAllFilteredZipAsync()
+    {
+        var list = FilteredAssets.ToList();
+        if (list.Count == 0)
+        {
+            return;
+        }
+
+        using (await LoadingService.BeginScopeAsync($"Creazione archivio ZIP di {list.Count} asset..."))
+        {
+            try
+            {
+                using var ms = new MemoryStream();
+                using (var archive = new ZipArchive(ms, ZipArchiveMode.Create, leaveOpen: true))
+                {
+                    var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var asset in list)
+                    {
+                        await using var stream = await Catalog.OpenContentAsync(asset.Sha256);
+                        if (stream is null)
+                        {
+                            continue;
+                        }
+
+                        var entryName = asset.OriginalFileName;
+                        int duplicateCounter = 1;
+                        while (!usedNames.Add(entryName))
+                        {
+                            var ext = Path.GetExtension(asset.OriginalFileName);
+                            var nameWithoutExt = Path.GetFileNameWithoutExtension(asset.OriginalFileName);
+                            entryName = $"{nameWithoutExt}_{duplicateCounter++}{ext}";
+                        }
+
+                        var entry = archive.CreateEntry(entryName, CompressionLevel.Fastest);
+                        await using var entryStream = entry.Open();
+                        await stream.CopyToAsync(entryStream);
+                    }
+                }
+
+                ms.Position = 0;
+                var base64 = Convert.ToBase64String(ms.ToArray());
+
+                var gameSegment = FilterGameGuid.HasValue
+                    ? GetGameName(FilterGameGuid).ToLowerInvariant().Replace(' ', '_')
+                    : "all";
+                var catSegment = !string.IsNullOrWhiteSpace(_filterCategory)
+                    ? $"_{_filterCategory.ToLowerInvariant()}"
+                    : string.Empty;
+                var zipFileName = $"cardmaker_assets_{gameSegment}{catSegment}.zip";
+
+                await JS.InvokeVoidAsync("cardMaker.downloadFile", zipFileName, "application/zip", base64);
+            }
+            catch (Exception ex)
+            {
+                Show($"Errore durante la creazione dello ZIP: {ex.Message}", isError: true);
+            }
+        }
+    }
 }

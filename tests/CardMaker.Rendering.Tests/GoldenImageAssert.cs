@@ -16,7 +16,23 @@ internal static class GoldenImageAssert
         int perChannelTolerance = 12,
         [CallerFilePath] string callerFilePath = "")
     {
-        var goldenDir = Path.Combine(Path.GetDirectoryName(callerFilePath)!, "GoldenImages");
+        var callerDir = Path.GetDirectoryName(callerFilePath);
+        if (string.IsNullOrEmpty(callerDir) || callerDir.StartsWith("/_", StringComparison.Ordinal) || !Directory.Exists(callerDir))
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && dir.Exists)
+            {
+                var candidate = Path.Combine(dir.FullName, "tests", "CardMaker.Rendering.Tests", "GoldenImages");
+                if (Directory.Exists(candidate))
+                {
+                    callerDir = Path.GetDirectoryName(candidate);
+                    break;
+                }
+                dir = dir.Parent;
+            }
+        }
+
+        var goldenDir = Path.Combine(callerDir ?? AppContext.BaseDirectory, "GoldenImages");
         Directory.CreateDirectory(goldenDir);
         var goldenPath = Path.Combine(goldenDir, goldenName + ".png");
 

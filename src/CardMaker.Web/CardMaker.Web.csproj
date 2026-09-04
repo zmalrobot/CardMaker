@@ -6,6 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-CardMaker_Web-5dab4962-b329-42b2-ab4e-1d8637f50ffd</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <AssemblyTitle>CardMaker</AssemblyTitle>
+    <Title>CardMaker</Title>
+    <Description>CardMaker</Description>
+    <PackageId>CardMaker</PackageId>
   </PropertyGroup>
 
   <ItemGroup>

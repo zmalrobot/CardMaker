@@ -6,6 +6,12 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>CardMaker.Desktop</RootNamespace>
+    <AssemblyName>CardMaker</AssemblyName>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <AssemblyTitle>CardMaker</AssemblyTitle>
+    <Title>CardMaker</Title>
+    <Description>CardMaker</Description>
+    <PackageId>CardMaker</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
