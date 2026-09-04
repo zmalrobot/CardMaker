@@ -1,30 +1,47 @@
-<footer class="cm-footer border-top py-3 mt-auto bg-surface-1">
-    <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-2 px-4 small text-muted">
-        <div>
-            <span class="fw-semibold">CardMaker</span>
-            <span class="mx-1">·</span>
-            <span>Motore di rendering data-driven per carte da gioco</span>
-            <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2">Fan-Made / Non Commerciale</span>
-        </div>
-        <div class="d-flex align-items-center gap-3">
-            <AuthorizeView>
-                <Authorized>
-                    <a href="guida" class="text-decoration-none text-muted hover-underline">
-                        📖 Guida Utente
-                    </a>
-                </Authorized>
-            </AuthorizeView>
-            <AuthorizeView Roles="Admin">
-                <Authorized>
-                    <a href="admin/guida" class="text-decoration-none text-muted hover-underline">
-                        📘 Guida Admin
-                    </a>
-                </Authorized>
-            </AuthorizeView>
-            <a href="disclaimer" class="text-decoration-none text-muted hover-underline">
-                ⚖️ Note Legali & Disclaimer
-            </a>
-        </div>
+@using System.Reflection
+
+<footer class="cm-footer border-top py-2 mt-auto bg-surface-1">
+    <div class="container-fluid d-flex flex-wrap justify-content-end align-items-center gap-3 px-4 small text-muted">
+        <a href="disclaimer" class="text-decoration-none text-muted hover-underline">Note legali</a>
+        <span class="text-secondary opacity-50">·</span>
+        <span>Versione applicativo desktop: @_appVersion</span>
+        <span class="text-secondary opacity-50">·</span>
+        <span>Versione motore di rendering: @_renderingVersion</span>
     </div>
 </footer>
+
+@code {
+    private static readonly string _appVersion = GetAppVersion();
+    private static readonly string _renderingVersion = GetRenderingVersion();
+
+    private static string GetAppVersion()
+    {
+        try
+        {
+            var asm = Assembly.GetEntryAssembly() ?? typeof(AppFooter).Assembly;
+            var ver = asm.GetName().Version;
+            return ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "1.0.0";
+        }
+        catch
+        {
+            return "1.0.0";
+        }
+    }
+
+    private static string GetRenderingVersion()
+    {
+        try
+        {
+            var asm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => string.Equals(a.GetName().Name, "CardMaker.Rendering", StringComparison.OrdinalIgnoreCase))
+                ?? Assembly.Load("CardMaker.Rendering");
+            var ver = asm?.GetName().Version;
+            return ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "1.0.0";
+        }
+        catch
+        {
+            return "1.0.0";
+        }
+    }
+}
 
