@@ -28,6 +28,16 @@ namespace CardMaker.Application.Tests.Smoke;
 public sealed class DesktopAndWebSmokeTests
 {
     [Fact]
+    public void InspectPhotinoMethods()
+    {
+        var methods = typeof(Photino.NET.PhotinoWindow).GetMethods()
+            .Where(m => m.Name.Contains("Save") || m.Name.Contains("File") || m.Name.Contains("Dialog") || m.Name.Contains("Folder"))
+            .Select(m => $"{m.ReturnType.Name} {m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name + " " + p.Name))})");
+        
+        throw new Exception("Photino Methods:\n" + string.Join("\n", methods));
+    }
+
+    [Fact]
     public void TEST_SMOKE_001_DesktopDependencyInjectionBuildsAndResolvesCriticalServices()
     {
         var services = new ServiceCollection();
