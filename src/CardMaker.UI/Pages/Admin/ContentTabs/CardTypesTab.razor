@@ -1,0 +1,316 @@
+@using CardMaker.Application.Admin
+@using System.Security.Claims
+
+@inject IAdminContentService ContentService
+@inject ITemplateAdminService TemplateService
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold">Filtra per Gioco:</span>
+            <select class="form-select form-select-sm w-auto" value="@SelectedGameId" @onchange="HandleGameFilterChanged">
+                @foreach (var g in Games)
+                {
+                    <option value="@g.Id">@g.NameIt (@g.Key)</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="OpenNewCardTypeModal">+ Nuovo Tipo di Carta</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Key</th>
+                    <th>Nome</th>
+                    <th>Campi definiti</th>
+                    <th>Template</th>
+                    <th>Tratti ammessi</th>
+                    <th>Ordinamento</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ct in CardTypes)
+                {
+                    <tr>
+                        <td><code>@ct.Key</code></td>
+                        <td class="fw-semibold">@ct.NameIt</td>
+                        <td><span class="badge bg-primary">@ct.FieldsCount campi</span></td>
+                        <td><span class="badge bg-secondary">@ct.TemplatesCount template</span></td>
+                        <td><span class="badge bg-info text-dark">@ct.AllowedTraitsCount tratti</span></td>
+                        <td>@ct.SortOrder</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => OpenTemplatesModalAsync(ct.Id, ct.NameIt)">
+                                🎨 Template (@ct.TemplatesCount)
+                            </button>
+                            <a href="admin/schema/@ct.Id" class="btn btn-primary btn-sm me-1">
+                                ⚡ Schema Campi
+                            </a>
+                            <button class="btn btn-outline-secondary btn-sm me-1" @onclick="() => EditCardTypeAsync(ct.Id)">Modifica</button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteCardTypeAsync(ct.Id)">Elimina</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modale Tipo Carta -->
+@if (ShowCardTypeModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(CardTypeModel.Id.HasValue ? "Modifica Tipo Carta" : "Nuovo Tipo Carta")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowCardTypeModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (univoca)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="CardTypeModel.Key" />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="CardTypeModel.NameIt" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="CardTypeModel.NameEn" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Ordinamento</label>
+                        <input type="number" class="form-control form-control-sm" @bind="CardTypeModel.SortOrder" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowCardTypeModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveCardTypeAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modale Gestione Template Tipo Carta -->
+@if (ShowTemplatesModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">🎨 Template di @TemplatesModalCardTypeName</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowTemplatesModal = false"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="p-3 bg-light border-bottom d-flex justify-content-between align-items-center">
+                        <span class="small text-muted">Configura e disegna il layout visivo nel Template Studio WYSIWYG.</span>
+                        <button type="button" class="btn btn-primary btn-sm" @onclick="CreateNewTemplateAsync">+ Nuovo Template</button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Key</th>
+                                    <th>Nome</th>
+                                    <th>Versioni</th>
+                                    <th>Pubblicata</th>
+                                    <th>Default</th>
+                                    <th class="text-end">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (TemplatesList.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="6" class="p-4 text-center text-muted">
+                                            Nessun template configurato per questo tipo di carta.
+                                        </td>
+                                    </tr>
+                                }
+                                @foreach (var t in TemplatesList)
+                                {
+                                    <tr>
+                                        <td><code>@t.Key</code></td>
+                                        <td class="fw-semibold">@t.Name</td>
+                                        <td><span class="badge bg-secondary">@t.VersionsCount ver</span></td>
+                                        <td>
+                                            @if (t.LatestPublishedVersionNumber.HasValue)
+                                            {
+                                                <span class="badge bg-success">v@t.LatestPublishedVersionNumber</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-warning text-dark">Nessuna</span>
+                                            }
+                                        </td>
+                                        <td>
+                                            @if (t.IsDefault)
+                                            {
+                                                <span class="badge bg-primary">Default</span>
+                                            }
+                                        </td>
+                                        <td class="text-end">
+                                            <a href="admin/templates/@t.Id" class="btn btn-primary btn-sm me-1">
+                                                🎨 Studio WYSIWYG
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger btn-sm" @onclick="() => DeleteTemplateAsync(t.Id)">
+                                                Elimina
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowTemplatesModal = false">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AdminGameDto> Games { get; set; } = [];
+    [Parameter, EditorRequired] public Guid SelectedGameId { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<AdminCardTypeDto> CardTypes { get; set; } = [];
+    [Parameter] public EventCallback<Guid> OnGameSelected { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private bool ShowCardTypeModal;
+    private SaveCardTypeRequest CardTypeModel = new() { GameId = Guid.Empty, Key = "", NameIt = "" };
+
+    private bool ShowTemplatesModal;
+    private Guid TemplatesModalCardTypeId;
+    private string TemplatesModalCardTypeName = "";
+    private IReadOnlyList<TemplateSummaryDto> TemplatesList = [];
+
+    private async Task HandleGameFilterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var gId))
+        {
+            await OnGameSelected.InvokeAsync(gId);
+        }
+    }
+
+    private void OpenNewCardTypeModal()
+    {
+        CardTypeModel = new SaveCardTypeRequest
+        {
+            GameId = SelectedGameId,
+            Key = "",
+            NameIt = "",
+            NameEn = "",
+            SortOrder = (CardTypes.Count + 1) * 10,
+        };
+        ShowCardTypeModal = true;
+    }
+
+    private async Task EditCardTypeAsync(Guid id)
+    {
+        var ct = await ContentService.GetCardTypeByIdAsync(id);
+        if (ct is null) return;
+
+        CardTypeModel = new SaveCardTypeRequest
+        {
+            Id = ct.Id,
+            GameId = ct.GameId,
+            Key = ct.Key,
+            NameIt = ct.NameIt,
+            NameEn = ct.NameEn,
+            SortOrder = ct.SortOrder,
+            AllowedTraitIds = ct.AllowedTraitIds,
+        };
+        ShowCardTypeModal = true;
+    }
+
+    private async Task SaveCardTypeAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveCardTypeAsync(CardTypeModel, uid);
+            ShowCardTypeModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Tipo di carta salvato!");
+    }
+
+    private async Task DeleteCardTypeAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteCardTypeAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Tipo di carta eliminato!");
+    }
+
+    private async Task OpenTemplatesModalAsync(Guid cardTypeId, string cardTypeName)
+    {
+        TemplatesModalCardTypeId = cardTypeId;
+        TemplatesModalCardTypeName = cardTypeName;
+        TemplatesList = await TemplateService.GetTemplatesByCardTypeAsync(cardTypeId);
+        ShowTemplatesModal = true;
+    }
+
+    private async Task CreateNewTemplateAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            var key = $"template_{TemplatesList.Count + 1}";
+            var created = await TemplateService.SaveTemplateAsync(new SaveTemplateRequest
+            {
+                CardTypeId = TemplatesModalCardTypeId,
+                Key = key,
+                Name = $"Template {TemplatesList.Count + 1}",
+                IsDefault = TemplatesList.Count == 0,
+                SortOrder = (TemplatesList.Count + 1) * 10,
+            }, uid);
+
+            TemplatesList = await TemplateService.GetTemplatesByCardTypeAsync(TemplatesModalCardTypeId);
+        }, "Template creato con successo!");
+    }
+
+    private async Task DeleteTemplateAsync(Guid templateId)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await TemplateService.DeleteTemplateAsync(templateId, uid);
+            TemplatesList = await TemplateService.GetTemplatesByCardTypeAsync(TemplatesModalCardTypeId);
+        }, "Template eliminato con successo!");
+    }
+
+    private async Task ExecuteSafeAsync(Func<Task> action, string successMessage)
+    {
+        try
+        {
+            await action();
+            await OnSuccess.InvokeAsync(successMessage);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+    }
+}
+

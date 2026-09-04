@@ -1,0 +1,209 @@
+@using CardMaker.Application.Admin
+@using System.Security.Claims
+
+@inject IAdminContentService ContentService
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <span class="fw-bold">Giochi Configurate</span>
+        <button class="btn btn-primary btn-sm" @onclick="OpenNewGameModal">+ Nuovo Gioco</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Key</th>
+                    <th>Nome</th>
+                    <th>Formato (mm)</th>
+                    <th>DPI</th>
+                    <th>Elementi collegati</th>
+                    <th>Stato</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var g in Games)
+                {
+                    <tr>
+                        <td><code>@g.Key</code></td>
+                        <td class="fw-semibold">@g.NameIt <span class="text-muted small">(@g.NameEn)</span></td>
+                        <td>@g.WidthMm × @g.HeightMm mm <span class="text-muted small">(Bleed: @g.BleedMm mm)</span></td>
+                        <td>@g.DefaultDpi</td>
+                        <td>
+                            <span class="badge bg-primary-subtle text-primary-emphasis me-1">@g.CardTypesCount tipi</span>
+                            <span class="badge bg-info-subtle text-info-emphasis me-1">@g.SymbolSetsCount simboli</span>
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis">@g.OptionListsCount opzioni</span>
+                        </td>
+                        <td>
+                            @if (g.IsPublished)
+                            {
+                                <span class="badge bg-success">Pubblicato</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Bozza</span>
+                            }
+                        </td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => EditGame(g)">Modifica</button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteGameAsync(g.Id)">Elimina</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modale Gioco -->
+@if (ShowGameModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(GameModel.Id.HasValue ? "Modifica Gioco" : "Nuovo Gioco")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowGameModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (univoca)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="GameModel.Key" />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="GameModel.NameIt" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="GameModel.NameEn" />
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Larghezza (mm)</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" @bind="GameModel.WidthMm" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Altezza (mm)</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" @bind="GameModel.HeightMm" />
+                        </div>
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold">Bleed (mm)</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" @bind="GameModel.BleedMm" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold">Safe Zone (mm)</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" @bind="GameModel.SafeZoneMm" />
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label small fw-semibold">Raggio (mm)</label>
+                            <input type="number" step="0.1" class="form-control form-control-sm" @bind="GameModel.CornerRadiusMm" />
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="pubSwitch" @bind="GameModel.IsPublished" />
+                        <label class="form-check-label small fw-semibold" for="pubSwitch">Pubblica gioco agli utenti</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowGameModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveGameAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AdminGameDto> Games { get; set; } = [];
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private bool ShowGameModal;
+    private SaveGameRequest GameModel = new() { Key = "", NameIt = "" };
+
+    private void OpenNewGameModal()
+    {
+        GameModel = new SaveGameRequest
+        {
+            Key = "",
+            NameIt = "",
+            NameEn = "",
+            WidthMm = 59m,
+            HeightMm = 86m,
+            BleedMm = 2m,
+            SafeZoneMm = 3m,
+            CornerRadiusMm = 2m,
+            DefaultDpi = 600,
+            IsPublished = true,
+        };
+        ShowGameModal = true;
+    }
+
+    private void EditGame(AdminGameDto g)
+    {
+        GameModel = new SaveGameRequest
+        {
+            Id = g.Id,
+            Key = g.Key,
+            NameIt = g.NameIt,
+            NameEn = g.NameEn,
+            DescriptionIt = g.DescriptionIt,
+            DescriptionEn = g.DescriptionEn,
+            WidthMm = g.WidthMm,
+            HeightMm = g.HeightMm,
+            BleedMm = g.BleedMm,
+            SafeZoneMm = g.SafeZoneMm,
+            CornerRadiusMm = g.CornerRadiusMm,
+            DefaultDpi = g.DefaultDpi,
+            IsPublished = g.IsPublished,
+            SortOrder = g.SortOrder,
+        };
+        ShowGameModal = true;
+    }
+
+    private async Task SaveGameAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveGameAsync(GameModel, uid);
+            ShowGameModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Gioco salvato con successo!");
+    }
+
+    private async Task DeleteGameAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteGameAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Gioco eliminato!");
+    }
+
+    private async Task ExecuteSafeAsync(Func<Task> action, string successMessage)
+    {
+        try
+        {
+            await action();
+            await OnSuccess.InvokeAsync(successMessage);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+    }
+}
+

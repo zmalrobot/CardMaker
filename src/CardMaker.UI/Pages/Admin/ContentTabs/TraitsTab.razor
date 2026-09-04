@@ -1,0 +1,180 @@
+@using CardMaker.Application.Admin
+@using System.Security.Claims
+
+@inject IAdminContentService ContentService
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold">Filtra per Gioco:</span>
+            <select class="form-select form-select-sm w-auto" value="@SelectedGameId" @onchange="HandleGameFilterChanged">
+                @foreach (var g in Games)
+                {
+                    <option value="@g.Id">@g.NameIt (@g.Key)</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="OpenNewTraitModal">+ Nuovo Tratto</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Key</th>
+                    <th>Nome</th>
+                    <th>Gruppo</th>
+                    <th>Ordinamento</th>
+                    <th class="text-end">Azioni</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var t in Traits)
+                {
+                    <tr>
+                        <td><code>@t.Key</code></td>
+                        <td class="fw-semibold">@t.NameIt <span class="text-muted small">(@t.NameEn)</span></td>
+                        <td><span class="badge bg-secondary">@(string.IsNullOrEmpty(t.Group) ? "Nessuno" : t.Group)</span></td>
+                        <td>@t.SortOrder</td>
+                        <td class="text-end">
+                            <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => EditTrait(t)">Modifica</button>
+                            <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteTraitAsync(t.Id)">Elimina</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modale Tratto -->
+@if (ShowTraitModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(TraitModel.Id.HasValue ? "Modifica Tratto" : "Nuovo Tratto")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowTraitModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (univoca)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="TraitModel.Key" placeholder="es. spellcaster, dragon..." />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="TraitModel.NameIt" placeholder="es. Incantatore" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="TraitModel.NameEn" placeholder="es. Spellcaster" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Gruppo (opzionale)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="TraitModel.Group" placeholder="es. Tipo, Attributo..." />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Ordinamento</label>
+                        <input type="number" class="form-control form-control-sm" @bind="TraitModel.SortOrder" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowTraitModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveTraitAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AdminGameDto> Games { get; set; } = [];
+    [Parameter, EditorRequired] public Guid SelectedGameId { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<AdminTraitDto> Traits { get; set; } = [];
+    [Parameter] public EventCallback<Guid> OnGameSelected { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private bool ShowTraitModal;
+    private SaveTraitRequest TraitModel = new() { GameId = Guid.Empty, Key = "", NameIt = "" };
+
+    private async Task HandleGameFilterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var gId))
+        {
+            await OnGameSelected.InvokeAsync(gId);
+        }
+    }
+
+    private void OpenNewTraitModal()
+    {
+        TraitModel = new SaveTraitRequest
+        {
+            GameId = SelectedGameId,
+            Key = $"trait_{Traits.Count + 1}",
+            NameIt = "",
+            NameEn = "",
+            Group = "",
+            SortOrder = (Traits.Count + 1) * 10,
+        };
+        ShowTraitModal = true;
+    }
+
+    private void EditTrait(AdminTraitDto t)
+    {
+        TraitModel = new SaveTraitRequest
+        {
+            Id = t.Id,
+            GameId = t.GameId,
+            Key = t.Key,
+            NameIt = t.NameIt,
+            NameEn = t.NameEn,
+            Group = t.Group,
+            SortOrder = t.SortOrder,
+        };
+        ShowTraitModal = true;
+    }
+
+    private async Task SaveTraitAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveTraitAsync(TraitModel, uid);
+            ShowTraitModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Tratto salvato con successo!");
+    }
+
+    private async Task DeleteTraitAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteTraitAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Tratto eliminato con successo!");
+    }
+
+    private async Task ExecuteSafeAsync(Func<Task> action, string successMessage)
+    {
+        try
+        {
+            await action();
+            await OnSuccess.InvokeAsync(successMessage);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+    }
+}
+

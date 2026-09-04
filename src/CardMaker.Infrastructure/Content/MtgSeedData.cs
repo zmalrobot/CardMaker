@@ -13,13 +13,6 @@ public static class MtgSeedData
 {
     public const string GameKey = "mtg";
 
-    public sealed record SeedGraph(
-        Game Game,
-        IReadOnlyList<CardType> CardTypes,
-        IReadOnlyList<Trait> Traits,
-        IReadOnlyList<OptionList> OptionLists,
-        IReadOnlyList<SymbolSet> SymbolSets);
-
     public static SeedGraph Build()
     {
         var game = new Game

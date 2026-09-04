@@ -5,6 +5,7 @@ namespace CardMaker.Infrastructure.Rendering;
 /// <summary>
 /// Cache condivisa fra le richieste di render: lo stesso frame o simbolo non va ridecodificato
 /// a ogni anteprima. Chiave = SHA-256 dell'asset (identita' content-addressed gia' esistente).
+/// Eviction sicura senza smaltimento forzato: previene use-after-free durante render concorrenti (CON-003, MEM-001).
 /// </summary>
 public interface IDecodedImageCache
 {
@@ -15,7 +16,7 @@ public interface IDecodedImageCache
 
 public sealed class DecodedImageCache(int capacity = 256) : IDecodedImageCache
 {
-    private readonly LruCache<string, SKImage> _cache = new(capacity);
+    private readonly LruCache<string, SKImage> _cache = new(capacity, disposeOnEviction: false);
 
     public SKImage? TryGet(string sha256) => _cache.TryGet(sha256);
 

@@ -1,7 +1,8 @@
 using System.Text.Json;
 using CardMaker.Contracts.Layout;
 using CardMaker.Domain.Templates;
-using CardMaker.Rendering.Pipeline;
+
+using Microsoft.Extensions.Logging;
 
 namespace CardMaker.Application.Content;
 
@@ -21,7 +22,7 @@ public interface ITemplateSelector
     Template? SelectTemplate(IEnumerable<Template> templates, IReadOnlyDictionary<string, CardValue> values);
 }
 
-public sealed class TemplateSelector : ITemplateSelector
+public sealed class TemplateSelector(ILogger<TemplateSelector>? logger = null) : ITemplateSelector
 {
     public Template? SelectTemplate(IEnumerable<Template> templates, IReadOnlyDictionary<string, CardValue> values)
     {
@@ -44,8 +45,9 @@ public sealed class TemplateSelector : ITemplateSelector
             {
                 condition = JsonSerializer.Deserialize<Condition>(template.SelectionRuleJson, LayoutSerializer.Options);
             }
-            catch (JsonException)
+            catch (JsonException ex)
             {
+                logger?.LogWarning(ex, "Regola di selezione non valida per il template {TemplateId} ({TemplateKey}).", template.Id, template.Key);
                 continue;
             }
 

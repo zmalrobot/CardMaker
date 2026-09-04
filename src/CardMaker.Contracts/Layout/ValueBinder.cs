@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Text;
 using CardMaker.Contracts.Layout;
 
-namespace CardMaker.Rendering.Pipeline;
+namespace CardMaker.Contracts.Layout;
 
 /// <summary>
 /// Fase BIND: risolve i binding <c>{{campo}}</c> e calcola i campi derivati (type line, LINK-n).

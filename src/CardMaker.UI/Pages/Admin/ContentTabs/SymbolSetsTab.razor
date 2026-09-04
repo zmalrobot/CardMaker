@@ -1,0 +1,261 @@
+@using CardMaker.Application.Admin
+@using System.Security.Claims
+
+@inject IAdminContentService ContentService
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold">Filtra per Gioco:</span>
+            <select class="form-select form-select-sm w-auto" value="@SelectedGameId" @onchange="HandleGameFilterChanged">
+                @foreach (var g in Games)
+                {
+                    <option value="@g.Id">@g.NameIt (@g.Key)</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="OpenNewSymbolSetModal">+ Nuovo Set Simboli</button>
+    </div>
+    <div class="card-body">
+        @foreach (var set in SymbolSets)
+        {
+            <div class="border rounded p-3 mb-3 bg-surface-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h5 class="mb-0 fw-bold">@set.NameIt <code class="small text-muted">@set.Key</code></h5>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => OpenAddSymbolModal(set.Id)">+ Aggiungi Simbolo</button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteSymbolSetAsync(set.Id)">Elimina Set</button>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var sym in set.Symbols)
+                    {
+                        <div class="badge bg-surface border text-foreground p-2 d-flex align-items-center gap-2">
+                            @if (sym.AssetId.HasValue)
+                            {
+                                <CardMaker.UI.Components.Common.AssetImage AssetId="@sym.AssetId.Value" Alt="@sym.NameIt" Style="width: 20px; height: 20px; object-fit: contain;" />
+                            }
+                            <span>@sym.NameIt (<code>@sym.Key</code>)</span>
+                            <button class="btn btn-link text-danger p-0 ms-1" @onclick="() => DeleteSymbolAsync(sym.Id)">×</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modale Set di Simboli -->
+@if (ShowSymbolSetModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(SymbolSetModel.Id.HasValue ? "Modifica Set Simboli" : "Nuovo Set Simboli")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowSymbolSetModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (univoca)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="SymbolSetModel.Key" placeholder="es. attributes, icons..." />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="SymbolSetModel.NameIt" placeholder="es. Attributi" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="SymbolSetModel.NameEn" placeholder="es. Attributes" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowSymbolSetModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveSymbolSetAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modale Singolo Simbolo -->
+@if (ShowSymbolModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(SymbolModel.Id.HasValue ? "Modifica Simbolo" : "Nuovo Simbolo")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowSymbolModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (univoca nel set)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="SymbolModel.Key" placeholder="es. dark, light, fire..." />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="SymbolModel.NameIt" placeholder="es. Oscurità" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="SymbolModel.NameEn" placeholder="es. Dark" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Token Inline (Rich Text)</label>
+                        <input type="text" class="form-control form-control-sm font-monospace" @bind="SymbolModel.InlineToken" placeholder="es. {sym:dark}" />
+                        <div class="form-text small">Codice utilizzabile nei campi testo per inserire l'icona.</div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">ID Asset Grafico (opzionale)</label>
+                        <input type="text" class="form-control form-control-sm font-monospace" value="@(SymbolModel.AssetId?.ToString() ?? "")" @onchange="OnSymbolAssetIdChanged" placeholder="Guid dell'asset (es. da Libreria Asset)" />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Ordinamento</label>
+                        <input type="number" class="form-control form-control-sm" @bind="SymbolModel.SortOrder" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowSymbolModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveSymbolAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AdminGameDto> Games { get; set; } = [];
+    [Parameter, EditorRequired] public Guid SelectedGameId { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<AdminSymbolSetDto> SymbolSets { get; set; } = [];
+    [Parameter] public EventCallback<Guid> OnGameSelected { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private bool ShowSymbolSetModal;
+    private SaveSymbolSetRequest SymbolSetModel = new() { GameId = Guid.Empty, Key = "", NameIt = "" };
+
+    private bool ShowSymbolModal;
+    private Guid CurrentSymbolSetId;
+    private SaveSymbolRequest SymbolModel = new() { Key = "", NameIt = "" };
+
+    private async Task HandleGameFilterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var gId))
+        {
+            await OnGameSelected.InvokeAsync(gId);
+        }
+    }
+
+    private void OpenNewSymbolSetModal()
+    {
+        SymbolSetModel = new SaveSymbolSetRequest
+        {
+            GameId = SelectedGameId,
+            Key = $"symbols_{SymbolSets.Count + 1}",
+            NameIt = "",
+            NameEn = "",
+        };
+        ShowSymbolSetModal = true;
+    }
+
+    private async Task SaveSymbolSetAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveSymbolSetAsync(SymbolSetModel, uid);
+            ShowSymbolSetModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Set di simboli salvato con successo!");
+    }
+
+    private async Task DeleteSymbolSetAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteSymbolSetAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Set di simboli eliminato con successo!");
+    }
+
+    private void OpenAddSymbolModal(Guid setId)
+    {
+        CurrentSymbolSetId = setId;
+        SymbolModel = new SaveSymbolRequest
+        {
+            Key = $"symbol_{DateTime.UtcNow.Ticks % 10000}",
+            NameIt = "",
+            NameEn = "",
+            InlineToken = "",
+            SortOrder = 10,
+        };
+        ShowSymbolModal = true;
+    }
+
+    private void OnSymbolAssetIdChanged(ChangeEventArgs e)
+    {
+        var str = e.Value?.ToString()?.Trim();
+        if (Guid.TryParse(str, out var g))
+        {
+            SymbolModel.AssetId = g;
+        }
+        else
+        {
+            SymbolModel.AssetId = null;
+        }
+    }
+
+    private async Task SaveSymbolAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveSymbolAsync(CurrentSymbolSetId, SymbolModel, uid);
+            ShowSymbolModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Simbolo salvato con successo!");
+    }
+
+    private async Task DeleteSymbolAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteSymbolAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Simbolo eliminato con successo!");
+    }
+
+    private async Task ExecuteSafeAsync(Func<Task> action, string successMessage)
+    {
+        try
+        {
+            await action();
+            await OnSuccess.InvokeAsync(successMessage);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+    }
+}
+

@@ -13,6 +13,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 @inject ILoadingService LoadingService
+@inject ICardDerivedValuesService DerivedValuesService
 
 <PageTitle>@(IsNew ? "Nuova Carta" : $"Modifica {CardTitle}") — CardMaker</PageTitle>
 
@@ -333,105 +334,7 @@ else
             CardValues[$"trait_{t.Key}"] = CardValue.FromFlag(SelectedTraits.Contains(t.Key));
         }
 
-        if (CurrentGameKey == "yugioh")
-        {
-            UpdateYuGiOhValues(traitNames);
-        }
-        else if (CurrentGameKey == "mtg")
-        {
-            UpdateMtgValues(traitNames);
-        }
-        else if (CurrentGameKey == "pokemon")
-        {
-            UpdatePokemonValues(traitNames);
-        }
-    }
-
-    private void UpdateYuGiOhValues(List<string> traitNames)
-    {
-        if (CurrentCardType is null) return;
-
-        var raceKey = CardValues.TryGetValue("race", out var rVal) ? rVal.AsText() : "dragon";
-        var raceField = CurrentCardType.Fields.FirstOrDefault(f => f.Key == "race");
-        var raceName = raceField?.Options.FirstOrDefault(o => o.Key == raceKey)?.Label ?? raceKey;
-        if (string.IsNullOrWhiteSpace(raceName) || raceName == "dragon")
-        {
-            raceName = "Drago";
-        }
-        CardValues["raceName"] = CardValue.FromText(raceName);
-
-        var isNormal = CurrentCardType.Key.Contains("normal", StringComparison.OrdinalIgnoreCase);
-        var isFusion = CurrentCardType.Key.Contains("fusion", StringComparison.OrdinalIgnoreCase);
-        var isSynchro = CurrentCardType.Key.Contains("synchro", StringComparison.OrdinalIgnoreCase);
-        var isXyz = CurrentCardType.Key.Contains("xyz", StringComparison.OrdinalIgnoreCase);
-        var isLink = CurrentCardType.Key.Contains("link", StringComparison.OrdinalIgnoreCase);
-        var isRitual = CurrentCardType.Key.Contains("ritual", StringComparison.OrdinalIgnoreCase);
-        var isPendulum = CurrentCardType.Key.Contains("pendulum", StringComparison.OrdinalIgnoreCase);
-
-        var effectFlag = isNormal
-            ? (traitNames.Count > 0 ? "Normale" : string.Empty)
-            : (isFusion ? "Fusione / Effetto" :
-               isSynchro ? "Synchro / Effetto" :
-               isXyz ? "Xyz / Effetto" :
-               isLink ? "Link / Effetto" :
-               isRitual ? "Rituale / Effetto" :
-               isPendulum ? "Pendulum / Effetto" : "Effetto");
-
-        CardValues["effectFlag"] = CardValue.FromText(effectFlag);
-
-        var parts = new List<string> { raceName };
-        parts.AddRange(traitNames);
-        if (!string.IsNullOrEmpty(effectFlag))
-        {
-            parts.Add(effectFlag);
-        }
-
-        CardValues["typeLine"] = CardValue.FromText($"[{string.Join(" / ", parts)}]");
-    }
-
-    private void UpdateMtgValues(List<string> traitNames)
-    {
-        if (!CardValues.TryGetValue("typeLine", out var tv) || string.IsNullOrWhiteSpace(tv.AsText()))
-        {
-            CardValues["typeLine"] = CardValue.FromText("Creatura — Angelo");
-        }
-
-        var current = CardValues["typeLine"].AsText();
-        var hasLegendary = SelectedTraits.Contains("legendary");
-
-        if (hasLegendary && !current.Contains("Leggendari", StringComparison.OrdinalIgnoreCase))
-        {
-            if (current.StartsWith("Creatura", StringComparison.OrdinalIgnoreCase))
-            {
-                current = "Creatura Leggendaria" + current[8..];
-            }
-            else
-            {
-                current = "Leggendario " + current;
-            }
-            CardValues["typeLine"] = CardValue.FromText(current);
-        }
-        else if (!hasLegendary && current.Contains("Creatura Leggendaria", StringComparison.OrdinalIgnoreCase))
-        {
-            current = "Creatura" + current.Substring("Creatura Leggendaria".Length);
-            CardValues["typeLine"] = CardValue.FromText(current);
-        }
-
-        CardValues["supertype"] = CardValue.FromText(string.Join(" ", traitNames));
-    }
-
-    private void UpdatePokemonValues(List<string> traitNames)
-    {
-        var traitsStr = string.Join(" ", traitNames);
-        CardValues["traitBadge"] = CardValue.FromText(traitsStr);
-        if (SelectedTraits.Count > 0)
-        {
-            CardValues["stageTraitSuffix"] = CardValue.FromText(" · " + traitsStr.ToUpperInvariant());
-        }
-        else
-        {
-            CardValues["stageTraitSuffix"] = CardValue.FromText(string.Empty);
-        }
+        DerivedValuesService.CalculateDerivedValues(CurrentGameKey, CurrentCardType, SelectedTraits, CardValues);
     }
 
     private async Task OnFormValuesChanged()

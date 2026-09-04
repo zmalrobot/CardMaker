@@ -1,0 +1,45 @@
+@if (!string.IsNullOrEmpty(Heading))
+{
+    <div class="cm-nav-heading mt-3">@Heading</div>
+}
+<NavLink class="cm-nav-link" href="admin/content">
+    <span class="cm-nav-icon">🗂️</span>
+    <span>Gestione Contenuti</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/assets">
+    <span class="cm-nav-icon">🖼️</span>
+    <span>Libreria Asset</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/fonts">
+    <span class="cm-nav-icon">🔤</span>
+    <span>Ruoli Font</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/placeholders">
+    <span class="cm-nav-icon">🧩</span>
+    <span>Segnaposto</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/render-test">
+    <span class="cm-nav-icon">⚡</span>
+    <span>Prova Motore</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/invitations">
+    <span class="cm-nav-icon">🎟️</span>
+    <span>Inviti Utente</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/backups">
+    <span class="cm-nav-icon">💾</span>
+    <span>Backup & Integrità</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/audit">
+    <span class="cm-nav-icon">📜</span>
+    <span>Registro Audit</span>
+</NavLink>
+<NavLink class="cm-nav-link" href="admin/guida">
+    <span class="cm-nav-icon">📘</span>
+    <span>Guida Admin</span>
+</NavLink>
+
+@code {
+    [Parameter] public string? Heading { get; set; }
+}
+

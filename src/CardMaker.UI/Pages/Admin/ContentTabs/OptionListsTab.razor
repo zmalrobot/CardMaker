@@ -1,0 +1,234 @@
+@using CardMaker.Application.Admin
+@using System.Security.Claims
+
+@inject IAdminContentService ContentService
+@inject AuthenticationStateProvider AuthProvider
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center py-2">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fw-bold">Filtra per Gioco:</span>
+            <select class="form-select form-select-sm w-auto" value="@SelectedGameId" @onchange="HandleGameFilterChanged">
+                @foreach (var g in Games)
+                {
+                    <option value="@g.Id">@g.NameIt (@g.Key)</option>
+                }
+            </select>
+        </div>
+        <button class="btn btn-primary btn-sm" @onclick="OpenNewOptionListModal">+ Nuova Lista Opzioni</button>
+    </div>
+    <div class="card-body">
+        @foreach (var list in OptionLists)
+        {
+            <div class="border rounded p-3 mb-3 bg-surface-2">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                        <h5 class="mb-0 fw-bold">@list.NameIt <code class="small text-muted">@list.Key</code></h5>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm me-1" @onclick="() => OpenAddOptionItemModal(list.Id)">+ Aggiungi Voce</button>
+                        <button class="btn btn-outline-danger btn-sm" @onclick="() => DeleteOptionListAsync(list.Id)">Elimina Lista</button>
+                    </div>
+                </div>
+
+                <div class="d-flex flex-wrap gap-2">
+                    @foreach (var item in list.Items)
+                    {
+                        <div class="badge bg-surface border text-foreground p-2 d-flex align-items-center gap-2">
+                            <span>@item.LabelIt (<code>@item.Key</code>)</span>
+                            <button class="btn btn-link text-danger p-0 ms-1" @onclick="() => DeleteOptionItemAsync(item.Id)">×</button>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Modale Lista Opzioni -->
+@if (ShowOptionListModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(OptionListModel.Id.HasValue ? "Modifica Lista Opzioni" : "Nuova Lista Opzioni")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowOptionListModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (univoca)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="OptionListModel.Key" placeholder="es. spell_types, rarities..." />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="OptionListModel.NameIt" placeholder="es. Tipi di Magia" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Nome (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="OptionListModel.NameEn" placeholder="es. Spell Types" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowOptionListModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveOptionListAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modale Voce Opzione -->
+@if (ShowOptionItemModal)
+{
+    <div class="modal d-block" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">@(OptionItemModel.Id.HasValue ? "Modifica Voce Opzione" : "Nuova Voce Opzione")</h5>
+                    <button type="button" class="btn-close" @onclick="() => ShowOptionItemModal = false"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Key (valore univoco)</label>
+                        <input type="text" class="form-control form-control-sm" @bind="OptionItemModel.Key" placeholder="es. normal, quickplay, continuous..." />
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Etichetta (IT)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="OptionItemModel.LabelIt" placeholder="es. Rapida" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Etichetta (EN)</label>
+                            <input type="text" class="form-control form-control-sm" @bind="OptionItemModel.LabelEn" placeholder="es. Quick-Play" />
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Ordinamento</label>
+                        <input type="number" class="form-control form-control-sm" @bind="OptionItemModel.SortOrder" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" @onclick="() => ShowOptionItemModal = false">Annulla</button>
+                    <button type="button" class="btn btn-primary btn-sm" @onclick="SaveOptionItemAsync">Salva</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<AdminGameDto> Games { get; set; } = [];
+    [Parameter, EditorRequired] public Guid SelectedGameId { get; set; }
+    [Parameter, EditorRequired] public IReadOnlyList<AdminOptionListDto> OptionLists { get; set; } = [];
+    [Parameter] public EventCallback<Guid> OnGameSelected { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSuccess { get; set; }
+    [Parameter] public EventCallback<string> OnError { get; set; }
+
+    private bool ShowOptionListModal;
+    private SaveOptionListRequest OptionListModel = new() { GameId = Guid.Empty, Key = "", NameIt = "" };
+
+    private bool ShowOptionItemModal;
+    private Guid CurrentOptionListId;
+    private SaveOptionItemRequest OptionItemModel = new() { Key = "", LabelIt = "" };
+
+    private async Task HandleGameFilterChanged(ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var gId))
+        {
+            await OnGameSelected.InvokeAsync(gId);
+        }
+    }
+
+    private void OpenNewOptionListModal()
+    {
+        OptionListModel = new SaveOptionListRequest
+        {
+            GameId = SelectedGameId,
+            Key = $"options_{OptionLists.Count + 1}",
+            NameIt = "",
+            NameEn = "",
+        };
+        ShowOptionListModal = true;
+    }
+
+    private async Task SaveOptionListAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveOptionListAsync(OptionListModel, uid);
+            ShowOptionListModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Lista opzioni salvata con successo!");
+    }
+
+    private void OpenAddOptionItemModal(Guid listId)
+    {
+        CurrentOptionListId = listId;
+        OptionItemModel = new SaveOptionItemRequest
+        {
+            Key = $"item_{DateTime.UtcNow.Ticks % 10000}",
+            LabelIt = "",
+            LabelEn = "",
+            SortOrder = 10,
+        };
+        ShowOptionItemModal = true;
+    }
+
+    private async Task SaveOptionItemAsync()
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.SaveOptionItemAsync(CurrentOptionListId, OptionItemModel, uid);
+            ShowOptionItemModal = false;
+            await OnChanged.InvokeAsync();
+        }, "Voce opzione salvata con successo!");
+    }
+
+    private async Task DeleteOptionListAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteOptionListAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Lista opzioni eliminata con successo!");
+    }
+
+    private async Task DeleteOptionItemAsync(Guid id)
+    {
+        await ExecuteSafeAsync(async () =>
+        {
+            var auth = await AuthProvider.GetAuthenticationStateAsync();
+            var uid = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            await ContentService.DeleteOptionItemAsync(id, uid);
+            await OnChanged.InvokeAsync();
+        }, "Voce opzione eliminata con successo!");
+    }
+
+    private async Task ExecuteSafeAsync(Func<Task> action, string successMessage)
+    {
+        try
+        {
+            await action();
+            await OnSuccess.InvokeAsync(successMessage);
+        }
+        catch (Exception ex)
+        {
+            await OnError.InvokeAsync(ex.Message);
+        }
+    }
+}
+

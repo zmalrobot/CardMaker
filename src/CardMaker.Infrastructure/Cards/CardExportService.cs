@@ -1,4 +1,3 @@
-using System.Text.Json;
 using CardMaker.Application.Abstractions;
 using CardMaker.Application.Assets;
 using CardMaker.Application.Cards;
@@ -9,21 +8,47 @@ using CardMaker.Infrastructure.Persistence;
 using CardMaker.Infrastructure.Rendering;
 using CardMaker.Rendering;
 using Microsoft.EntityFrameworkCore;
-using SkiaSharp;
-
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace CardMaker.Infrastructure.Cards;
 
-public sealed class CardExportService(
-    CardMakerDbContext db,
-    IAssetStore store,
-    IFontCatalog fonts,
-    IDecodedImageCache imageCache,
-    CardRenderer renderer,
-    PdfExporter pdfExporter,
-    ILogger<CardExportService>? logger = null) : ICardExportService
+public sealed class CardExportService : ICardExportService
 {
+    private readonly CardMakerDbContext _db;
+    private readonly IRenderResourceLoader _resourceLoader;
+    private readonly CardRenderer _renderer;
+    private readonly PdfExporter _pdfExporter;
+    private readonly ILogger<CardExportService>? _logger;
+
+    [ActivatorUtilitiesConstructor]
+    public CardExportService(
+        CardMakerDbContext db,
+        IRenderResourceLoader resourceLoader,
+        CardRenderer renderer,
+        PdfExporter pdfExporter,
+        ILogger<CardExportService>? logger = null)
+    {
+        _db = db;
+        _resourceLoader = resourceLoader;
+        _renderer = renderer;
+        _pdfExporter = pdfExporter;
+        _logger = logger;
+    }
+
+    public CardExportService(
+        CardMakerDbContext db,
+        IAssetStore store,
+        IFontCatalog fonts,
+        IDecodedImageCache imageCache,
+        CardRenderer renderer,
+        PdfExporter pdfExporter,
+        ILogger<CardExportService>? logger = null)
+        : this(db, new RenderResourceLoader(db, store, fonts, imageCache), renderer, pdfExporter, logger)
+    {
+    }
+
     private static readonly JsonSerializerOptions JsonOptions = LayoutSerializer.Options;
 
     public async Task<CardExportResult> ExportCardAsync(
@@ -35,7 +60,7 @@ public sealed class CardExportService(
         ArgumentException.ThrowIfNullOrWhiteSpace(userId);
         ArgumentNullException.ThrowIfNull(options);
 
-        var card = await db.Cards.AsNoTracking()
+        var card = await _db.Cards.AsNoTracking()
             .Include(c => c.Game)
             .Include(c => c.TemplateVersion)
             .Include(c => c.BackTemplateVersion)
@@ -56,26 +81,6 @@ public sealed class CardExportService(
             return new CardExportResult(false, null, null, null, "Layout front non valido.");
         }
 
-        var frontResult = await Task.Run(async () =>
-        {
-            using var frontResources = await LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-            return renderer.Render(new CardRenderRequest
-            {
-                Layout = frontLayout,
-                Values = values,
-                Resources = frontResources,
-                Dpi = Math.Clamp(options.Dpi, 72, 1200),
-                IncludeBleed = options.IncludeBleed,
-                RoundCorners = options.RoundCorners,
-                Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
-            });
-        }, cancellationToken).ConfigureAwait(false);
-
-        if (frontResult.Content is null || frontResult.Content.Length == 0)
-        {
-            return new CardExportResult(false, null, null, null, "Rendering del fronte non riuscito.");
-        }
-
         var safeTitle = string.Join("_", card.Title.Split(Path.GetInvalidFileNameChars(), StringSplitOptions.RemoveEmptyEntries)).Trim().Replace(' ', '_');
         if (string.IsNullOrWhiteSpace(safeTitle))
         {
@@ -85,32 +90,83 @@ public sealed class CardExportService(
         // 2. Export in base al formato
         if (options.Format == RenderFormat.Pdf)
         {
+            CardRenderResult frontResult;
             CardRenderResult? backResult = null;
+
             if (options.BothFaces && card.BackTemplateVersion is not null)
             {
                 var backLayout = LayoutSerializer.Deserialize(card.BackTemplateVersion.LayoutJson);
                 if (backLayout is not null)
                 {
-                    backResult = await Task.Run(async () =>
+                    // Carica risorse sequenzialmente per garantire thread-safety su DbContext (CON-001)
+                    using var frontResources = await _resourceLoader.LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                    using var backResources = await _resourceLoader.LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+
+                    // Esegue il render SkiaSharp in parallelo (CPU-bound) per dimezzare i tempi di esportazione (CON-001)
+                    var frontTask = Task.Run(() => _renderer.Render(new CardRenderRequest
                     {
-                        using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                        return renderer.Render(new CardRenderRequest
-                        {
-                            Layout = backLayout,
-                            Values = values,
-                            Resources = backResources,
-                            Dpi = Math.Clamp(options.Dpi, 72, 1200),
-                            IncludeBleed = options.IncludeBleed,
-                            RoundCorners = options.RoundCorners,
-                            Format = RenderOutputFormat.Png,
-                        });
-                    }, cancellationToken).ConfigureAwait(false);
+                        Layout = frontLayout,
+                        Values = values,
+                        Resources = frontResources,
+                        Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                        IncludeBleed = options.IncludeBleed,
+                        RoundCorners = options.RoundCorners,
+                        Format = RenderOutputFormat.Png,
+                    }), cancellationToken);
+
+                    var backTask = Task.Run(() => _renderer.Render(new CardRenderRequest
+                    {
+                        Layout = backLayout,
+                        Values = values,
+                        Resources = backResources,
+                        Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                        IncludeBleed = options.IncludeBleed,
+                        RoundCorners = options.RoundCorners,
+                        Format = RenderOutputFormat.Png,
+                    }), cancellationToken);
+
+                    await Task.WhenAll(frontTask, backTask).ConfigureAwait(false);
+                    frontResult = await frontTask.ConfigureAwait(false);
+                    backResult = await backTask.ConfigureAwait(false);
+                }
+                else
+                {
+                    using var frontResources = await _resourceLoader.LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                    frontResult = await Task.Run(() => _renderer.Render(new CardRenderRequest
+                    {
+                        Layout = frontLayout,
+                        Values = values,
+                        Resources = frontResources,
+                        Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                        IncludeBleed = options.IncludeBleed,
+                        RoundCorners = options.RoundCorners,
+                        Format = RenderOutputFormat.Png,
+                    }), cancellationToken).ConfigureAwait(false);
                 }
             }
+            else
+            {
+                using var frontResources = await _resourceLoader.LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                frontResult = await Task.Run(() => _renderer.Render(new CardRenderRequest
+                {
+                    Layout = frontLayout,
+                    Values = values,
+                    Resources = frontResources,
+                    Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                    IncludeBleed = options.IncludeBleed,
+                    RoundCorners = options.RoundCorners,
+                    Format = RenderOutputFormat.Png,
+                }), cancellationToken).ConfigureAwait(false);
+            }
 
-            var pdfBytes = await Task.Run(() => pdfExporter.Export(frontResult, backResult), cancellationToken).ConfigureAwait(false);
+            if (frontResult.Content is null || frontResult.Content.Length == 0)
+            {
+                return new CardExportResult(false, null, null, null, "Rendering del fronte non riuscito.");
+            }
+
+            var pdfBytes = await Task.Run(() => _pdfExporter.Export(frontResult, backResult), cancellationToken).ConfigureAwait(false);
             var pdfFileName = $"{safeTitle}.pdf";
-            logger?.LogInformation(
+            _logger?.LogInformation(
                 "[Export] Generato '{FileName}' (PDF @ {Dpi} DPI, {Pages} facciate) | {SizeKb:F1} KB",
                 pdfFileName,
                 options.Dpi,
@@ -124,25 +180,22 @@ public sealed class CardExportService(
             var backLayout = LayoutSerializer.Deserialize(card.BackTemplateVersion.LayoutJson);
             if (backLayout is not null)
             {
-                var backResult = await Task.Run(async () =>
+                using var backResources = await _resourceLoader.LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+                var backResult = await Task.Run(() => _renderer.Render(new CardRenderRequest
                 {
-                    using var backResources = await LoadResourcesAsync(backLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
-                    return renderer.Render(new CardRenderRequest
-                    {
-                        Layout = backLayout,
-                        Values = values,
-                        Resources = backResources,
-                        Dpi = Math.Clamp(options.Dpi, 72, 1200),
-                        IncludeBleed = options.IncludeBleed,
-                        RoundCorners = options.RoundCorners,
-                        Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
-                    });
-                }, cancellationToken).ConfigureAwait(false);
+                    Layout = backLayout,
+                    Values = values,
+                    Resources = backResources,
+                    Dpi = Math.Clamp(options.Dpi, 72, 1200),
+                    IncludeBleed = options.IncludeBleed,
+                    RoundCorners = options.RoundCorners,
+                    Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
+                }), cancellationToken).ConfigureAwait(false);
 
                 var ext = options.Format == RenderFormat.Jpg ? "jpg" : "png";
                 var mime = options.Format == RenderFormat.Jpg ? "image/jpeg" : "image/png";
                 var backFileName = $"{safeTitle}_back.{ext}";
-                logger?.LogInformation(
+                _logger?.LogInformation(
                     "[Export] Generato '{FileName}' ({Format} @ {Dpi} DPI) | {SizeKb:F1} KB",
                     backFileName,
                     options.Format,
@@ -152,119 +205,32 @@ public sealed class CardExportService(
             }
         }
 
+        using var frontRes = await _resourceLoader.LoadResourcesAsync(frontLayout, values, card.GameId, cancellationToken).ConfigureAwait(false);
+        var singleFrontResult = await Task.Run(() => _renderer.Render(new CardRenderRequest
+        {
+            Layout = frontLayout,
+            Values = values,
+            Resources = frontRes,
+            Dpi = Math.Clamp(options.Dpi, 72, 1200),
+            IncludeBleed = options.IncludeBleed,
+            RoundCorners = options.RoundCorners,
+            Format = options.Format == RenderFormat.Jpg ? RenderOutputFormat.Jpeg : RenderOutputFormat.Png,
+        }), cancellationToken).ConfigureAwait(false);
+
+        if (singleFrontResult.Content is null || singleFrontResult.Content.Length == 0)
+        {
+            return new CardExportResult(false, null, null, null, "Rendering del fronte non riuscito.");
+        }
+
         var extension = options.Format == RenderFormat.Jpg ? "jpg" : "png";
         var mimeType = options.Format == RenderFormat.Jpg ? "image/jpeg" : "image/png";
         var frontFileName = $"{safeTitle}.{extension}";
-        logger?.LogInformation(
+        _logger?.LogInformation(
             "[Export] Generato '{FileName}' ({Format} @ {Dpi} DPI) | {SizeKb:F1} KB",
             frontFileName,
             options.Format,
             options.Dpi,
-            (frontResult.Content?.Length ?? 0) / 1024.0);
-        return new CardExportResult(true, frontResult.Content, mimeType, frontFileName, null);
-    }
-
-    private async Task<PreloadedRenderResources> LoadResourcesAsync(
-        CardLayout layout,
-        IReadOnlyDictionary<string, CardValue> values,
-        Guid gameId,
-        CancellationToken cancellationToken)
-    {
-        var resources = new PreloadedRenderResources();
-        var (assetIds, assetKeys, fontAliases, symbols) = LayoutReferences.Collect(layout, values);
-
-        if (assetIds.Count > 0)
-        {
-            var assets = await db.Assets.AsNoTracking()
-                .Where(a => assetIds.Contains(a.Id))
-                .Select(a => new { a.Id, a.Sha256 })
-                .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-            foreach (var asset in assets)
-            {
-                var image = await GetOrDecodeAsync(asset.Sha256, cancellationToken).ConfigureAwait(false);
-                if (image is not null)
-                {
-                    resources.AddImage(asset.Id, image, owned: false);
-                }
-            }
-        }
-
-        foreach (var key in assetKeys)
-        {
-            var fileName = key + ".png";
-            var asset = await db.Assets.AsNoTracking()
-                .Where(a => a.OriginalFileName == fileName)
-                .OrderByDescending(a => a.CreatedAtUtc)
-                .Select(a => new { a.Sha256 })
-                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-            if (asset is not null)
-            {
-                var image = await GetOrDecodeAsync(asset.Sha256, cancellationToken).ConfigureAwait(false);
-                if (image is not null)
-                {
-                    resources.AddImageKey(key, image, owned: false);
-                }
-            }
-        }
-
-        foreach (var (setKey, symbolKey) in symbols)
-        {
-            var symbol = await db.Symbols.AsNoTracking()
-                .Include(s => s.SymbolSet)
-                .Include(s => s.Asset)
-                .Where(s => s.SymbolSet.Key == setKey && s.Key == symbolKey && s.Asset != null)
-                .Select(s => new { Sha = s.Asset!.Sha256 })
-                .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
-
-            if (symbol is not null)
-            {
-                var image = await GetOrDecodeAsync(symbol.Sha, cancellationToken).ConfigureAwait(false);
-                if (image is not null)
-                {
-                    resources.AddSymbol(setKey, symbolKey, image, owned: false);
-                }
-            }
-        }
-
-        foreach (var alias in fontAliases)
-        {
-            var bytes = await fonts.GetBytesByAliasAsync(gameId, alias, cancellationToken).ConfigureAwait(false);
-            if (bytes is not null)
-            {
-                resources.AddFont(alias, bytes);
-            }
-        }
-
-        return resources;
-    }
-
-    private async Task<SKImage?> GetOrDecodeAsync(string sha256, CancellationToken cancellationToken)
-    {
-        var cached = imageCache.TryGet(sha256);
-        if (cached is not null)
-        {
-            return cached;
-        }
-
-        var stream = await store.OpenReadAsync(sha256, cancellationToken).ConfigureAwait(false);
-        if (stream is null)
-        {
-            return null;
-        }
-
-        await using (stream.ConfigureAwait(false))
-        {
-            using var buffer = new MemoryStream();
-            await stream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
-            using var data = SKData.CreateCopy(buffer.ToArray());
-            var image = SKImage.FromEncodedData(data);
-            if (image is not null)
-            {
-                imageCache.Store(sha256, image);
-            }
-            return image;
-        }
+            (singleFrontResult.Content?.Length ?? 0) / 1024.0);
+        return new CardExportResult(true, singleFrontResult.Content, mimeType, frontFileName, null);
     }
 }

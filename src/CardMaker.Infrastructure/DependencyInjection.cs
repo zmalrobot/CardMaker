@@ -54,6 +54,7 @@ public static class DependencyInjection
         services.AddSingleton<IDecodedImageCache, DecodedImageCache>();
         services.AddScoped<IAssetCatalog, AssetService>();
         services.AddScoped<IFontCatalog, FontService>();
+        services.AddScoped<IRenderResourceLoader, RenderResourceLoader>();
         services.AddScoped<ICardPreviewService, CardPreviewService>();
         services.AddScoped<IPlaceholderSeeder, PlaceholderSeeder>();
         services.AddScoped<IYuGiOhFontSeeder, YuGiOhFontSeeder>();
@@ -65,10 +66,11 @@ public static class DependencyInjection
         services.AddScoped<CardMaker.Application.Content.IGamePackageService, CardMaker.Infrastructure.Content.GamePackageService>();
         services.AddScoped<CardMaker.Application.Content.ITemplateSelector, CardMaker.Application.Content.TemplateSelector>();
         services.AddScoped<CardMaker.Application.Cards.ICardService, CardMaker.Infrastructure.Cards.CardService>();
-        services.AddScoped<CardMaker.Application.Cards.ICardExportService, CardMaker.Infrastructure.Cards.CardExportService>();
-        services.AddScoped<CardMaker.Application.Admin.IAdminContentService, CardMaker.Infrastructure.Admin.AdminContentService>();
+        services.AddScoped<CardMaker.Application.Cards.ICardDerivedValuesService, CardMaker.Application.Cards.CardDerivedValuesService>();
+        services.AddScoped<CardMaker.Application.Cards.ICardExportService>(sp =>
         services.AddScoped<CardMaker.Application.Admin.ITemplateAdminService, CardMaker.Infrastructure.Admin.TemplateAdminService>();
         services.AddScoped<CardMaker.Application.Identity.IInvitationService, CardMaker.Infrastructure.Identity.InvitationService>();
+        services.AddScoped<CardMaker.Application.Admin.IDatabaseSnapshotProvider, CardMaker.Infrastructure.Admin.SqliteDatabaseSnapshotProvider>();
         services.AddScoped<CardMaker.Application.Admin.IBackupService, CardMaker.Infrastructure.Admin.BackupService>();
         services.AddScoped<CardMaker.Application.Admin.IDatabaseResetService, DatabaseResetService>();
         services.AddScoped<DatabaseInitializer>();

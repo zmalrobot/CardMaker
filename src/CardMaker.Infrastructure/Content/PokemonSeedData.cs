@@ -18,13 +18,6 @@ public static class PokemonSeedData
     private sealed record PokemonSpec(
         string Key, string LabelIt, string LabelEn, string FrameKey, PlaceholderLayout Layout, string Stage);
 
-    public sealed record SeedGraph(
-        Game Game,
-        IReadOnlyList<CardType> CardTypes,
-        IReadOnlyList<Trait> Traits,
-        IReadOnlyList<OptionList> OptionLists,
-        IReadOnlyList<SymbolSet> SymbolSets);
-
     private static readonly PokemonSpec[] PokemonSpecs =
     [
         new("pokemon-basic", "Pokémon Base", "Basic Pokémon", "pokemon-frame-lightning", PlaceholderLayout.Pokemon, "BASE"),

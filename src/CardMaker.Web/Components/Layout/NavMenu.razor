@@ -16,59 +16,12 @@
     </NavLink>
     <AuthorizeView>
         <Authorized>
-            <NavLink class="cm-nav-link" href="cards" Match="NavLinkMatch.All">
-                <span class="cm-nav-icon">🃏</span>
-                <span>Le mie Carte</span>
-            </NavLink>
-            <NavLink class="cm-nav-link" href="cards/create">
-                <span class="cm-nav-icon">✨</span>
-                <span>Nuova Carta</span>
-            </NavLink>
-            <NavLink class="cm-nav-link" href="guida">
-                <span class="cm-nav-icon">📖</span>
-                <span>Guida Utente</span>
-            </NavLink>
+            <UserNavLinks />
         </Authorized>
     </AuthorizeView>
 
     <AuthorizeView Roles="Admin">
-        <div class="cm-nav-heading mt-3">Amministrazione</div>
-        <NavLink class="cm-nav-link" href="admin/content">
-            <span class="cm-nav-icon">🗂️</span>
-            <span>Gestione Contenuti</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/assets">
-            <span class="cm-nav-icon">🖼️</span>
-            <span>Libreria Asset</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/fonts">
-            <span class="cm-nav-icon">🔤</span>
-            <span>Ruoli Font</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/placeholders">
-            <span class="cm-nav-icon">🧩</span>
-            <span>Segnaposto</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/render-test">
-            <span class="cm-nav-icon">⚡</span>
-            <span>Prova Motore</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/invitations">
-            <span class="cm-nav-icon">🎟️</span>
-            <span>Inviti Utente</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/backups">
-            <span class="cm-nav-icon">💾</span>
-            <span>Backup & Integrità</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/audit">
-            <span class="cm-nav-icon">📜</span>
-            <span>Registro Audit</span>
-        </NavLink>
-        <NavLink class="cm-nav-link" href="admin/guida">
-            <span class="cm-nav-icon">📘</span>
-            <span>Guida Admin</span>
-        </NavLink>
+        <AdminNavLinks Heading="Amministrazione" />
     </AuthorizeView>
 
     <div class="cm-nav-heading mt-3">Account</div>

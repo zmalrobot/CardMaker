@@ -27,13 +27,6 @@ public static class YuGiOhSeedData
 
     private sealed record PropertySpec(string Key, string LabelIt, string LabelEn, string FrameKey, string SymbolSetKey, bool IsRush = false);
 
-    public sealed record SeedGraph(
-        Game Game,
-        IReadOnlyList<CardType> CardTypes,
-        IReadOnlyList<Trait> Traits,
-        IReadOnlyList<OptionList> OptionLists,
-        IReadOnlyList<SymbolSet> SymbolSets);
-
     private static readonly MonsterSpec[] MonsterSpecs =
     [
         new("monster-normal", "Mostro Normale", "Normal Monster", "monster-normal", PlaceholderLayout.Monster, true, true, false, false, false),

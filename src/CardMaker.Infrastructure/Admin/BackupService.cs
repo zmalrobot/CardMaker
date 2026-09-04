@@ -1,23 +1,44 @@
-using System.Data;
 using System.Text.Json;
 using CardMaker.Application.Admin;
 using CardMaker.Domain.Identity;
 using CardMaker.Infrastructure.Persistence;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace CardMaker.Infrastructure.Admin;
 
-public sealed class BackupService(
-    CardMakerDbContext db,
-    IConfiguration configuration,
-    ILogger<BackupService> logger) : IBackupService
+public sealed class BackupService : IBackupService
 {
+    private readonly CardMakerDbContext _db;
+    private readonly IConfiguration _configuration;
+    private readonly IDatabaseSnapshotProvider _snapshotProvider;
+    private readonly ILogger<BackupService> _logger;
+
+    [ActivatorUtilitiesConstructor]
+    public BackupService(
+        CardMakerDbContext db,
+        IConfiguration configuration,
+        IDatabaseSnapshotProvider snapshotProvider,
+        ILogger<BackupService> logger)
+    {
+        _db = db;
+        _configuration = configuration;
+        _snapshotProvider = snapshotProvider;
+        _logger = logger;
+    }
+
+    public BackupService(
+        CardMakerDbContext db,
+        IConfiguration configuration,
+        ILogger<BackupService> logger)
+        : this(db, configuration, new SqliteDatabaseSnapshotProvider(db), logger)
+    {
+    }
+
     private string GetBackupsDirectory()
     {
-        var dataRoot = configuration["Storage:DataRoot"] ?? Path.Combine(AppContext.BaseDirectory, "data");
+        var dataRoot = _configuration["Storage:DataRoot"] ?? Path.Combine(AppContext.BaseDirectory, "data");
         var backupDir = Path.Combine(dataRoot, "backups");
         Directory.CreateDirectory(backupDir);
         return backupDir;
@@ -35,13 +56,12 @@ public sealed class BackupService(
             File.Delete(backupPath);
         }
 
-        // SQLite VACUUM INTO creates a safe, transactional, consistent snapshot while database is active
-        await db.Database.ExecuteSqlAsync($"VACUUM INTO {backupPath};", cancellationToken).ConfigureAwait(false);
+        await _snapshotProvider.CreateSnapshotAsync(backupPath, cancellationToken).ConfigureAwait(false);
 
         var fileInfo = new FileInfo(backupPath);
         var now = DateTimeOffset.UtcNow;
 
-        db.AuditLog.Add(new AuditLogEntry
+        _db.AuditLog.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -53,9 +73,9 @@ public sealed class BackupService(
             UpdatedAtUtc = now,
         });
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        logger.LogInformation("Creato snapshot database SQLite con successo: {BackupPath} ({SizeBytes} bytes)", backupPath, fileInfo.Length);
+        _logger.LogInformation("Creato snapshot database con successo: {BackupPath} ({SizeBytes} bytes)", backupPath, fileInfo.Length);
 
         return new BackupFileInfo(fileName, backupPath, fileInfo.Length, now);
     }
@@ -63,50 +83,32 @@ public sealed class BackupService(
     public Task<IReadOnlyList<BackupFileInfo>> ListBackupsAsync(CancellationToken cancellationToken = default)
     {
         var backupDir = GetBackupsDirectory();
-        var files = Directory.GetFiles(backupDir, "cardmaker_backup_*.db")
-            .Select(p => new FileInfo(p))
-            .OrderByDescending(f => f.CreationTimeUtc)
-            .Select(f => new BackupFileInfo(
-                f.Name,
-                f.FullName,
-                f.Length,
-                f.CreationTimeUtc))
-            .ToList();
+        return Task.Run<IReadOnlyList<BackupFileInfo>>(() =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var files = Directory.EnumerateFiles(backupDir, "cardmaker_backup_*.db")
+                .Select(p => new FileInfo(p))
+                .OrderByDescending(f => f.CreationTimeUtc)
+                .Select(f => new BackupFileInfo(
+                    f.Name,
+                    f.FullName,
+                    f.Length,
+                    f.CreationTimeUtc))
+                .ToList();
 
-        return Task.FromResult<IReadOnlyList<BackupFileInfo>>(files);
+            return files;
+        }, cancellationToken);
     }
 
     public async Task<BackupIntegrityReport> VerifyDatabaseIntegrityAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTimeOffset.UtcNow;
-        var connection = db.Database.GetDbConnection();
-        var shouldClose = false;
+        var result = await _snapshotProvider.CheckIntegrityAsync(cancellationToken).ConfigureAwait(false);
+        var isHealthy = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase);
 
-        if (connection.State != ConnectionState.Open)
-        {
-            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
-            shouldClose = true;
-        }
+        _logger.LogInformation("Verifica integrità database eseguita. Risultato: {Result}", result);
 
-        try
-        {
-            using var cmd = connection.CreateCommand();
-            cmd.CommandText = "PRAGMA integrity_check;";
-            var result = (await cmd.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false))?.ToString() ?? "unknown";
-
-            var isHealthy = string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase);
-
-            logger.LogInformation("Verifica integrità SQLite eseguita. Risultato: {Result}", result);
-
-            return new BackupIntegrityReport(isHealthy, result, now);
-        }
-        finally
-        {
-            if (shouldClose)
-            {
-                await connection.CloseAsync().ConfigureAwait(false);
-            }
-        }
+        return new BackupIntegrityReport(isHealthy, result, now);
     }
 
     public async Task<bool> DeleteBackupAsync(string fileName, string? userId, CancellationToken cancellationToken = default)
@@ -122,7 +124,7 @@ public sealed class BackupService(
         File.Delete(fullPath);
         var now = DateTimeOffset.UtcNow;
 
-        db.AuditLog.Add(new AuditLogEntry
+        _db.AuditLog.Add(new AuditLogEntry
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -133,7 +135,7 @@ public sealed class BackupService(
             UpdatedAtUtc = now,
         });
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await _db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return true;
     }
 }

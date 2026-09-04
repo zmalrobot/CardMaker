@@ -1,7 +1,7 @@
 using System.Globalization;
 using CardMaker.Contracts.Layout;
 
-namespace CardMaker.Rendering.Pipeline;
+namespace CardMaker.Contracts.Layout;
 
 /// <summary>
 /// Fase EVALUATE: valuta l'AST delle condizioni.

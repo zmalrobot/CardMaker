@@ -1,6 +1,8 @@
 using CardMaker.Application.Assets;
 using CardMaker.Contracts.Geometry;
 using CardMaker.Domain.Assets;
+using CardMaker.Domain.Cards;
+using CardMaker.Domain.Symbols;
 using CardMaker.Infrastructure.Content;
 using CardMaker.Infrastructure.Persistence;
 using CardMaker.Rendering.Placeholders;
@@ -41,102 +43,17 @@ public sealed class PlaceholderSeeder(
             }
             : CardGeometry.YuGiOh();
 
-        var created = 0;
-        var existing = 0;
-        var keys = new List<string>();
-
-        // 1. Frame Segnaposto
-        foreach (var baseSpec in PlaceholderFrameSpec.YuGiOhSet())
-        {
-            var spec = baseSpec with { ShowGuides = showGuides };
-            var png = generator.Generate(spec, geometry);
-
-            var before = await catalog.ListAsync(targetGameId, 500, cancellationToken).ConfigureAwait(false);
-            var fileName = $"placeholder-{spec.Key}.png";
-
-            using var stream = new MemoryStream(png, writable: false);
-            var outcome = await catalog.UploadAsync(
-                stream,
-                new AssetUploadRequest
-                {
-                    FileName = fileName,
-                    Category = spec.Layout == PlaceholderLayout.Back ? AssetCategory.CardBack : AssetCategory.Placeholder,
-                    LicenseNote = "Generato proceduralmente da CardMaker: nessun materiale di terze parti.",
-                    SourceNote = $"PlaceholderFrameGenerator, {geometry.MasterWidthPx}x{geometry.MasterHeightPx} px @ {geometry.Dpi} DPI",
-                    UploadedByUserId = userId,
-                    GameId = targetGameId,
-                    Kind = UploadKind.Image,
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!outcome.Succeeded)
-            {
-                continue;
-            }
-
-            keys.Add(spec.Key);
-            if (before.Any(a => a.Id == outcome.Asset!.Id))
-            {
-                existing++;
-            }
-            else
-            {
-                created++;
-            }
-        }
-
-        // 2. Simboli Procedurali Segnaposto (Attributi, Stelle, Frecce Link, Proprietà Magia/Trappola)
-        if (targetGameId.HasValue)
-        {
-            var symbolSets = await db.SymbolSets
-                .Include(s => s.Symbols)
-                .Where(s => s.GameId == targetGameId.Value)
-                .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-            foreach (var set in symbolSets)
-            {
-                foreach (var symbol in set.Symbols)
-                {
-                    var symbolPng = symbolGenerator.Generate(set.Key, symbol.Key);
-                    var symbolFileName = $"placeholder-symbol-{set.Key}-{symbol.Key}.png";
-
-                    var before = await catalog.ListAsync(targetGameId, 500, cancellationToken).ConfigureAwait(false);
-
-                    using var symStream = new MemoryStream(symbolPng, writable: false);
-                    var outcome = await catalog.UploadAsync(
-                        symStream,
-                        new AssetUploadRequest
-                        {
-                            FileName = symbolFileName,
-                            Category = AssetCategory.Symbol,
-                            LicenseNote = "Generato proceduralmente da CardMaker: segnaposto simbolo.",
-                            SourceNote = $"PlaceholderSymbolGenerator, set: {set.Key}, symbol: {symbol.Key}",
-                            UploadedByUserId = userId,
-                            GameId = targetGameId,
-                            Kind = UploadKind.Image,
-                        },
-                        cancellationToken).ConfigureAwait(false);
-
-                    if (outcome.Succeeded && outcome.Asset is not null)
-                    {
-                        symbol.AssetId = outcome.Asset.Id;
-                        keys.Add($"symbol:{set.Key}/{symbol.Key}");
-                        if (before.Any(a => a.Id == outcome.Asset.Id))
-                        {
-                            existing++;
-                        }
-                        else
-                        {
-                            created++;
-                        }
-                    }
-                }
-            }
-
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        return new PlaceholderSeedResult(created, existing, keys);
+        return await SeedCoreAsync(
+            targetGameId,
+            geometry,
+            PlaceholderFrameSpec.YuGiOhSet(),
+            frameLicenseNote: "Generato proceduralmente da CardMaker: nessun materiale di terze parti.",
+            frameSourcePrefix: "PlaceholderFrameGenerator",
+            symbolLicenseNote: "Generato proceduralmente da CardMaker: segnaposto simbolo.",
+            symbolSourcePrefix: "PlaceholderSymbolGenerator",
+            userId,
+            showGuides,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<PlaceholderSeedResult> SeedPokemonAsync(
@@ -152,102 +69,17 @@ public sealed class PlaceholderSeeder(
         var targetGameId = game?.Id ?? gameId;
         var geometry = CardGeometry.PokerSize();
 
-        var created = 0;
-        var existing = 0;
-        var keys = new List<string>();
-
-        // 1. Frame Segnaposto Pokémon
-        foreach (var baseSpec in PlaceholderFrameSpec.PokemonSet())
-        {
-            var spec = baseSpec with { ShowGuides = showGuides };
-            var png = generator.Generate(spec, geometry);
-
-            var before = await catalog.ListAsync(targetGameId, 500, cancellationToken).ConfigureAwait(false);
-            var fileName = $"placeholder-{spec.Key}.png";
-
-            using var stream = new MemoryStream(png, writable: false);
-            var outcome = await catalog.UploadAsync(
-                stream,
-                new AssetUploadRequest
-                {
-                    FileName = fileName,
-                    Category = spec.Layout == PlaceholderLayout.Back ? AssetCategory.CardBack : AssetCategory.Placeholder,
-                    LicenseNote = "Generato proceduralmente da CardMaker per Pokémon TCG.",
-                    SourceNote = $"PlaceholderFrameGenerator, {geometry.MasterWidthPx}x{geometry.MasterHeightPx} px @ {geometry.Dpi} DPI",
-                    UploadedByUserId = userId,
-                    GameId = targetGameId,
-                    Kind = UploadKind.Image,
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!outcome.Succeeded)
-            {
-                continue;
-            }
-
-            keys.Add(spec.Key);
-            if (before.Any(a => a.Id == outcome.Asset!.Id))
-            {
-                existing++;
-            }
-            else
-            {
-                created++;
-            }
-        }
-
-        // 2. Simboli Procedurali Segnaposto Pokémon (Energie e Rarità)
-        if (targetGameId.HasValue)
-        {
-            var symbolSets = await db.SymbolSets
-                .Include(s => s.Symbols)
-                .Where(s => s.GameId == targetGameId.Value)
-                .ToListAsync(cancellationToken).ConfigureAwait(false);
-
-            foreach (var set in symbolSets)
-            {
-                foreach (var symbol in set.Symbols)
-                {
-                    var symbolPng = symbolGenerator.Generate(set.Key, symbol.Key);
-                    var symbolFileName = $"placeholder-symbol-{set.Key}-{symbol.Key}.png";
-
-                    var before = await catalog.ListAsync(targetGameId, 500, cancellationToken).ConfigureAwait(false);
-
-                    using var symStream = new MemoryStream(symbolPng, writable: false);
-                    var outcome = await catalog.UploadAsync(
-                        symStream,
-                        new AssetUploadRequest
-                        {
-                            FileName = symbolFileName,
-                            Category = AssetCategory.Symbol,
-                            LicenseNote = "Generato proceduralmente da CardMaker: segnaposto simbolo Pokémon.",
-                            SourceNote = $"PlaceholderSymbolGenerator, set: {set.Key}, symbol: {symbol.Key}",
-                            UploadedByUserId = userId,
-                            GameId = targetGameId,
-                            Kind = UploadKind.Image,
-                        },
-                        cancellationToken).ConfigureAwait(false);
-
-                    if (outcome.Succeeded && outcome.Asset is not null)
-                    {
-                        symbol.AssetId = outcome.Asset.Id;
-                        keys.Add($"symbol:{set.Key}/{symbol.Key}");
-                        if (before.Any(a => a.Id == outcome.Asset.Id))
-                        {
-                            existing++;
-                        }
-                        else
-                        {
-                            created++;
-                        }
-                    }
-                }
-            }
-
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        }
-
-        return new PlaceholderSeedResult(created, existing, keys);
+        return await SeedCoreAsync(
+            targetGameId,
+            geometry,
+            PlaceholderFrameSpec.PokemonSet(),
+            frameLicenseNote: "Generato proceduralmente da CardMaker per Pokémon TCG.",
+            frameSourcePrefix: "PlaceholderFrameGenerator",
+            symbolLicenseNote: "Generato proceduralmente da CardMaker: segnaposto simbolo Pokémon.",
+            symbolSourcePrefix: "PlaceholderSymbolGenerator",
+            userId,
+            showGuides,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<PlaceholderSeedResult> SeedMtgAsync(
@@ -264,19 +96,54 @@ public sealed class PlaceholderSeeder(
         }
 
         var geometry = CardGeometry.PokerSize();
+
+        return await SeedCoreAsync(
+            targetGameId,
+            geometry,
+            PlaceholderFrameSpec.MtgSet(),
+            frameLicenseNote: "Generato proceduralmente da CardMaker: segnaposto frame Magic.",
+            frameSourcePrefix: "PlaceholderFrameGenerator",
+            symbolLicenseNote: "Generato proceduralmente da CardMaker: segnaposto simbolo Magic.",
+            symbolSourcePrefix: "PlaceholderSymbolGenerator",
+            userId,
+            showGuides,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task<PlaceholderSeedResult> SeedCoreAsync(
+        Guid? targetGameId,
+        CardGeometry geometry,
+        IReadOnlyList<PlaceholderFrameSpec> baseSpecs,
+        string frameLicenseNote,
+        string frameSourcePrefix,
+        string symbolLicenseNote,
+        string symbolSourcePrefix,
+        string? userId,
+        bool showGuides,
+        CancellationToken cancellationToken)
+    {
         var created = 0;
         var existing = 0;
         var keys = new List<string>();
 
-        // 1. Frame Segnaposto
-        foreach (var baseSpec in PlaceholderFrameSpec.MtgSet())
+        // Pre-carica l'indice degli asset esistenti una sola volta per eliminare N+1 query (DB-001, PERF-001)
+        var existingAssets = targetGameId.HasValue
+            ? (await catalog.ListAsync(targetGameId, 5000, cancellationToken).ConfigureAwait(false))
+                .Select(a => a.Id)
+                .ToHashSet()
+            : [];
+
+        // 1. Frame Segnaposto - Generazione CPU-bound in parallelo (CON-002)
+        var frameSpecs = baseSpecs.Select(b => b with { ShowGuides = showGuides }).ToList();
+        var generatedFrames = new (PlaceholderFrameSpec Spec, byte[] Png)[frameSpecs.Count];
+        Parallel.For(0, frameSpecs.Count, i =>
         {
-            var spec = baseSpec with { ShowGuides = showGuides };
-            var png = generator.Generate(spec, geometry);
+            generatedFrames[i] = (frameSpecs[i], generator.Generate(frameSpecs[i], geometry));
+        });
 
-            var before = await catalog.ListAsync(targetGameId, 500, cancellationToken).ConfigureAwait(false);
+        foreach (var (spec, png) in generatedFrames)
+        {
             var fileName = $"placeholder-{spec.Key}.png";
-
             using var stream = new MemoryStream(png, writable: false);
             var outcome = await catalog.UploadAsync(
                 stream,
@@ -284,31 +151,32 @@ public sealed class PlaceholderSeeder(
                 {
                     FileName = fileName,
                     Category = spec.Layout == PlaceholderLayout.Back ? AssetCategory.CardBack : AssetCategory.Placeholder,
-                    LicenseNote = "Generato proceduralmente da CardMaker: segnaposto frame Magic.",
-                    SourceNote = $"PlaceholderFrameGenerator, {geometry.MasterWidthPx}x{geometry.MasterHeightPx} px @ {geometry.Dpi} DPI",
+                    LicenseNote = frameLicenseNote,
+                    SourceNote = $"{frameSourcePrefix}, {geometry.MasterWidthPx}x{geometry.MasterHeightPx} px @ {geometry.Dpi} DPI",
                     UploadedByUserId = userId,
                     GameId = targetGameId,
                     Kind = UploadKind.Image,
                 },
                 cancellationToken).ConfigureAwait(false);
 
-            if (!outcome.Succeeded)
+            if (!outcome.Succeeded || outcome.Asset is null)
             {
                 continue;
             }
 
             keys.Add(spec.Key);
-            if (before.Any(a => a.Id == outcome.Asset!.Id))
+            if (existingAssets.Contains(outcome.Asset.Id))
             {
                 existing++;
             }
             else
             {
+                existingAssets.Add(outcome.Asset.Id);
                 created++;
             }
         }
 
-        // 2. Simboli Mana e Rarita'
+        // 2. Simboli Procedurali Segnaposto
         if (targetGameId.HasValue)
         {
             var symbolSets = await db.SymbolSets
@@ -316,42 +184,47 @@ public sealed class PlaceholderSeeder(
                 .Where(s => s.GameId == targetGameId.Value)
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-            foreach (var set in symbolSets)
+            var symbolPairs = symbolSets
+                .SelectMany(set => set.Symbols.Select(sym => (Set: set, Symbol: sym)))
+                .ToList();
+
+            var generatedSymbols = new (SymbolSet Set, Symbol Symbol, byte[] Png)[symbolPairs.Count];
+            Parallel.For(0, symbolPairs.Count, i =>
             {
-                foreach (var symbol in set.Symbols)
-                {
-                    var symbolPng = symbolGenerator.Generate(set.Key, symbol.Key);
-                    var symbolFileName = $"placeholder-symbol-{set.Key}-{symbol.Key}.png";
+                var pair = symbolPairs[i];
+                generatedSymbols[i] = (pair.Set, pair.Symbol, symbolGenerator.Generate(pair.Set.Key, pair.Symbol.Key));
+            });
 
-                    var before = await catalog.ListAsync(targetGameId, 500, cancellationToken).ConfigureAwait(false);
-
-                    using var symStream = new MemoryStream(symbolPng, writable: false);
-                    var outcome = await catalog.UploadAsync(
-                        symStream,
-                        new AssetUploadRequest
-                        {
-                            FileName = symbolFileName,
-                            Category = AssetCategory.Symbol,
-                            LicenseNote = "Generato proceduralmente da CardMaker: segnaposto simbolo Magic.",
-                            SourceNote = $"PlaceholderSymbolGenerator, set: {set.Key}, symbol: {symbol.Key}",
-                            UploadedByUserId = userId,
-                            GameId = targetGameId,
-                            Kind = UploadKind.Image,
-                        },
-                        cancellationToken).ConfigureAwait(false);
-
-                    if (outcome.Succeeded && outcome.Asset is not null)
+            foreach (var (set, symbol, symbolPng) in generatedSymbols)
+            {
+                var symbolFileName = $"placeholder-symbol-{set.Key}-{symbol.Key}.png";
+                using var symStream = new MemoryStream(symbolPng, writable: false);
+                var outcome = await catalog.UploadAsync(
+                    symStream,
+                    new AssetUploadRequest
                     {
-                        symbol.AssetId = outcome.Asset.Id;
-                        keys.Add($"symbol:{set.Key}/{symbol.Key}");
-                        if (before.Any(a => a.Id == outcome.Asset.Id))
-                        {
-                            existing++;
-                        }
-                        else
-                        {
-                            created++;
-                        }
+                        FileName = symbolFileName,
+                        Category = AssetCategory.Symbol,
+                        LicenseNote = symbolLicenseNote,
+                        SourceNote = $"{symbolSourcePrefix}, set: {set.Key}, symbol: {symbol.Key}",
+                        UploadedByUserId = userId,
+                        GameId = targetGameId,
+                        Kind = UploadKind.Image,
+                    },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (outcome.Succeeded && outcome.Asset is not null)
+                {
+                    symbol.AssetId = outcome.Asset.Id;
+                    keys.Add($"symbol:{set.Key}/{symbol.Key}");
+                    if (existingAssets.Contains(outcome.Asset.Id))
+                    {
+                        existing++;
+                    }
+                    else
+                    {
+                        existingAssets.Add(outcome.Asset.Id);
+                        created++;
                     }
                 }
             }
