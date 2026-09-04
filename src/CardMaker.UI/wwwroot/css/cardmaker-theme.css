@@ -195,10 +195,21 @@ a:hover {
     color: var(--cm-primary);
 }
 
+.cm-nav-link:active {
+    transform: scale(0.98) translateZ(0);
+    background-color: var(--cm-surface-2);
+    transition: transform 0.05s ease;
+}
+
 .cm-nav-link.active {
     background-color: var(--cm-primary-subtle);
     color: var(--cm-primary);
     font-weight: 600;
+}
+
+.btn:active {
+    transform: scale(0.98) translateZ(0);
+    transition: transform 0.05s ease;
 }
 
 .cm-nav-icon {
@@ -575,5 +586,48 @@ a:hover {
     0%, 100% { transform: scale(1) translateZ(0); }
     50% { transform: scale(1.15) translateZ(0); }
 }
+
+/* ==========================================================================
+   Page Transitions & GPU Acceleration (60 FPS Native Feel)
+   ========================================================================== */
+.cm-page-transition {
+    width: 100%;
+    transform: translateZ(0);
+    will-change: opacity, transform;
+    animation: cm-page-enter 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes cm-page-enter {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.cm-content-reveal {
+    animation: cm-fade-in 0.2s ease-out both;
+    transform: translateZ(0);
+    will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cm-page-transition,
+    .cm-content-reveal,
+    .cm-loading-backdrop,
+    .cm-loading-dialog,
+    .cm-loading-card-icon {
+        animation: none !important;
+        transform: none !important;
+    }
+    .cm-nav-link:active,
+    .btn:active {
+        transform: none !important;
+    }
+}
+
 
 

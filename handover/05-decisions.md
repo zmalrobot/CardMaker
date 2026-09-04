@@ -782,6 +782,29 @@ a tratti scattosa:
 - ✅ Esperienza utente fluida e perfettamente allineata tra desktop e web.
 - ✅ Menu di navigazione coerente senza selezioni multiple errate.
 
+---
+
+## ADR-038 — Transizioni di Pagina Fluide, Feedback Tattile 0ms e Barra di Progresso Reattiva
+**Stato:** Accettata · 2026-09-04
+
+**Contesto.**
+Dopo l'offload asincrono del motore di rendering, la navigazione tra le pagine dell'applicazione risultava ancora percepita come "sluggish":
+1. Il cambio pagina distruggeva e ricreava il DOM con un taglio netto (*hard cut*) in 1 frame, costringendo la WebView a un reflow improvviso.
+2. I menu e i pulsanti non avevano alcuno stato `:active`, lasciando l'utente senza feedback tattile immediato al click del mouse.
+3. Il router Blazor Client-side non mostrava mai la barra di avanzamento (`<Navigating>`) poiché le rotte sono risolte sincronicamente in memoria.
+4. L'avvicendamento tra il layout di caricamento (`IsLoading`) e la comparsa della tabella o delle carte causava un doppio scatto visivo.
+
+**Decisione.**
+- **Transizioni di Pagina Keyed**: In `DesktopMainLayout.razor` e `MainLayout.razor`, `@Body` è racchiuso in `<div class="cm-page-transition" @key="NavigationManager.Uri">`. Blazor istanzia un nuovo elemento su ogni cambio rotta, innescando l'animazione hardware-accelerated `cm-page-enter` (dissolvenza e ascesa di 6px in 0.22s su curva cubic-bezier).
+- **Feedback Tattile Istantaneo**: Aggiunto `:active { transform: scale(0.98) translateZ(0); }` su `.cm-nav-link` e `.btn` per un feedback a 0 ms.
+- **Progress Bar Reattiva Globale**: Sottoscrizione all'evento `NavigationManager.LocationChanged` nei Layout per attivare la barra di progresso superiore per 260 ms a ogni transizione.
+- **Rivelazione Morbida dei Contenuti**: Introdotta la classe `.cm-content-reveal` (`animation: cm-fade-in 0.2s ease-out`) per attenuare l'arrivo dei dati asincroni.
+
+**Conseguenze.**
+- ✅ Esperienza utente di livello desktop nativo: fluida, morbida e reattiva a 60 FPS.
+- ✅ Totale allineamento visivo tra l'applicazione Desktop (Photino) e Web (ASP.NET Core).
+- ✅ Completo rispetto di `prefers-reduced-motion` per l'accessibilità.
+
 
 
 

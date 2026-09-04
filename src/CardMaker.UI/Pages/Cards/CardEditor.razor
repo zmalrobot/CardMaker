@@ -59,57 +59,59 @@
 else if (IsWizardStep && IsNew)
 {
     <!-- Step 1: Wizard selezione Gioco e Tipo Carta -->
-    <div class="card shadow-sm mx-auto" style="max-width: 800px;">
-        <div class="card-header fw-bold">1. Scegli il Gioco e la Tipologia di Carta</div>
-        <div class="card-body">
-            <div class="mb-4">
-                <label class="form-label small fw-semibold">Gioco</label>
-                <select class="form-select" @bind="CurrentGameKey" @bind:after="OnGameChangedAsync">
-                    <option value="yugioh">Yu-Gi-Oh! (Classico & Rush Duel)</option>
-                    <option value="mtg">Magic: The Gathering</option>
-                    <option value="pokemon">Pokémon TCG</option>
-                </select>
-            </div>
-
-            <div class="mb-4">
-                <label class="form-label small fw-semibold">Tipo di Carta</label>
-                <div class="row g-2">
-                    @foreach (var ct in AvailableCardTypes)
-                    {
-                        <div class="col-6 col-md-4">
-                            <div class="p-2 border rounded cursor-pointer @(SelectedCardTypeId == ct.Id ? "border-primary bg-primary-subtle fw-bold" : "bg-surface-2")"
-                                 style="cursor: pointer;"
-                                 @onclick="() => SelectCardType(ct)">
-                                <div class="small">@ct.Name</div>
-                                <code class="small text-muted">@ct.Key</code>
-                            </div>
-                        </div>
-                    }
-                </div>
-            </div>
-
-            @if (CurrentCardType?.AllowedTraits.Count > 0)
-            {
+    <div class="cm-content-reveal">
+        <div class="card shadow-sm mx-auto" style="max-width: 800px;">
+            <div class="card-header fw-bold">1. Scegli il Gioco e la Tipologia di Carta</div>
+            <div class="card-body">
                 <div class="mb-4">
-                    <label class="form-label small fw-semibold">Tratti Speciali (Opzionali)</label>
-                    <div class="d-flex flex-wrap gap-2">
-                        @foreach (var trait in CurrentCardType.AllowedTraits)
+                    <label class="form-label small fw-semibold">Gioco</label>
+                    <select class="form-select" @bind="CurrentGameKey" @bind:after="OnGameChangedAsync">
+                        <option value="yugioh">Yu-Gi-Oh! (Classico & Rush Duel)</option>
+                        <option value="mtg">Magic: The Gathering</option>
+                        <option value="pokemon">Pokémon TCG</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold">Tipo di Carta</label>
+                    <div class="row g-2">
+                        @foreach (var ct in AvailableCardTypes)
                         {
-                            var isSelected = SelectedTraits.Contains(trait.Key);
-                            <button type="button" 
-                                    class="btn btn-sm @(isSelected ? "btn-primary" : "btn-outline-secondary")"
-                                    @onclick="() => ToggleTrait(trait.Key)">
-                                @trait.Name
-                            </button>
+                            <div class="col-6 col-md-4">
+                                <div class="p-2 border rounded cursor-pointer @(SelectedCardTypeId == ct.Id ? "border-primary bg-primary-subtle fw-bold" : "bg-surface-2")"
+                                     style="cursor: pointer;"
+                                     @onclick="() => SelectCardType(ct)">
+                                    <div class="small">@ct.Name</div>
+                                    <code class="small text-muted">@ct.Key</code>
+                                </div>
+                            </div>
                         }
                     </div>
                 </div>
-            }
 
-            <div class="d-flex justify-content-end mt-4">
-                <button type="button" class="btn btn-primary" @onclick="ProceedToEditor" disabled="@(SelectedCardTypeId == Guid.Empty)">
-                    Procedi all'Editor →
-                </button>
+                @if (CurrentCardType is not null && CurrentCardType.AllowedTraits.Count > 0)
+                {
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Tratti e Caratteristiche Iniziali</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var trait in CurrentCardType.AllowedTraits)
+                            {
+                                var isSelected = SelectedTraits.Contains(trait.Key);
+                                <button type="button" 
+                                        class="btn btn-sm @(isSelected ? "btn-primary" : "btn-outline-secondary")"
+                                        @onclick="() => ToggleTrait(trait.Key)">
+                                    @trait.Name
+                                </button>
+                            }
+                        </div>
+                    </div>
+                }
+
+                <div class="d-flex justify-content-end mt-4">
+                    <button type="button" class="btn btn-primary" @onclick="ProceedToEditor" disabled="@(SelectedCardTypeId == Guid.Empty)">
+                        Procedi all'Editor →
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -117,63 +119,65 @@ else if (IsWizardStep && IsNew)
 else
 {
     <!-- Step 2: Editor con Form Dinamico e Anteprima Live -->
-    @if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <div class="alert alert-danger shadow-sm mb-3">@ErrorMessage</div>
-    }
-    @if (!string.IsNullOrEmpty(SuccessMessage))
-    {
-        <div class="alert alert-success shadow-sm mb-3">@SuccessMessage</div>
-    }
+    <div class="cm-content-reveal">
+        @if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="alert alert-danger shadow-sm mb-3">@ErrorMessage</div>
+        }
+        @if (!string.IsNullOrEmpty(SuccessMessage))
+        {
+            <div class="alert alert-success shadow-sm mb-3">@SuccessMessage</div>
+        }
 
-    <TwoColumnLayout>
-        <FormContent>
-            <div class="card shadow-sm mb-3">
-                <div class="card-header py-2 fw-semibold">Informazioni Generali</div>
-                <div class="card-body">
-                    <div class="mb-2">
-                        <label class="form-label small fw-semibold">Titolo nella collezione</label>
-                        <input type="text" class="form-control form-control-sm" @bind="CardTitle" placeholder="Es. Il mio Mago Supremo" />
-                    </div>
-
-                    @if (CurrentCardType?.AllowedTraits.Count > 0)
-                    {
-                        <div class="mt-3">
-                            <label class="form-label small fw-semibold d-block">Tratti selezionati</label>
-                            <div class="d-flex flex-wrap gap-1">
-                                @foreach (var trait in CurrentCardType.AllowedTraits)
-                                {
-                                    var isSelected = SelectedTraits.Contains(trait.Key);
-                                    <button type="button" 
-                                            class="btn btn-sm py-0 px-2 @(isSelected ? "btn-primary" : "btn-outline-secondary")"
-                                            @onclick="() => ToggleTrait(trait.Key)">
-                                        @trait.Name
-                                    </button>
-                                }
-                            </div>
+        <TwoColumnLayout>
+            <FormContent>
+                <div class="card shadow-sm mb-3">
+                    <div class="card-header py-2 fw-semibold">Informazioni Generali</div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <label class="form-label small fw-semibold">Titolo nella collezione</label>
+                            <input type="text" class="form-control form-control-sm" @bind="CardTitle" placeholder="Es. Il mio Mago Supremo" />
                         </div>
-                    }
+
+                        @if (CurrentCardType?.AllowedTraits.Count > 0)
+                        {
+                            <div class="mt-3">
+                                <label class="form-label small fw-semibold d-block">Tratti selezionati</label>
+                                <div class="d-flex flex-wrap gap-1">
+                                    @foreach (var trait in CurrentCardType.AllowedTraits)
+                                    {
+                                        var isSelected = SelectedTraits.Contains(trait.Key);
+                                        <button type="button" 
+                                                class="btn btn-sm py-0 px-2 @(isSelected ? "btn-primary" : "btn-outline-secondary")"
+                                                @onclick="() => ToggleTrait(trait.Key)">
+                                            @trait.Name
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
-            </div>
 
-            @if (CurrentCardType is not null)
-            {
-                <DynamicCardForm Fields="@CurrentCardType.Fields" 
-                                 Values="@CardValues" 
-                                 OnValuesChanged="@OnFormValuesChanged" />
-            }
-        </FormContent>
+                @if (CurrentCardType is not null)
+                {
+                    <DynamicCardForm Fields="@CurrentCardType.Fields" 
+                                     Values="@CardValues" 
+                                     OnValuesChanged="@OnFormValuesChanged" />
+                }
+            </FormContent>
 
-        <PreviewContent>
-            <CardPreview ImageSrc="@PreviewDataUrl"
-                         IsLoading="@IsPreviewLoading"
-                         Warnings="@PreviewWarnings"
-                         WidthPx="@WidthPx"
-                         HeightPx="@HeightPx"
-                         Dpi="150"
-                         Duration="@RenderDuration" />
-        </PreviewContent>
-    </TwoColumnLayout>
+            <PreviewContent>
+                <CardPreview ImageSrc="@PreviewDataUrl"
+                             IsLoading="@IsPreviewLoading"
+                             Warnings="@PreviewWarnings"
+                             WidthPx="@WidthPx"
+                             HeightPx="@HeightPx"
+                             Dpi="150"
+                             Duration="@RenderDuration" />
+            </PreviewContent>
+        </TwoColumnLayout>
+    </div>
 }
 
 @if (Id.HasValue)

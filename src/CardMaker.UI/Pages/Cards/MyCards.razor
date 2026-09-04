@@ -41,51 +41,53 @@ else if (Cards.Count == 0)
 }
 else
 {
-    <div class="row g-3 mb-4">
-        <div class="col-md-6 col-lg-4">
-            <input type="text" class="form-control form-control-sm" placeholder="Cerca tra le tue carte..." @bind="SearchQuery" @bind:event="oninput" />
+    <div class="cm-content-reveal">
+        <div class="row g-3 mb-4">
+            <div class="col-md-6 col-lg-4">
+                <input type="text" class="form-control form-control-sm" placeholder="Cerca tra le tue carte..." @bind="SearchQuery" @bind:event="oninput" />
+            </div>
         </div>
-    </div>
 
-    <div class="row g-3">
-        @foreach (var card in FilteredCards)
-        {
-            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
-                <div class="card h-100 shadow-sm position-relative">
-                    <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-2">
-                        <span class="badge bg-primary-subtle text-primary-emphasis small">@card.GameName</span>
-                        <span class="badge bg-secondary-subtle text-secondary-emphasis small">@card.CardTypeName</span>
-                    </div>
-                    <div class="card-body text-center p-3">
-                        <div class="cm-checkerboard rounded border mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 140px; height: 200px; overflow: hidden;">
-                            @if (card.ThumbnailAssetId.HasValue)
-                            {
-                                <CardMaker.UI.Components.Common.AssetImage AssetId="@card.ThumbnailAssetId.Value" Alt="@card.Title" Class="img-fluid" Style="max-height: 100%; object-fit: contain;" />
-                            }
-                            else
-                            {
-                                <div class="text-muted small">
-                                    <div class="h3 mb-1">🃏</div>
-                                    <span>Anteprima</span>
-                                </div>
-                            }
+        <div class="row g-3">
+            @foreach (var card in FilteredCards)
+            {
+                <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-sm position-relative">
+                        <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-2">
+                            <span class="badge bg-primary-subtle text-primary-emphasis small">@card.GameName</span>
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis small">@card.CardTypeName</span>
                         </div>
+                        <div class="card-body text-center p-3">
+                            <div class="cm-checkerboard rounded border mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 140px; height: 200px; overflow: hidden;">
+                                @if (card.ThumbnailAssetId.HasValue)
+                                {
+                                    <AssetImage AssetId="card.ThumbnailAssetId.Value" Alt="@card.Title" Class="w-100 h-100 object-fit-contain" />
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">Nessuna anteprima</span>
+                                }
+                            </div>
+                            <h5 class="card-title text-truncate fw-bold mb-1" title="@card.Title">@card.Title</h5>
+                            <p class="card-text text-muted very-small mb-3">Modificato: @card.UpdatedAtUtc.ToLocalTime().ToString("g")</p>
 
-                        <h5 class="card-title text-truncate fw-bold mb-1" title="@card.Title">@card.Title</h5>
-                        <small class="text-muted d-block mb-3">
-                            Modificata il @card.UpdatedAtUtc.LocalDateTime.ToString("dd/MM/yyyy HH:mm")
-                        </small>
-
-                        <div class="btn-group btn-group-sm w-100">
-                            <a href="cards/edit/@card.Id" class="btn btn-outline-primary">Modifica</a>
-                            <button type="button" class="btn btn-outline-secondary" @onclick="() => DuplicateAsync(card.Id)">Duplica</button>
-                            <button type="button" class="btn btn-outline-secondary" @onclick="() => OpenExportModal(card.Id)">Esporta</button>
-                            <button type="button" class="btn btn-outline-danger" @onclick="() => ConfirmDeleteAsync(card.Id, card.Title)">Elimina</button>
+                            <div class="btn-group w-100">
+                                <a href="cards/edit/@card.Id" class="btn btn-sm btn-primary">Modifica</a>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => DuplicateAsync(card.Id)" title="Duplica">
+                                    📋
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => OpenExportModal(card.Id)" title="Esporta">
+                                    📥
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="() => ConfirmDeleteAsync(card.Id, card.Title)" title="Elimina">
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        }
+            }
+        </div>
     </div>
 }
 

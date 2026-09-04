@@ -20,7 +20,7 @@ CardMaker è un generatore di carte personalizzate per **Yu-Gi-Oh!** (classico e
 - ✅ Architettura tecnica, stack e hardening → [`02-architecture.md`](02-architecture.md)
 - ✅ Modello dati e schema del layout → [`03-data-model.md`](03-data-model.md)
 - ✅ Roadmap a fasi (F0 → F12) → [`04-roadmap.md`](04-roadmap.md)
-- ✅ Decisioni architetturali motivate (ADR-001 → ADR-037) → [`05-decisions.md`](05-decisions.md)
+- ✅ Decisioni architetturali motivate (ADR-001 → ADR-038) → [`05-decisions.md`](05-decisions.md)
 - ✅ Specifica asset per il grafico, font inclusi → [`06-asset-spec.md`](06-asset-spec.md)
 - ✅ Guida operativa (comandi, primo avvio, dati) → [`07-dev-guide.md`](07-dev-guide.md)
 - ✅ Prompt di ripresa rapida per nuove sessioni → [`08-resume-prompt.md`](08-resume-prompt.md)
@@ -41,6 +41,7 @@ CardMaker è un generatore di carte personalizzate per **Yu-Gi-Oh!** (classico e
 - ✅ **UI 60 FPS & Offload Asincrono (ADR-037)**: Rimozione `backdrop-filter: blur` in Linux WebKitGTK, accelerazione GPU su overlay di caricamento (`will-change: transform`), incapsulamento completo di SQLite e SkiaSharp in `Task.Run(...)` per garantire reattività istantanea dell'interfaccia.
 - ✅ **Correzione Navigazione & Selezione Voci**: Risolto bug di selezione congiunta di *Le mie carte* e *Nuova carta* tramite `Match="NavLinkMatch.All"` in `DesktopNavMenu.razor` e `NavMenu.razor`.
 - ✅ **Logging Strutturato & Azzeramento Spam Base64 (ADR-036)**: `SetLogVerbosity(0)` in Photino per silenziare il dump raw del canale IPC e adozione di log sintetici essenziali per `[Preview]`, `[Export]`, `[Card]` e `[Asset]`.
+- ✅ **Transizioni di Pagina Fluide & Feedback Tattile 0ms (ADR-038)**: Wrapper `@key="NavigationManager.Uri"` con animazione `cm-page-enter` a 60 FPS, micro-feedback tattile `:active` (scale 0.98), progress bar superiore reattiva e reveal morbido dei dati.
 
 ### Cosa esiste nel codice
 

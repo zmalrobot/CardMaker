@@ -1,4 +1,6 @@
 @inherits LayoutComponentBase
+@implements IDisposable
+@inject NavigationManager NavigationManager
 
 <div class="cm-app-layout">
     <aside class="cm-sidebar @(SidebarExpanded ? "show" : "")">
@@ -6,6 +8,11 @@
     </aside>
 
     <div class="cm-main-container">
+        @if (_isNavigating)
+        {
+            <div class="cm-page-loading-bar" role="progressbar" aria-label="Caricamento pagina"></div>
+        }
+
         <header class="cm-topbar">
             <div class="d-flex align-items-center gap-2">
                 <button type="button" 
@@ -24,7 +31,9 @@
         </header>
 
         <main class="cm-content">
-            @Body
+            <div class="cm-page-transition" @key="NavigationManager.Uri">
+                @Body
+            </div>
         </main>
 
         <CardMaker.UI.Components.Layout.AppFooter />
@@ -41,9 +50,53 @@
 
 @code {
     private bool SidebarExpanded;
+    private bool _isNavigating;
+    private CancellationTokenSource? _navCts;
+
+    protected override void OnInitialized()
+    {
+        NavigationManager.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _navCts?.Cancel();
+        _navCts = new CancellationTokenSource();
+        var token = _navCts.Token;
+
+        _isNavigating = true;
+        StateHasChanged();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(260, token);
+                if (!token.IsCancellationRequested)
+                {
+                    await InvokeAsync(() =>
+                    {
+                        _isNavigating = false;
+                        StateHasChanged();
+                    });
+                }
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        });
+    }
 
     private void ToggleSidebar()
     {
         SidebarExpanded = !SidebarExpanded;
     }
+
+    public void Dispose()
+    {
+        NavigationManager.LocationChanged -= OnLocationChanged;
+        _navCts?.Cancel();
+        _navCts?.Dispose();
+    }
 }
+
