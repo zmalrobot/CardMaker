@@ -143,18 +143,20 @@ Per eseguire l'intera suite di collaudo automatizzata:
 dotnet test
 ```
 
-Attualmente la suite include **155 test** (98 test di rendering/geometria e 57 test applicativi/integrazione), tutti superati con 0 errori e 0 avvisi.
+Attualmente la suite include **200 test** (107 test di rendering/geometria e 93 test applicativi/integrazione), tutti superati con 0 errori e 0 avvisi.
 
 ---
 
-## 📚 Documentazione di Progetto (Handover)
+## 📚 Documentazione di Progetto
 
-Nella cartella [`handover/`](handover/) è disponibile la documentazione tecnica approfondita per sviluppatori e grafici:
-- [`handover/STATE.md`](handover/STATE.md): Stato di avanzamento aggiornato e dettagli di versione.
-- [`handover/01-card-anatomy.md`](handover/01-card-anatomy.md): Anatomia dettagliata delle carte dei vari giochi.
-- [`handover/02-architecture.md`](handover/02-architecture.md): Dettaglio architetturale e pipeline di rendering.
-- [`handover/03-data-model.md`](handover/03-data-model.md): Modello dati relazionale e schema JSON dei template.
-- [`handover/05-decisions.md`](handover/05-decisions.md): Registro delle decisioni architetturali (ADR-001 → ADR-037).
-- [`handover/06-asset-spec.md`](handover/06-asset-spec.md): Specifiche dimensionali per grafici e asset.
-- [`handover/07-dev-guide.md`](handover/07-dev-guide.md): Guida per sviluppatori, configurazione e rotte applicative.
-- [`handover/08-resume-prompt.md`](handover/08-resume-prompt.md): Prompt di ripristino contesto rapido per nuove sessioni.
+Nella cartella [`docs/`](docs/) è disponibile la knowledge base tecnica completa per sviluppatori e grafici:
+
+- [`docs/README.md`](docs/README.md): Indice generale della documentazione.
+- [`docs/00-overview/project-context.md`](docs/00-overview/project-context.md): Master context document — punto di partenza per nuove sessioni.
+- [`docs/01-architecture/architecture.md`](docs/01-architecture/architecture.md): Architettura, pipeline di rendering e multi-host.
+- [`docs/03-data/data-model.md`](docs/03-data/data-model.md): Modello dati relazionale e schema JSON dei template.
+- [`docs/09-decisions/README.md`](docs/09-decisions/README.md): Registro delle decisioni architetturali (ADR-001 → ADR-038).
+- [`docs/10-reference/asset-spec.md`](docs/10-reference/asset-spec.md): Specifiche dimensionali per grafici e asset.
+- [`docs/02-development/dev-guide.md`](docs/02-development/dev-guide.md): Guida per sviluppatori, configurazione e rotte applicative.
+- [`docs/02-development/resume-prompt.md`](docs/02-development/resume-prompt.md): Prompt di ripristino contesto rapido per nuove sessioni AI.
+

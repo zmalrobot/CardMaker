@@ -1,7 +1,7 @@
 # 01 — Anatomia delle carte (analisi di dominio)
 
 Documento di riferimento per capire **quali elementi grafici il motore deve saper disegnare**.
-La v1 implementa solo Yu-Gi-Oh!, ma il modello dati è progettato per coprire tutti e tre i giochi.
+La documentazione copre l'anatomia di dominio di **Yu-Gi-Oh!** (v1), **Pokémon TCG** (v2) e **Magic: The Gathering** (v2), tutte implementate e funzionanti nel motore data-driven.
 
 ---
 
