@@ -59,6 +59,7 @@ public static class Program
 
         // 5. Configure Desktop Window
         app.MainWindow
+            .SetLogVerbosity(0)
             .SetTitle("CardMaker Studio Desktop")
             .SetSize(1280, 850)
             .SetUseOsDefaultSize(false)

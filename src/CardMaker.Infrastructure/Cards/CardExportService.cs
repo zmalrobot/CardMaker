@@ -11,6 +11,8 @@ using CardMaker.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SkiaSharp;
 
+using Microsoft.Extensions.Logging;
+
 namespace CardMaker.Infrastructure.Cards;
 
 public sealed class CardExportService(
@@ -19,7 +21,8 @@ public sealed class CardExportService(
     IFontCatalog fonts,
     IDecodedImageCache imageCache,
     CardRenderer renderer,
-    PdfExporter pdfExporter) : ICardExportService
+    PdfExporter pdfExporter,
+    ILogger<CardExportService>? logger = null) : ICardExportService
 {
     private static readonly JsonSerializerOptions JsonOptions = LayoutSerializer.Options;
 
@@ -106,7 +109,14 @@ public sealed class CardExportService(
             }
 
             var pdfBytes = await Task.Run(() => pdfExporter.Export(frontResult, backResult), cancellationToken).ConfigureAwait(false);
-            return new CardExportResult(true, pdfBytes, "application/pdf", $"{safeTitle}.pdf", null);
+            var pdfFileName = $"{safeTitle}.pdf";
+            logger?.LogInformation(
+                "[Export] Generato '{FileName}' (PDF @ {Dpi} DPI, {Pages} facciate) | {SizeKb:F1} KB",
+                pdfFileName,
+                options.Dpi,
+                backResult is not null ? 2 : 1,
+                pdfBytes.Length / 1024.0);
+            return new CardExportResult(true, pdfBytes, "application/pdf", pdfFileName, null);
         }
 
         if (options.Face == CardFace.Back && card.BackTemplateVersion is not null)
@@ -131,13 +141,27 @@ public sealed class CardExportService(
 
                 var ext = options.Format == RenderFormat.Jpg ? "jpg" : "png";
                 var mime = options.Format == RenderFormat.Jpg ? "image/jpeg" : "image/png";
-                return new CardExportResult(true, backResult.Content, mime, $"{safeTitle}_back.{ext}", null);
+                var backFileName = $"{safeTitle}_back.{ext}";
+                logger?.LogInformation(
+                    "[Export] Generato '{FileName}' ({Format} @ {Dpi} DPI) | {SizeKb:F1} KB",
+                    backFileName,
+                    options.Format,
+                    options.Dpi,
+                    (backResult.Content?.Length ?? 0) / 1024.0);
+                return new CardExportResult(true, backResult.Content, mime, backFileName, null);
             }
         }
 
         var extension = options.Format == RenderFormat.Jpg ? "jpg" : "png";
         var mimeType = options.Format == RenderFormat.Jpg ? "image/jpeg" : "image/png";
-        return new CardExportResult(true, frontResult.Content, mimeType, $"{safeTitle}.{extension}", null);
+        var frontFileName = $"{safeTitle}.{extension}";
+        logger?.LogInformation(
+            "[Export] Generato '{FileName}' ({Format} @ {Dpi} DPI) | {SizeKb:F1} KB",
+            frontFileName,
+            options.Format,
+            options.Dpi,
+            (frontResult.Content?.Length ?? 0) / 1024.0);
+        return new CardExportResult(true, frontResult.Content, mimeType, frontFileName, null);
     }
 
     private async Task<PreloadedRenderResources> LoadResourcesAsync(

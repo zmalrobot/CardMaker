@@ -3,6 +3,7 @@ using CardMaker.Application.Assets;
 using CardMaker.Domain.Assets;
 using CardMaker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace CardMaker.Infrastructure.Storage;
@@ -12,7 +13,8 @@ public sealed class AssetService(
     IAssetStore store,
     IImageProcessor imageProcessor,
     IFontProcessor fontProcessor,
-    IOptions<UploadLimits> limits) : IAssetCatalog
+    IOptions<UploadLimits> limits,
+    ILogger<AssetService>? logger = null) : IAssetCatalog
 {
     private readonly UploadLimits _limits = limits.Value;
 
@@ -82,6 +84,7 @@ public sealed class AssetService(
 
         if (existing is not null)
         {
+            logger?.LogInformation("[Asset] Asset già presente per hash '{Sha256}' (ID: {Id}, File: '{FileName}')", existing.Sha256[..8], existing.Id, existing.OriginalFileName);
             return AssetUploadOutcome.Ok(existing);
         }
 
@@ -102,6 +105,8 @@ public sealed class AssetService(
 
         db.Assets.Add(asset);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger?.LogInformation("[Asset] Caricato asset '{FileName}' (ID: {Id}, Tipo: {ContentType}, {Bytes} bytes, {Width}x{Height} px)", asset.OriginalFileName, asset.Id, asset.ContentType, asset.ByteSize, asset.PixelWidth, asset.PixelHeight);
         return AssetUploadOutcome.Ok(asset);
     }
 

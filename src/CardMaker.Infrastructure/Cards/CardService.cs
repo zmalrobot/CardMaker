@@ -5,9 +5,13 @@ using CardMaker.Domain.Cards;
 using CardMaker.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
+using Microsoft.Extensions.Logging;
+
 namespace CardMaker.Infrastructure.Cards;
 
-public sealed class CardService(CardMakerDbContext db) : ICardService
+public sealed class CardService(
+    CardMakerDbContext db,
+    ILogger<CardService>? logger = null) : ICardService
 {
     private static readonly JsonSerializerOptions JsonOptions = LayoutSerializer.Options;
 
@@ -98,6 +102,8 @@ public sealed class CardService(CardMakerDbContext db) : ICardService
         var game = await db.Games.AsNoTracking().FirstAsync(g => g.Id == card.GameId, cancellationToken).ConfigureAwait(false);
         var cardType = await db.CardTypes.AsNoTracking().FirstAsync(c => c.Id == card.CardTypeId, cancellationToken).ConfigureAwait(false);
 
+        logger?.LogInformation("[Card] Creata carta '{Title}' (ID: {Id}, Gioco: {Game}, Tipo: {CardType})", card.Title, card.Id, game.Key, cardType.Key);
+
         return new CardDetailDto(
             card.Id,
             card.Title,
@@ -136,6 +142,8 @@ public sealed class CardService(CardMakerDbContext db) : ICardService
         card.UpdatedAtUtc = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger?.LogInformation("[Card] Aggiornata carta '{Title}' (ID: {Id})", card.Title, card.Id);
 
         return new CardDetailDto(
             card.Id,
@@ -182,6 +190,8 @@ public sealed class CardService(CardMakerDbContext db) : ICardService
         var values = JsonSerializer.Deserialize<Dictionary<string, CardValue>>(duplicate.ValuesJson, JsonOptions) ?? [];
         var traits = JsonSerializer.Deserialize<List<string>>(duplicate.SelectedTraitsJson, JsonOptions) ?? [];
 
+        logger?.LogInformation("[Card] Duplicata carta '{Title}' -> Nuova '{NewTitle}' (ID: {Id})", existing.Title, duplicate.Title, duplicate.Id);
+
         return new CardDetailDto(
             duplicate.Id,
             duplicate.Title,
@@ -213,6 +223,8 @@ public sealed class CardService(CardMakerDbContext db) : ICardService
 
         db.Cards.Remove(card);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        logger?.LogInformation("[Card] Eliminata carta (ID: {Id})", cardId);
         return true;
     }
 

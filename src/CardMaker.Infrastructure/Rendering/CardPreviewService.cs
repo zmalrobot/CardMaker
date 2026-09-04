@@ -7,6 +7,8 @@ using CardMaker.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SkiaSharp;
 
+using Microsoft.Extensions.Logging;
+
 namespace CardMaker.Infrastructure.Rendering;
 
 public sealed class CardPreviewService(
@@ -14,7 +16,8 @@ public sealed class CardPreviewService(
     IAssetStore store,
     IFontCatalog fonts,
     IDecodedImageCache imageCache,
-    CardRenderer renderer) : ICardPreviewService
+    CardRenderer renderer,
+    ILogger<CardPreviewService>? logger = null) : ICardPreviewService
 {
     public async Task<CardPreviewResult> RenderAsync(
         CardPreviewRequest request,
@@ -55,6 +58,18 @@ public sealed class CardPreviewService(
                     ? RenderOutputFormat.Jpeg
                     : RenderOutputFormat.Png,
             });
+
+            var cardName = request.Values.TryGetValue("name", out var nameVal) ? nameVal.AsText() : "Carta";
+            var sizeKb = (result.Content?.Length ?? 0) / 1024.0;
+            logger?.LogInformation(
+                "[Preview] Render '{CardName}' @ {Dpi} DPI [{Width}x{Height} px] | {SizeKb:F1} KB | {DurationMs:F1} ms | {Warnings} avvisi",
+                cardName,
+                request.Dpi,
+                result.WidthPx,
+                result.HeightPx,
+                sizeKb,
+                result.Duration.TotalMilliseconds,
+                result.Warnings.Count);
 
             return new CardPreviewResult(
                 true,
