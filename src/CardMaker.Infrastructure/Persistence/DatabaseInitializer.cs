@@ -28,6 +28,7 @@ public sealed class DatabaseInitializer(
 {
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        await EnableWriteAheadLoggingAsync(cancellationToken).ConfigureAwait(false);
         await db.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
         await EnableWriteAheadLoggingAsync(cancellationToken).ConfigureAwait(false);
 
@@ -44,6 +45,8 @@ public sealed class DatabaseInitializer(
         // Assicura che i template, i frame e i font di default di Yu-Gi-Oh, Pokémon e Magic siano sempre presenti al primo avvio
         try
         {
+            await using var tx = await db.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false);
+
             await yugiohSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
             await placeholderSeeder.SeedYuGiOhAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             await fontSeeder.SeedDefaultFontsAsync(cancellationToken).ConfigureAwait(false);
@@ -55,6 +58,8 @@ public sealed class DatabaseInitializer(
             await mtgSeeder.SeedAsync(cancellationToken).ConfigureAwait(false);
             await placeholderSeeder.SeedMtgAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             await mtgFontSeeder.SeedDefaultFontsAsync(cancellationToken).ConfigureAwait(false);
+
+            await tx.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -106,17 +111,34 @@ public sealed class DatabaseInitializer(
                 await userManager.AddToRoleAsync(admin, AppRoles.Admin).ConfigureAwait(false);
             }
 
-            var resetToken = await userManager.GeneratePasswordResetTokenAsync(admin).ConfigureAwait(false);
-            await userManager.ResetPasswordAsync(admin, resetToken, configuredPassword).ConfigureAwait(false);
-            logger.LogInformation("Amministratore verificato e sincronizzato: {Email}", email);
+            // Verifica se la password configurata e' gia' allineata prima di lanciare un reset pesante (PERF)
+            var passwordMatches = await userManager.CheckPasswordAsync(admin, configuredPassword).ConfigureAwait(false);
+            if (!passwordMatches)
+            {
+                var resetToken = await userManager.GeneratePasswordResetTokenAsync(admin).ConfigureAwait(false);
+                await userManager.ResetPasswordAsync(admin, resetToken, configuredPassword).ConfigureAwait(false);
+                logger.LogInformation("Amministratore sincronizzato con nuova password: {Email}", email);
+            }
+            else
+            {
+                logger.LogInformation("Amministratore verificato: {Email}", email);
+            }
         }
     }
 
     private async Task EnableWriteAheadLoggingAsync(CancellationToken cancellationToken)
     {
         // WAL: indispensabile perche' SQLite regga piu' lettori mentre un utente salva (vedi 02-architecture 9.3).
-        await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken).ConfigureAwait(false);
-        await db.Database.ExecuteSqlRawAsync("PRAGMA busy_timeout=5000;", cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await db.Database.OpenConnectionAsync(cancellationToken).ConfigureAwait(false);
+            await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken).ConfigureAwait(false);
+            await db.Database.ExecuteSqlRawAsync("PRAGMA busy_timeout=5000;", cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Impostazione PRAGMA WAL completata o differita");
+        }
     }
 
     private static string GeneratePassword()

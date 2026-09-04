@@ -127,56 +127,71 @@ public sealed class PlaceholderSeeder(
         var keys = new List<string>();
 
         // Pre-carica l'indice degli asset esistenti una sola volta per eliminare N+1 query (DB-001, PERF-001)
-        var existingAssets = targetGameId.HasValue
-            ? (await catalog.ListAsync(targetGameId, 5000, cancellationToken).ConfigureAwait(false))
-                .Select(a => a.Id)
-                .ToHashSet()
+        var existingAssetsList = targetGameId.HasValue
+            ? await catalog.ListAsync(targetGameId, 5000, cancellationToken).ConfigureAwait(false)
             : [];
+        var existingAssets = existingAssetsList.Select(a => a.Id).ToHashSet();
+        var existingFileNames = existingAssetsList
+            .Where(a => !string.IsNullOrEmpty(a.OriginalFileName))
+            .Select(a => a.OriginalFileName!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Frame Segnaposto - Generazione CPU-bound in parallelo (CON-002)
+        // 1. Frame Segnaposto - Filtra ed elabora solo quelli mancanti (PERF-002)
         var frameSpecs = baseSpecs.Select(b => b with { ShowGuides = showGuides }).ToList();
-        var generatedFrames = new (PlaceholderFrameSpec Spec, byte[] Png)[frameSpecs.Count];
-        Parallel.For(0, frameSpecs.Count, i =>
-        {
-            generatedFrames[i] = (frameSpecs[i], generator.Generate(frameSpecs[i], geometry));
-        });
+        var specsToGenerate = new List<PlaceholderFrameSpec>();
 
-        foreach (var (spec, png) in generatedFrames)
+        foreach (var spec in frameSpecs)
         {
             var fileName = $"placeholder-{spec.Key}.png";
-            using var stream = new MemoryStream(png, writable: false);
-            var outcome = await catalog.UploadAsync(
-                stream,
-                new AssetUploadRequest
-                {
-                    FileName = fileName,
-                    Category = spec.Layout == PlaceholderLayout.Back ? AssetCategory.CardBack : AssetCategory.Placeholder,
-                    LicenseNote = frameLicenseNote,
-                    SourceNote = $"{frameSourcePrefix}, {geometry.MasterWidthPx}x{geometry.MasterHeightPx} px @ {geometry.Dpi} DPI",
-                    UploadedByUserId = userId,
-                    GameId = targetGameId,
-                    Kind = UploadKind.Image,
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            if (!outcome.Succeeded || outcome.Asset is null)
-            {
-                continue;
-            }
-
             keys.Add(spec.Key);
-            if (existingAssets.Contains(outcome.Asset.Id))
+            if (existingFileNames.Contains(fileName))
             {
                 existing++;
             }
             else
             {
+                specsToGenerate.Add(spec);
+            }
+        }
+
+        if (specsToGenerate.Count > 0)
+        {
+            var generatedFrames = new (PlaceholderFrameSpec Spec, byte[] Png)[specsToGenerate.Count];
+            Parallel.For(0, specsToGenerate.Count, i =>
+            {
+                generatedFrames[i] = (specsToGenerate[i], generator.Generate(specsToGenerate[i], geometry));
+            });
+
+            foreach (var (spec, png) in generatedFrames)
+            {
+                var fileName = $"placeholder-{spec.Key}.png";
+                using var stream = new MemoryStream(png, writable: false);
+                var outcome = await catalog.UploadAsync(
+                    stream,
+                    new AssetUploadRequest
+                    {
+                        FileName = fileName,
+                        Category = spec.Layout == PlaceholderLayout.Back ? AssetCategory.CardBack : AssetCategory.Placeholder,
+                        LicenseNote = frameLicenseNote,
+                        SourceNote = $"{frameSourcePrefix}, {geometry.MasterWidthPx}x{geometry.MasterHeightPx} px @ {geometry.Dpi} DPI",
+                        UploadedByUserId = userId,
+                        GameId = targetGameId,
+                        Kind = UploadKind.Image,
+                    },
+                    cancellationToken).ConfigureAwait(false);
+
+                if (!outcome.Succeeded || outcome.Asset is null)
+                {
+                    continue;
+                }
+
+                existingFileNames.Add(fileName);
                 existingAssets.Add(outcome.Asset.Id);
                 created++;
             }
         }
 
-        // 2. Simboli Procedurali Segnaposto
+        // 2. Simboli Procedurali Segnaposto - Genera solo quelli mancanti (PERF-003)
         if (targetGameId.HasValue)
         {
             var symbolSets = await db.SymbolSets
@@ -184,52 +199,76 @@ public sealed class PlaceholderSeeder(
                 .Where(s => s.GameId == targetGameId.Value)
                 .ToListAsync(cancellationToken).ConfigureAwait(false);
 
-            var symbolPairs = symbolSets
-                .SelectMany(set => set.Symbols.Select(sym => (Set: set, Symbol: sym)))
-                .ToList();
+            var pairsToGenerate = new List<(SymbolSet Set, Symbol Symbol, string FileName)>();
+            var symbolsToUpdate = false;
 
-            var generatedSymbols = new (SymbolSet Set, Symbol Symbol, byte[] Png)[symbolPairs.Count];
-            Parallel.For(0, symbolPairs.Count, i =>
+            foreach (var set in symbolSets)
             {
-                var pair = symbolPairs[i];
-                generatedSymbols[i] = (pair.Set, pair.Symbol, symbolGenerator.Generate(pair.Set.Key, pair.Symbol.Key));
-            });
-
-            foreach (var (set, symbol, symbolPng) in generatedSymbols)
-            {
-                var symbolFileName = $"placeholder-symbol-{set.Key}-{symbol.Key}.png";
-                using var symStream = new MemoryStream(symbolPng, writable: false);
-                var outcome = await catalog.UploadAsync(
-                    symStream,
-                    new AssetUploadRequest
-                    {
-                        FileName = symbolFileName,
-                        Category = AssetCategory.Symbol,
-                        LicenseNote = symbolLicenseNote,
-                        SourceNote = $"{symbolSourcePrefix}, set: {set.Key}, symbol: {symbol.Key}",
-                        UploadedByUserId = userId,
-                        GameId = targetGameId,
-                        Kind = UploadKind.Image,
-                    },
-                    cancellationToken).ConfigureAwait(false);
-
-                if (outcome.Succeeded && outcome.Asset is not null)
+                foreach (var symbol in set.Symbols)
                 {
-                    symbol.AssetId = outcome.Asset.Id;
+                    var symbolFileName = $"placeholder-symbol-{set.Key}-{symbol.Key}.png";
                     keys.Add($"symbol:{set.Key}/{symbol.Key}");
-                    if (existingAssets.Contains(outcome.Asset.Id))
+
+                    if (symbol.AssetId.HasValue && existingAssets.Contains(symbol.AssetId.Value))
                     {
                         existing++;
+                        continue;
                     }
-                    else
+
+                    // Se l'asset esiste già nel catalog ma non è ancora associato al symbol
+                    var existingAsset = existingAssetsList.FirstOrDefault(a => string.Equals(a.OriginalFileName, symbolFileName, StringComparison.OrdinalIgnoreCase));
+                    if (existingAsset is not null)
                     {
+                        symbol.AssetId = existingAsset.Id;
+                        symbolsToUpdate = true;
+                        existing++;
+                        continue;
+                    }
+
+                    pairsToGenerate.Add((set, symbol, symbolFileName));
+                }
+            }
+
+            if (pairsToGenerate.Count > 0)
+            {
+                var generatedSymbols = new (SymbolSet Set, Symbol Symbol, string FileName, byte[] Png)[pairsToGenerate.Count];
+                Parallel.For(0, pairsToGenerate.Count, i =>
+                {
+                    var pair = pairsToGenerate[i];
+                    generatedSymbols[i] = (pair.Set, pair.Symbol, pair.FileName, symbolGenerator.Generate(pair.Set.Key, pair.Symbol.Key));
+                });
+
+                foreach (var (set, symbol, symbolFileName, symbolPng) in generatedSymbols)
+                {
+                    using var symStream = new MemoryStream(symbolPng, writable: false);
+                    var outcome = await catalog.UploadAsync(
+                        symStream,
+                        new AssetUploadRequest
+                        {
+                            FileName = symbolFileName,
+                            Category = AssetCategory.Symbol,
+                            LicenseNote = symbolLicenseNote,
+                            SourceNote = $"{symbolSourcePrefix}, set: {set.Key}, symbol: {symbol.Key}",
+                            UploadedByUserId = userId,
+                            GameId = targetGameId,
+                            Kind = UploadKind.Image,
+                        },
+                        cancellationToken).ConfigureAwait(false);
+
+                    if (outcome.Succeeded && outcome.Asset is not null)
+                    {
+                        symbol.AssetId = outcome.Asset.Id;
+                        symbolsToUpdate = true;
                         existingAssets.Add(outcome.Asset.Id);
                         created++;
                     }
                 }
             }
 
-            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            if (symbolsToUpdate)
+            {
+                await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
         }
 
         return new PlaceholderSeedResult(created, existing, keys);

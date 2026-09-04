@@ -26,13 +26,17 @@ public abstract class GameFontSeederBase(
         var gameId = game?.Id;
         var asm = typeof(GameFontSeederBase).Assembly;
 
+        var existingAliases = gameId.HasValue
+            ? (await db.FontAssets
+                .Where(f => f.GameId == gameId.Value)
+                .Select(f => f.Alias)
+                .ToListAsync(cancellationToken).ConfigureAwait(false))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var (alias, fileName, license) in mappings)
         {
-            var exists = await db.FontAssets.AnyAsync(
-                f => f.GameId == gameId && f.Alias == alias,
-                cancellationToken).ConfigureAwait(false);
-
-            if (exists)
+            if (existingAliases.Contains(alias))
             {
                 continue;
             }
