@@ -110,10 +110,10 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install SkiaSharp Linux Dependencies
+      - name: Install SkiaSharp Linux Dependencies & Tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libfontconfig1 libfreetype6 fonts-dejavu-core
+          sudo apt-get install -y --no-install-recommends libfontconfig1 libfreetype6 fonts-dejavu-core zip
 
       - name: Publish Linux Desktop (Self-Contained)
         run: |
@@ -164,17 +164,11 @@ EOF
           fi
           echo "RELEASE_TAG=${RAW_VERSION}" >> $GITHUB_ENV
 
-      - name: Download Windows Artifacts
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: windows-packages
           path: release-assets
-
-      - name: Download Linux Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-packages
-          path: release-assets
+          merge-multiple: true
 
       - name: Generate Checksums (SHA256)
         run: |

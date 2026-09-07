@@ -34,7 +34,7 @@ Knowledge base tecnica del progetto. Strutturata per essere utile sia agli svilu
 
 | Documento | Contenuto |
 |---|---|
-| [`dev-guide.md`](02-development/dev-guide.md) | Script di avvio, comandi CLI, rotte applicative, migrazioni EF |
+| [`dev-guide.md`](02-development/dev-guide.md) | Script di avvio, comandi CLI, rotte applicative, migrazioni EF, CI/CD |
 | [`coding-guidelines.md`](02-development/coding-guidelines.md) | Standard C# 13, regole di layering, logging |
 | [`resume-prompt.md`](02-development/resume-prompt.md) | Prompt di ripristino contesto rapido per nuove sessioni AI |
 
@@ -94,7 +94,7 @@ Knowledge base tecnica del progetto. Strutturata per essere utile sia agli svilu
 | Documento | Contenuto |
 |---|---|
 | [`configuration.md`](08-operations/configuration.md) | appsettings, Storage:DataRoot, Bootstrap secrets |
-| [`deployment.md`](08-operations/deployment.md) | Docker multi-stage, Caddy TLS, run scripts |
+| [`deployment.md`](08-operations/deployment.md) | Docker, Caddy TLS, packaging desktop (Windows/Linux) e release pipeline |
 | [`troubleshooting.md`](08-operations/troubleshooting.md) | Problemi noti e workaround (download WebKitGTK, woff2, ecc.) |
 
 ---

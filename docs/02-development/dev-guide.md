@@ -136,3 +136,25 @@ Per ripristinare completamente l'ambiente da zero è sufficiente eliminare la ca
 | `/admin/backups` | Admin | Snapshot online SQLite (`VACUUM INTO`) con integrity check |
 | `/admin/render-test` | Admin | Banco di collaudo interattivo per il motore SkiaSharp |
 | `/healthz` | Sistema | Endpoint di monitoraggio per container / reverse proxy |
+
+---
+
+## 8. Workflow CI/CD e Packaging
+
+Il repository adotta workflow nativi per **GitHub Actions**:
+
+- **Fast CI (`.github/workflows/ci-fast.yml`)**:
+  - Trigger: ogni `push` e `pull_request` su `main` o feature branch.
+  - Verifica compilazione con `TreatWarningsAsErrors=true` e lancia il sottoinsieme di test essenziali:
+    ```bash
+    dotnet test CardMaker.slnx -c Release --filter "FullyQualifiedName!~GoldenImageTests"
+    ```
+- **Release Pipeline (`.github/workflows/release.yml`)**:
+  - Trigger: push di tag `v*` (es. `git tag v1.0.0 && git push origin v1.0.0`) o trigger manuale da interfaccia GitHub (`Actions` → `Release` → `Run workflow`).
+  - Esegue la compilazione su runner `windows-latest` e `ubuntu-latest`.
+  - Produce:
+    - Installer Windows Inno Setup: `packaging/windows/installer.iss`
+    - Pacchetto Debian Linux `.deb`: `packaging/linux/build-deb.sh`
+    - Archivi portatili `.zip` e `.tar.gz` (Self-Contained e Framework-Dependent).
+    - Checksum crittografici `SHA256SUMS.txt`.
+    - GitHub Release automatica con asset pronti al download.

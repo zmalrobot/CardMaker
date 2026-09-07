@@ -159,6 +159,23 @@ Attualmente la suite include **200 test** (107 test di rendering/geometria e 93 
 
 ---
 
+## 📦 CI/CD e Distribuzione Multi-Piattaforma
+
+Il progetto include workflow nativi al 100% per **GitHub Actions**:
+
+- ⚡ **Fast CI (`.github/workflows/ci-fast.yml`)**: Eseguito ad ogni `push` e `pull_request`. Esegue il restore con cache, la compilazione in Release con `TreatWarningsAsErrors=true`, 197 test essenziali (con esclusione dei golden test di rendering locale) e l'audit dei pacchetti NuGet vulnerabili.
+- 🚀 **Release Pipeline (`.github/workflows/release.yml`)**: Eseguito al push di un tag di versione (`v*`) o tramite avvio manuale (`workflow_dispatch`). Compila ed esporta binari ottimizzati per Windows e Linux, genera i checksum SHA-256 (`SHA256SUMS.txt`) e pubblica automaticamente la GitHub Release:
+  - **Windows (x64)**:
+    - `CardMaker-<tag>-Windows-Setup-x64.exe` — Installer desktop guidato (compilato con Inno Setup).
+    - `CardMaker-<tag>-Windows-Portable-x64.zip` — Portatile Self-Contained (zero prerequisiti, runtime .NET 10 incluso).
+    - `CardMaker-<tag>-Windows-FDD-x64.zip` — Portatile Framework-Dependent (~15 MB, per chi ha già .NET 10 installato).
+  - **Linux (x64)**:
+    - `CardMaker-<tag>-Linux-amd64.deb` — Pacchetto nativo Debian/Ubuntu/Mint con integrazione FreeDesktop (icone e `.desktop`).
+    - `CardMaker-<tag>-Linux-x64.tar.gz` — Tarball portatile universale Self-Contained con script `run.sh`.
+    - `CardMaker-<tag>-Web-Standalone.zip` — Archivio standalone per l'host Web Kestrel.
+
+---
+
 ## 📚 Documentazione di Progetto
 
 Nella cartella [`docs/`](docs/) è disponibile la knowledge base tecnica completa per sviluppatori e grafici:

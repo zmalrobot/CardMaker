@@ -190,13 +190,23 @@ which zenity || which kdialog
 
 ---
 
-## Packaging Desktop (futuro)
+## Packaging Desktop e Distribuzione Multi-Piattaforma
 
-La distribuzione Desktop come pacchetto autonomo (senza .NET SDK installato) è pianificata ma non ancora implementata. Le opzioni in valutazione:
+La distribuzione Desktop e Web come pacchetti autonomi e guidati è implementata e integrata nel workflow GitHub Actions [`.github/workflows/release.yml`](../../.github/workflows/release.yml):
 
-- `dotnet publish -r linux-x64 --self-contained` — eseguibile autonomo con runtime embedded (~100 MB).
-- Pacchetto `.deb` / `.rpm` per distribuzioni Linux (FreeDesktop `.desktop` già presente in `src/CardMaker.Desktop/Resources/`).
-- `AppImage` — distribuzione portabile per Linux senza installazione.
-- Windows: MSIX o installer NSIS.
-- macOS: bundle `.app` / DMG.
+### 1. Windows
+- **Installer Guidato (.exe)**: Generato tramite Inno Setup ([`packaging/windows/installer.iss`](../../packaging/windows/installer.iss)), con procedura d'installazione moderna, scelta percorso, icone Start/Desktop e disinstallatore registrato nel sistema.
+- **Portatile Self-Contained (.zip)**: Estrabile ed eseguibile senza installazione né prerequisiti (runtime .NET 10 incorporato).
+- **Portatile Framework-Dependent (.zip)**: Versione compatta (~15 MB) per ambienti con .NET 10 già installato.
+
+### 2. Linux
+- **Pacchetto Nativo Debian/Ubuntu (.deb)**: Assemblato con lo script [`packaging/linux/build-deb.sh`](../../packaging/linux/build-deb.sh) tramite `dpkg-deb`. Installa i binari in `/usr/lib/cardmaker/`, il launcher `/usr/bin/cardmaker`, l'icona a 512px e registra l'applicazione con FreeDesktop in `/usr/share/applications/cardmaker.desktop`. Include le dipendenze native dichiarate (`libwebkit2gtk-4.1-0`, `libfontconfig1`, `libfreetype6`).
+- **Tarball Portatile Universale (.tar.gz)**: Archivio compresso contenente i binari Self-Contained e lo script di avvio `run.sh`, compatibile con qualsiasi distribuzione Linux desktop.
+
+### 3. Pipeline di Pubblicazione GitHub Actions
+Al push di un tag di versione `v*` (o dispatch manuale), il job `publish-release`:
+- Raccoglie tutti gli artefatti prodotti dai runner `windows-latest` e `ubuntu-latest`.
+- Calcola i checksum crittografici SHA-256 (`SHA256SUMS.txt`).
+- Pubblica automaticamente la GitHub Release corredata di note di rilascio e file scaricabili.
+
 

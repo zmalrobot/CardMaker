@@ -51,6 +51,7 @@ Benché tutte le fasi pianificate della v2 siano pienamente operative, la strutt
 2. **Estensione a Nuovi TCG**:
    - Integrazione di giochi addizionali (es. *One Piece Card Game*, *Disney Lorcana*) sfruttando il pattern unificato `ContentGraphSeeder` + font embedding + layout template senza modifiche al codice del motore.
 3. **Distribuzione Desktop Nativa Confezionata**:
-   - Creazione di pacchetti di installazione nativi: MSIX per Windows, `.deb` e AppImage per Linux, `.dmg` firmati per macOS.
+   - ✅ **Implementato**: Installer Windows Inno Setup (`.exe`), pacchetto nativo Debian/Ubuntu (`.deb`) e archivi portatili (Windows/Linux) integrati nella pipeline GitHub Actions [`.github/workflows/release.yml`](../../.github/workflows/release.yml).
+   - *Estensioni future*: Bundle firmati per macOS (`.dmg`) o pacchetti universali AppImage / MSIX.
 4. **Generazione Batch (Opzionale)**:
    - Importazione di record multipli da CSV per la generazione massiva di mazzi completi.
