@@ -1,0 +1,243 @@
+﻿@page "/admin/ai"
+@attribute [Authorize(Roles = "Admin")]
+@using CardMaker.AI.Models
+@using CardMaker.Application.Ai
+@using CardMaker.Contracts.Ai
+@inject IAiConfigurationService AiConfigService
+@inject IHardwareProfileDetector HardwareDetector
+
+<PageTitle>Intelligenza Artificiale — CardMaker Admin</PageTitle>
+
+<div class="container-fluid py-3">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h1 class="h3 fw-bold mb-1">🤖 Configurazione Intelligenza Artificiale</h1>
+            <p class="text-muted mb-0">Gestione motore di inferenza locale locale basato su llama.cpp e modelli Google Gemma.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" @onclick="SaveSettingsAsync" disabled="@IsSaving">
+                @if (IsSaving)
+                {
+                    <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                    <span>Salvataggio...</span>
+                }
+                else
+                {
+                    <span>💾 Salva Impostazioni</span>
+                }
+            </button>
+        </div>
+    </div>
+
+    @if (SuccessMessage != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+            <span>@SuccessMessage</span>
+            <button type="button" class="btn-close" @onclick="() => SuccessMessage = null"></button>
+        </div>
+    }
+
+    @if (ErrorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+            <span>@ErrorMessage</span>
+            <button type="button" class="btn-close" @onclick="() => ErrorMessage = null"></button>
+        </div>
+    }
+
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-header bg-surface-1 py-3">
+                    <h5 class="card-title mb-0 fw-semibold">⚙️ Parametri Generali AI</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" type="checkbox" id="aiEnabledToggle" @bind="Settings.IsEnabled" style="cursor: pointer; transform: scale(1.2); margin-right: 0.8rem;" />
+                        <label class="form-check-label fw-bold" for="aiEnabledToggle" style="cursor: pointer;">
+                            Abilita generazione AI nell'applicazione
+                        </label>
+                        <div class="form-text mt-1">
+                            Se disabilitato, il pulsante di generazione assistita viene rimosso dall'editor delle carte e nessun componente di inferenza viene allocato in memoria.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Selezione Modello / Override</label>
+                        <select class="form-select" @bind="Settings.SelectedModelKey">
+                            <option value="@AiModelRegistry.AutoModelKey">🤖 Auto (Rilevamento hardware dinamico - Consigliato)</option>
+                            @foreach (var model in AvailableModels)
+                            {
+                                <option value="@model.Key">@model.DisplayName (Consiglia >= @model.RecommendedRamGb GB RAM)</option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            In modalita <code>Auto</code>, l'applicazione seleziona la versione ottimale di Gemma in base alla RAM fisica del server o del PC host.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Thread CPU Allocati</label>
+                        <input type="number" class="form-control" @bind="Settings.CpuThreads" min="0" max="128" />
+                        <div class="form-text">
+                            Lasciare impostato a <code>0</code> per allocare automaticamente <code>ProcessorCount - 1</code> thread mantenendo il sistema reattivo.
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Cartella Modelli GGUF</label>
+                        <input type="text" class="form-control bg-light" readonly value="@AiConfigService.GetModelsDirectory()" />
+                        <div class="form-text">
+                            I file di peso <code>.gguf</code> devono essere posizionati in questa directory per poter essere caricati dal motore.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card border shadow-sm h-100">
+                <div class="card-header bg-surface-1 py-3">
+                    <h5 class="card-title mb-0 fw-semibold">🖥️ Profilo Hardware Rilevato</h5>
+                </div>
+                <div class="card-body">
+                    @if (HardwareProfile != null)
+                    {
+                        <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-surface-2 rounded">
+                            <span class="fs-1">🧠</span>
+                            <div>
+                                <div class="fw-bold fs-5">@HardwareProfile.TotalPhysicalMemoryGb GB RAM Totale</div>
+                                <div class="text-muted small">Memoria fisica rilevata dal sistema operativo host</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Modello Consigliato per questo Hardware:</label>
+                            <div class="fw-bold text-primary fs-6">@HardwareProfile.RecommendedModelDisplayName</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Stato del File su Disco:</label>
+                            <div>
+                                @if (HardwareProfile.IsModelDownloaded)
+                                {
+                                    <span class="badge bg-success fs-6 py-2 px-3">
+                                        ✅ Presente su disco
+                                    </span>
+                                    <div class="small text-muted mt-1"><code>@HardwareProfile.ModelPath</code></div>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark fs-6 py-2 px-3">
+                                        ⚠️ Non trovato nella cartella modelli
+                                    </span>
+                                    <div class="small text-muted mt-1">File atteso: <code>@Path.GetFileName(HardwareProfile.ModelPath)</code></div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info py-2 px-3 small mb-0">
+                            <strong>💡 Come scaricare il modello:</strong><br />
+                            I modelli GGUF non sono inclusi nell'installer per motivi di dimensione (1.6 - 16 GB).
+                            Puoi scaricare gratuitamente il file quantizzato da HuggingFace e collocarlo nella cartella modelli indicata a sinistra.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="p-3 text-center text-muted">
+                            <span class="spinner-border spinner-border-sm me-1"></span> Rilevamento memoria in corso...
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border shadow-sm">
+        <div class="card-header bg-surface-1 py-3">
+            <h5 class="card-title mb-0 fw-semibold">📚 Modelli della Famiglia Gemma Supportati</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Modello</th>
+                        <th>File Atteso (.gguf)</th>
+                        <th>RAM Minima</th>
+                        <th>Uso Stimato</th>
+                        <th>HuggingFace</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var model in AvailableModels)
+                    {
+                        var isCurrent = (Settings.SelectedModelKey == model.Key) || 
+                                        (Settings.SelectedModelKey == AiModelRegistry.AutoModelKey && HardwareProfile?.RecommendedModelKey == model.Key);
+                        <tr class="@(isCurrent ? "table-primary" : "")">
+                            <td>
+                                <strong>@model.DisplayName</strong>
+                                @if (isCurrent)
+                                {
+                                    <span class="badge bg-primary ms-2">Attivo</span>
+                                }
+                                <div class="text-muted small">@model.Description</div>
+                            </td>
+                            <td><code>@model.FileName</code></td>
+                            <td><span class="badge bg-secondary">@model.RecommendedRamGb GB</span></td>
+                            <td>~@model.EstimatedMemoryUsageGb GB</td>
+                            <td>
+                                <a href="@model.DownloadUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                                    🔗 Scheda Download
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@code {
+    private AiSettingsDto Settings = new();
+    private HardwareProfileDto? HardwareProfile;
+    private IReadOnlyList<AiModelDefinition> AvailableModels = [];
+    private bool IsSaving;
+    private string? SuccessMessage;
+    private string? ErrorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        AvailableModels = AiModelRegistry.GetAllModels();
+        Settings = await AiConfigService.GetSettingsAsync();
+        RefreshHardwareProfile();
+    }
+
+    private void RefreshHardwareProfile()
+    {
+        var modelsDir = AiConfigService.GetModelsDirectory();
+        HardwareProfile = HardwareDetector.GetHardwareProfile(modelsDir);
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        IsSaving = true;
+        SuccessMessage = null;
+        ErrorMessage = null;
+
+        try
+        {
+            await AiConfigService.SaveSettingsAsync(Settings);
+            SuccessMessage = "Impostazioni AI aggiornate con successo.";
+            RefreshHardwareProfile();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Errore durante il salvataggio: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+}

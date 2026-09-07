@@ -1,9 +1,10 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\CardMaker.Domain\CardMaker.Domain.csproj" />
     <ProjectReference Include="..\CardMaker.Contracts\CardMaker.Contracts.csproj" />
     <ProjectReference Include="..\CardMaker.Application\CardMaker.Application.csproj" />
+    <ProjectReference Include="..\CardMaker.AI\CardMaker.AI.csproj" />
     <ProjectReference Include="..\CardMaker.Rendering\CardMaker.Rendering.csproj" />
   </ItemGroup>
 

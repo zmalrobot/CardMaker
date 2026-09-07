@@ -3,7 +3,9 @@
 @attribute [Authorize]
 
 @using CardMaker.Application.Assets
+@using CardMaker.Application.Ai
 @using CardMaker.Application.Common
+@using CardMaker.Contracts.Ai
 @using CardMaker.Domain.Assets
 
 @inject ICardService CardService
@@ -14,6 +16,7 @@
 @inject NavigationManager Navigation
 @inject ILoadingService LoadingService
 @inject ICardDerivedValuesService DerivedValuesService
+@inject IAiConfigurationService AiConfigService
 
 <PageTitle>@(IsNew ? "Nuova Carta" : $"Modifica {CardTitle}") — CardMaker</PageTitle>
 
@@ -133,7 +136,16 @@ else
         <TwoColumnLayout>
             <FormContent>
                 <div class="card shadow-sm mb-3">
-                    <div class="card-header py-2 fw-semibold">Informazioni Generali</div>
+                    <div class="card-header py-2 fw-semibold d-flex justify-content-between align-items-center">
+                        <span>Informazioni Generali</span>
+                        @if (IsAiEnabled)
+                        {
+                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiModal = true">
+                                <span>✨</span>
+                                <span>Genera con AI</span>
+                            </button>
+                        }
+                    </div>
                     <div class="card-body">
                         <div class="mb-2">
                             <label class="form-label small fw-semibold">Titolo nella collezione</label>
@@ -186,6 +198,13 @@ else
     <ExportModal @bind-IsOpen="ShowExportModal" CardId="@Id.Value" />
 }
 
+<CardMaker.UI.Components.Cards.AiGenerationModal 
+    @bind-IsOpen="ShowAiModal"
+    GameKey="@CurrentGameKey"
+    CardTypeKey="@CurrentCardType?.Key"
+    CurrentTitle="@CardTitle"
+    OnAccept="@ApplyAiGeneratedText" />
+
 @code {
     [Parameter] public Guid? Id { get; set; }
 
@@ -194,6 +213,8 @@ else
     private bool IsLoading = true;
     private bool IsSaving;
     private bool ShowExportModal;
+    private bool ShowAiModal;
+    private bool IsAiEnabled;
 
     private string CurrentGameKey = "yugioh";
     private Guid CurrentGameId;
@@ -218,7 +239,51 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        try
+        {
+            IsAiEnabled = await AiConfigService.IsAiEnabledAsync();
+        }
+        catch
+        {
+            IsAiEnabled = false;
+        }
+
         await LoadDataAsync();
+    }
+
+    private async Task ApplyAiGeneratedText(CardAiGenerationResultDto result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.Title))
+        {
+            CardTitle = result.Title;
+            if (CardValues.ContainsKey("name"))
+            {
+                CardValues["name"] = CardValue.FromText(result.Title);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.Description))
+        {
+            if (CardValues.ContainsKey("effectText"))
+            {
+                CardValues["effectText"] = CardValue.FromText(result.Description);
+            }
+            else if (CardValues.ContainsKey("rulesText"))
+            {
+                CardValues["rulesText"] = CardValue.FromText(result.Description);
+            }
+            else if (CardValues.ContainsKey("pokedexEntry"))
+            {
+                CardValues["pokedexEntry"] = CardValue.FromText(result.Description);
+            }
+            else if (CardValues.ContainsKey("description"))
+            {
+                CardValues["description"] = CardValue.FromText(result.Description);
+            }
+        }
+
+        await TriggerPreviewDebounced();
+        StateHasChanged();
     }
 
     private async Task LoadDataAsync()

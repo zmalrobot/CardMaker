@@ -8,6 +8,7 @@
     <Project Path="src/CardMaker.UI/CardMaker.UI.csproj" />
     <Project Path="src/CardMaker.Web/CardMaker.Web.csproj" />
     <Project Path="src/CardMaker.Desktop/CardMaker.Desktop.csproj" />
+    <Project Path="src/CardMaker.AI/CardMaker.AI.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CardMaker.Application.Tests/CardMaker.Application.Tests.csproj" />

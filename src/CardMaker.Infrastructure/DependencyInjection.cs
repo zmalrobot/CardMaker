@@ -76,6 +76,18 @@ public static class DependencyInjection
         services.AddScoped<CardMaker.Application.Admin.IDatabaseResetService, DatabaseResetService>();
         services.AddScoped<DatabaseInitializer>();
 
+        // Registrazioni CardMaker.AI
+        services.Configure<CardMaker.Infrastructure.Ai.AiInfrastructureOptions>(o =>
+        {
+            o.DataRoot = dataRoot;
+            o.ModelsDirectory = Path.Combine(dataRoot, "models");
+            o.SettingsFilePath = Path.Combine(dataRoot, "ai-settings.json");
+        });
+        services.AddSingleton<CardMaker.Application.Ai.IHardwareProfileDetector, CardMaker.Infrastructure.Ai.HardwareProfileDetector>();
+        services.AddSingleton<CardMaker.Application.Ai.IAiConfigurationService, CardMaker.Infrastructure.Ai.AiConfigurationService>();
+        services.AddTransient<CardMaker.AI.Abstractions.ITextGenerationEngine, CardMaker.AI.Engines.LlamaCppTextEngine>();
+        services.AddScoped<CardMaker.Application.Ai.ICardTextGenerationService, CardMaker.Application.Ai.CardTextGenerationService>();
+
         return services;
     }
 
