@@ -228,6 +228,9 @@ else
     @bind-IsOpen="ShowAiModal"
     GameKey="@CurrentGameKey"
     CardTypeKey="@CurrentCardType?.Key"
+    CardTypeName="@CurrentCardType?.Name"
+    SupportsAttack="@CardTypeSupportsAttack(CurrentCardType)"
+    SupportsDefense="@CardTypeSupportsDefense(CurrentCardType)"
     CurrentTitle="@CardTitle"
     OnAccept="@ApplyAiGeneratedText" />
 
@@ -289,36 +292,74 @@ else
         await ModelManager.EnsureActiveModelReadyAsync(forceDownload: true);
     }
 
+    private static bool CardTypeSupportsAttack(CardTypeDetailDto? ct) =>
+        ct?.Fields.Any(f => f.Key.Equals("atk", StringComparison.OrdinalIgnoreCase) 
+                         || f.Key.Equals("power", StringComparison.OrdinalIgnoreCase)
+                         || f.Key.Equals("attack", StringComparison.OrdinalIgnoreCase)) ?? false;
+
+    private static bool CardTypeSupportsDefense(CardTypeDetailDto? ct) =>
+        ct?.Fields.Any(f => f.Key.Equals("def", StringComparison.OrdinalIgnoreCase) 
+                         || f.Key.Equals("toughness", StringComparison.OrdinalIgnoreCase)
+                         || f.Key.Equals("defense", StringComparison.OrdinalIgnoreCase)) ?? false;
+
     private async Task ApplyAiGeneratedText(CardAiGenerationResultDto result)
     {
         if (!string.IsNullOrWhiteSpace(result.Title))
         {
             CardTitle = result.Title;
-            if (CardValues.ContainsKey("name"))
-            {
-                CardValues["name"] = CardValue.FromText(result.Title);
-            }
+            var nameField = CurrentCardType?.Fields.FirstOrDefault(f => 
+                f.Key.Equals("name", StringComparison.OrdinalIgnoreCase) || 
+                f.Key.Equals("title", StringComparison.OrdinalIgnoreCase));
+            var targetNameKey = nameField?.Key ?? "name";
+            CardValues[targetNameKey] = CardValue.FromText(result.Title);
         }
 
         if (!string.IsNullOrWhiteSpace(result.Description))
         {
-            if (CardValues.ContainsKey("effectText"))
+            var descField = CurrentCardType?.Fields.FirstOrDefault(f =>
+                f.Key.Equals("effectText", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("rulesText", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("flavorText", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("description", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("pokedexEntry", StringComparison.OrdinalIgnoreCase))
+                ?? CurrentCardType?.Fields.FirstOrDefault(f => f.Kind == FieldKind.MultilineText || f.Kind == FieldKind.RichText);
+
+            var targetDescKey = descField?.Key ?? "effectText";
+            CardValues[targetDescKey] = CardValue.FromText(result.Description);
+        }
+
+        if (result.Attack.HasValue)
+        {
+            var atkField = CurrentCardType?.Fields.FirstOrDefault(f =>
+                f.Key.Equals("atk", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("power", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("attack", StringComparison.OrdinalIgnoreCase));
+
+            if (atkField != null)
             {
-                CardValues["effectText"] = CardValue.FromText(result.Description);
-            }
-            else if (CardValues.ContainsKey("rulesText"))
-            {
-                CardValues["rulesText"] = CardValue.FromText(result.Description);
-            }
-            else if (CardValues.ContainsKey("pokedexEntry"))
-            {
-                CardValues["pokedexEntry"] = CardValue.FromText(result.Description);
-            }
-            else if (CardValues.ContainsKey("description"))
-            {
-                CardValues["description"] = CardValue.FromText(result.Description);
+                CardValues[atkField.Key] = atkField.Kind is FieldKind.Integer or FieldKind.Decimal
+                    ? CardValue.FromNumber(result.Attack.Value)
+                    : CardValue.FromText(result.Attack.Value.ToString());
             }
         }
+
+        if (result.Defense.HasValue)
+        {
+            var defField = CurrentCardType?.Fields.FirstOrDefault(f =>
+                f.Key.Equals("def", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("toughness", StringComparison.OrdinalIgnoreCase) ||
+                f.Key.Equals("defense", StringComparison.OrdinalIgnoreCase));
+
+            if (defField != null)
+            {
+                CardValues[defField.Key] = defField.Kind is FieldKind.Integer or FieldKind.Decimal
+                    ? CardValue.FromNumber(result.Defense.Value)
+                    : CardValue.FromText(result.Defense.Value.ToString());
+            }
+        }
+
+        // Clona il dizionario per garantire che DynamicCardForm rilevi il cambio di riferimento
+        CardValues = new Dictionary<string, CardValue>(CardValues);
 
         await TriggerPreviewDebounced();
         StateHasChanged();

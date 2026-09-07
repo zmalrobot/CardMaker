@@ -1,4 +1,4 @@
-﻿@using CardMaker.AI.Abstractions
+@using CardMaker.AI.Abstractions
 @using CardMaker.AI.Models
 @using CardMaker.Application.Ai
 @using CardMaker.Contracts.Ai
@@ -49,7 +49,14 @@
                                       @bind:event="oninput"></textarea>
                             <div class="form-text">
                                 Gioco: <strong>@FormatGameName(GameKey)</strong> 
-                                @(!string.IsNullOrWhiteSpace(CardTypeKey) ? $" | Tipo: {CardTypeKey}" : "")
+                                @if (!string.IsNullOrWhiteSpace(CardTypeName))
+                                {
+                                    <span> | Tipo: <strong>@CardTypeName</strong></span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(CardTypeKey))
+                                {
+                                    <span> | Tipo: <strong>@CardTypeKey</strong></span>
+                                }
                             </div>
                         </div>
 
@@ -106,6 +113,26 @@
                             <input type="text" class="form-control fw-bold" @bind="GeneratedTitle" />
                         </div>
 
+                        @if (SupportsAttack || SupportsDefense)
+                        {
+                            <div class="row g-3 mb-3">
+                                @if (SupportsAttack)
+                                {
+                                    <div class="@(SupportsDefense ? "col-6" : "col-12")">
+                                        <label class="form-label small fw-semibold">Attacco (ATK)</label>
+                                        <input type="number" class="form-control" @bind="GeneratedAttack" placeholder="Es. 2500" />
+                                    </div>
+                                }
+                                @if (SupportsDefense)
+                                {
+                                    <div class="@(SupportsAttack ? "col-6" : "col-12")">
+                                        <label class="form-label small fw-semibold">Difesa (DEF)</label>
+                                        <input type="number" class="form-control" @bind="GeneratedDefense" placeholder="Es. 2100" />
+                                    </div>
+                                }
+                            </div>
+                        }
+
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Descrizione / Effetto Generato</label>
                             <textarea class="form-control" rows="5" @bind="GeneratedDescription"></textarea>
@@ -142,6 +169,9 @@
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public string GameKey { get; set; } = string.Empty;
     [Parameter] public string CardTypeKey { get; set; } = string.Empty;
+    [Parameter] public string CardTypeName { get; set; } = string.Empty;
+    [Parameter] public bool SupportsAttack { get; set; }
+    [Parameter] public bool SupportsDefense { get; set; }
     [Parameter] public string CurrentTitle { get; set; } = string.Empty;
     [Parameter] public EventCallback<CardAiGenerationResultDto> OnAccept { get; set; }
 
@@ -157,6 +187,8 @@
 
     private string GeneratedTitle = string.Empty;
     private string GeneratedDescription = string.Empty;
+    private int? GeneratedAttack;
+    private int? GeneratedDefense;
     private long LastDurationMs;
     private string LastModelUsed = string.Empty;
 
@@ -226,6 +258,9 @@
             {
                 GameKey = GameKey,
                 CardTypeKey = CardTypeKey,
+                CardTypeName = CardTypeName,
+                SupportsAttack = SupportsAttack,
+                SupportsDefense = SupportsDefense,
                 StyleKey = SelectedStyleKey,
                 UserPrompt = UserPrompt,
                 ExistingTitle = CurrentTitle
@@ -235,6 +270,8 @@
 
             GeneratedTitle = result.Title;
             GeneratedDescription = result.Description;
+            GeneratedAttack = result.Attack;
+            GeneratedDefense = result.Defense;
             LastDurationMs = result.DurationMs;
             LastModelUsed = result.ModelUsed;
             CurrentStage = AiProgressStage.Completed;
@@ -272,6 +309,8 @@
         {
             Title = GeneratedTitle,
             Description = GeneratedDescription,
+            Attack = GeneratedAttack,
+            Defense = GeneratedDefense,
             DurationMs = LastDurationMs,
             ModelUsed = LastModelUsed
         };

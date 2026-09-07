@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Abstractions;
+using CardMaker.AI.Abstractions;
 using CardMaker.AI.Models;
 using CardMaker.Application.Ai;
 using CardMaker.Contracts.Ai;
@@ -26,23 +26,28 @@ public sealed class CardTextGenerationServiceTests
     }
 
     [Theory]
-    [InlineData("{\"title\": \"Mago Supremo\", \"description\": \"Infligge 1000 danni.\"}", "Mago Supremo", "Infligge 1000 danni.")]
-    [InlineData("```json\n{\"title\": \"Pikachu Elettrico\", \"description\": \"Scarica potente.\"}\n```", "Pikachu Elettrico", "Scarica potente.")]
-    [InlineData("Ecco il risultato:\n{\"Title\": \"Drago d'Ombra\", \"Description\": \"Volare. Travolgere.\"}", "Drago d'Ombra", "Volare. Travolgere.")]
-    [InlineData("Risposta non JSON pura ma contiene \"title\": \"Cavaliere Solare\" e \"description\": \"Attacca con vigore.\"", "Cavaliere Solare", "Attacca con vigore.")]
-    public void ParseAiJsonOutput_ExtractsTitleAndDescriptionCorrectly(string rawOutput, string expectedTitle, string expectedDesc)
+    [InlineData("{\"title\": \"Mago Supremo\", \"description\": \"Infligge 1000 danni.\", \"attack\": 2500, \"defense\": 2100}", "Mago Supremo", "Infligge 1000 danni.", 2500, 2100)]
+    [InlineData("```json\n{\"title\": \"Pikachu Elettrico\", \"description\": \"Scarica potente.\", \"atk\": 120, \"def\": 90}\n```", "Pikachu Elettrico", "Scarica potente.", 120, 90)]
+    [InlineData("Ecco il risultato:\n{\"Title\": \"Drago d'Ombra\", \"Description\": \"Volare. Travolgere.\", \"attack\": \"3000\", \"defense\": \"2500\"}", "Drago d'Ombra", "Volare. Travolgere.", 3000, 2500)]
+    [InlineData("Risposta non JSON pura ma contiene \"title\": \"Cavaliere Solare\" e \"description\": \"Attacca con vigore.\" con \"attack\": 1800 e \"defense\": 1500", "Cavaliere Solare", "Attacca con vigore.", 1800, 1500)]
+    [InlineData("{\"title\": \"Spada Mistica\", \"description\": \"Aumenta ATK di 500.\", \"attack\": null, \"defense\": null}", "Spada Mistica", "Aumenta ATK di 500.", null, null)]
+    public void ParseAiJsonOutput_ExtractsAllFieldsCorrectly(string rawOutput, string expectedTitle, string expectedDesc, int? expectedAtk, int? expectedDef)
     {
-        var (title, desc) = CardTextGenerationService.ParseAiJsonOutput(rawOutput, "Fallback");
+        var (title, desc, atk, def) = CardTextGenerationService.ParseAiJsonOutput(rawOutput, "Fallback");
         Assert.Equal(expectedTitle, title);
         Assert.Equal(expectedDesc, desc);
+        Assert.Equal(expectedAtk, atk);
+        Assert.Equal(expectedDef, def);
     }
 
     [Fact]
     public void ParseAiJsonOutput_FallsBackGracefullyOnEmptyInput()
     {
-        var (title, desc) = CardTextGenerationService.ParseAiJsonOutput(string.Empty, "Mio Titolo");
+        var (title, desc, atk, def) = CardTextGenerationService.ParseAiJsonOutput(string.Empty, "Mio Titolo");
         Assert.Equal("Mio Titolo", title);
         Assert.Equal(string.Empty, desc);
+        Assert.Null(atk);
+        Assert.Null(def);
     }
 
     [Fact]
@@ -89,7 +94,7 @@ public sealed class CardTextGenerationServiceTests
         {
             var engine = new FakeTextEngine
             {
-                ResultToReturn = "{\"title\": \"Drago Antico\", \"description\": \"Rinasce dalle ceneri.\"}"
+                ResultToReturn = "{\"title\": \"Drago Antico\", \"description\": \"Rinasce dalle ceneri.\", \"attack\": 2800, \"defense\": 2400}"
             };
             var config = new FakeAiConfig
             {
@@ -101,7 +106,10 @@ public sealed class CardTextGenerationServiceTests
             var request = new CardAiGenerationRequestDto
             {
                 GameKey = "yugioh",
-                CardTypeKey = "monster",
+                CardTypeKey = "monster-normal",
+                CardTypeName = "Mostro Normale",
+                SupportsAttack = true,
+                SupportsDefense = true,
                 StyleKey = "epico",
                 UserPrompt = "Un drago ancestrale che risorge"
             };
@@ -111,7 +119,11 @@ public sealed class CardTextGenerationServiceTests
             Assert.NotNull(result);
             Assert.Equal("Drago Antico", result.Title);
             Assert.Equal("Rinasce dalle ceneri.", result.Description);
+            Assert.Equal(2800, result.Attack);
+            Assert.Equal(2400, result.Defense);
             Assert.True(engine.WasGenerateCalled);
+            Assert.Contains("MOSTRO NORMALE SENZA EFFETTO", engine.LastPromptRequest?.UserPrompt);
+            Assert.Contains("VINCOLO TASSATIVO TIPOLOGIA - MOSTRO NORMALE", engine.LastPromptRequest?.UserPrompt);
         }
         finally
         {
@@ -129,6 +141,7 @@ public sealed class CardTextGenerationServiceTests
         public bool WasGenerateCalled { get; private set; }
         public bool WasResetCalled { get; private set; }
         public bool WasUnloadCalled { get; private set; }
+        public TextPromptRequest? LastPromptRequest { get; private set; }
         public string ResultToReturn { get; set; } = "{\"title\": \"Carta Fake\", \"description\": \"Desc Fake\"}";
 
         public Task LoadModelAsync(string modelPath, int contextSize = 2048, int threads = 0, CancellationToken cancellationToken = default)
@@ -147,6 +160,7 @@ public sealed class CardTextGenerationServiceTests
             CancellationToken cancellationToken = default)
         {
             WasGenerateCalled = true;
+            LastPromptRequest = request;
             progress?.Report(new AiProgressUpdate(AiProgressStage.Generating, "Generazione"));
             return Task.FromResult(new TextPromptResult(ResultToReturn, 42, 10));
         }
