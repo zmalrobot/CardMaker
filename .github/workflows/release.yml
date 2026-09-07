@@ -41,8 +41,8 @@ jobs:
               $rawVersion = "${{ inputs.tag_name }}"
           }
           $version = $rawVersion.TrimStart('v')
-          echo "VERSION=$version" >> $env:GITHUB_ENV
-          echo "RAW_VERSION=$rawVersion" >> $env:GITHUB_ENV
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RAW_VERSION=$rawVersion" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Write-Host "Building version: $version (Tag: $rawVersion)"
 
       - name: Setup .NET SDK
@@ -184,6 +184,6 @@ EOF
           name: CardMaker ${{ env.RELEASE_TAG }}
           files: release-assets/*
           generate_release_notes: true
-          draft: ${{ github.event.inputs.is_draft || false }}
-          prerelease: ${{ github.event.inputs.is_prerelease || false }}
+          draft: ${{ inputs.is_draft == true }}
+          prerelease: ${{ inputs.is_prerelease == true }}
 
