@@ -1,3 +1,15 @@
+> [!CAUTION]
+> ## ⚠️ ATTENZIONE: REPOSITORY DI TEST PER GEMINI 3.8 FLASH ⚠️
+>
+> **QUESTA REPOSITORY È UTILIZZATA ESCLUSIVAMENTE COME TEST PER LE ABILITÀ E LE CAPACITÀ DI GEMINI 3.8 FLASH.**
+>
+> - ⚠️ **Stato Sperimentale:** Il codice, l'architettura e la documentazione in questa repository sono generati e modificati per testare le capacità dell'IA.
+> - 💥 **Possibili Malfunzionamenti:** Il progetto **potrebbe non funzionare affatto**, presentare crash, comportamenti imprevisti o componenti non operativi.
+> - 🚨 **Presenza di Errori Gravi:** Potrebbero essere presenti **bug critici, falle di sicurezza, errori di logica e regressioni gravi**.
+> - 🛑 **Nessuna Garanzia:** Non utilizzare questo codice in produzione o per scopi critici senza un'accurata verifica e revisione indipendente.
+
+---
+
 # 🃏 CardMaker
 
 **CardMaker** è una piattaforma professionale *data-driven* per la generazione, composizione, rendering e stampa di carte da gioco collezionabili (TCG).
