@@ -1,10 +1,12 @@
 ﻿@page "/admin/ai"
 @attribute [Authorize(Roles = "Admin")]
+@implements IDisposable
 @using CardMaker.AI.Models
 @using CardMaker.Application.Ai
 @using CardMaker.Contracts.Ai
 @inject IAiConfigurationService AiConfigService
 @inject IHardwareProfileDetector HardwareDetector
+@inject IAiModelManager ModelManager
 
 <PageTitle>Intelligenza Artificiale — CardMaker Admin</PageTitle>
 
@@ -12,9 +14,12 @@
     <div class="d-flex align-items-center justify-content-between mb-4">
         <div>
             <h1 class="h3 fw-bold mb-1">🤖 Configurazione Intelligenza Artificiale</h1>
-            <p class="text-muted mb-0">Gestione motore di inferenza locale locale basato su llama.cpp e modelli Google Gemma.</p>
+            <p class="text-muted mb-0">Gestione motore di inferenza locale basato su llama.cpp e modelli Google Gemma.</p>
         </div>
         <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" @onclick="DownloadActiveModelAsync" disabled="@(IsSaving || ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading)">
+                <span>⬇️ Verifica / Scarica Modello</span>
+            </button>
             <button class="btn btn-primary" @onclick="SaveSettingsAsync" disabled="@IsSaving">
                 @if (IsSaving)
                 {
@@ -58,7 +63,7 @@
                             Abilita generazione AI nell'applicazione
                         </label>
                         <div class="form-text mt-1">
-                            Se disabilitato, il pulsante di generazione assistita viene rimosso dall'editor delle carte e nessun componente di inferenza viene allocato in memoria.
+                            Se disabilitato, il pulsante di generazione assistita viene rimosso dall'editor delle carte e nessun componente di inferenza o download viene avviato.
                         </div>
                     </div>
 
@@ -88,7 +93,7 @@
                         <label class="form-label small fw-semibold">Cartella Modelli GGUF</label>
                         <input type="text" class="form-control bg-light" readonly value="@AiConfigService.GetModelsDirectory()" />
                         <div class="form-text">
-                            I file di peso <code>.gguf</code> devono essere posizionati in questa directory per poter essere caricati dal motore.
+                            I file <code>.gguf</code> scaricati vengono memorizzati in questa directory.
                         </div>
                     </div>
                 </div>
@@ -98,7 +103,7 @@
         <div class="col-lg-6">
             <div class="card border shadow-sm h-100">
                 <div class="card-header bg-surface-1 py-3">
-                    <h5 class="card-title mb-0 fw-semibold">🖥️ Profilo Hardware Rilevato</h5>
+                    <h5 class="card-title mb-0 fw-semibold">🖥️ Stato del Modello & Hardware</h5>
                 </div>
                 <div class="card-body">
                     @if (HardwareProfile != null)
@@ -117,29 +122,63 @@
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Stato del File su Disco:</label>
+                            <label class="form-label small fw-semibold">Stato di Disponibilita:</label>
                             <div>
-                                @if (HardwareProfile.IsModelDownloaded)
+                                @switch (ModelManager.CurrentStatus)
                                 {
-                                    <span class="badge bg-success fs-6 py-2 px-3">
-                                        ✅ Presente su disco
-                                    </span>
-                                    <div class="small text-muted mt-1"><code>@HardwareProfile.ModelPath</code></div>
+                                    case AiModelReadinessStatus.Ready:
+                                        <span class="badge bg-success fs-6 py-2 px-3">
+                                            ✅ Pronto all'uso (Validato)
+                                        </span>
+                                        break;
+                                    case AiModelReadinessStatus.Downloading:
+                                        <span class="badge bg-primary fs-6 py-2 px-3">
+                                            ⬇️ Download in corso (@(ModelManager.CurrentProgress?.Percentage.ToString("0.0"))%)
+                                        </span>
+                                        break;
+                                    case AiModelReadinessStatus.Validating:
+                                        <span class="badge bg-warning text-dark fs-6 py-2 px-3">
+                                            🔍 Validazione integrita in corso...
+                                        </span>
+                                        break;
+                                    case AiModelReadinessStatus.Checking:
+                                        <span class="badge bg-info fs-6 py-2 px-3">
+                                            🔎 Verifica file locale...
+                                        </span>
+                                        break;
+                                    case AiModelReadinessStatus.Disabled:
+                                        <span class="badge bg-secondary fs-6 py-2 px-3">
+                                            ⏸️ Funzionalita AI Disabilitata
+                                        </span>
+                                        break;
+                                    case AiModelReadinessStatus.Error:
+                                        <span class="badge bg-danger fs-6 py-2 px-3">
+                                            ⚠️ Errore o modello assente
+                                        </span>
+                                        break;
                                 }
-                                else
-                                {
-                                    <span class="badge bg-warning text-dark fs-6 py-2 px-3">
-                                        ⚠️ Non trovato nella cartella modelli
-                                    </span>
-                                    <div class="small text-muted mt-1">File atteso: <code>@Path.GetFileName(HardwareProfile.ModelPath)</code></div>
-                                }
+                                <div class="small text-muted mt-1">Percorso: <code>@HardwareProfile.ModelPath</code></div>
                             </div>
                         </div>
 
+                        @if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
+                        {
+                            var p = ModelManager.CurrentProgress;
+                            <div class="p-3 bg-surface-2 rounded mb-3">
+                                <div class="d-flex justify-content-between small text-muted mb-1">
+                                    <span>Download: <strong>@Math.Round((double)p.BytesDownloaded / (1024*1024), 1) MB</strong> di <strong>@Math.Round((double)p.TotalBytes / (1024*1024), 1) MB</strong></span>
+                                    <span>@p.Percentage.ToString("0.0")%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div class="progress-bar bg-primary" style="width: @p.Percentage%;"></div>
+                                </div>
+                            </div>
+                        }
+
                         <div class="alert alert-info py-2 px-3 small mb-0">
-                            <strong>💡 Come scaricare il modello:</strong><br />
-                            I modelli GGUF non sono inclusi nell'installer per motivi di dimensione (1.6 - 16 GB).
-                            Puoi scaricare gratuitamente il file quantizzato da HuggingFace e collocarlo nella cartella modelli indicata a sinistra.
+                            <strong>💡 Download automatico:</strong><br />
+                            L'applicazione verifica e scarica automaticamente il modello necessario in background all'avvio.
+                            In caso di interruzioni, il download riprende automaticamente tramite HTTP Range.
                         </div>
                     }
                     else
@@ -163,6 +202,7 @@
                     <tr>
                         <th>Modello</th>
                         <th>File Atteso (.gguf)</th>
+                        <th>Dimensione</th>
                         <th>RAM Minima</th>
                         <th>Uso Stimato</th>
                         <th>HuggingFace</th>
@@ -183,6 +223,7 @@
                                 <div class="text-muted small">@model.Description</div>
                             </td>
                             <td><code>@model.FileName</code></td>
+                            <td>~@Math.Round((double)model.ExpectedSizeBytes / (1024*1024*1024), 2) GB</td>
                             <td><span class="badge bg-secondary">@model.RecommendedRamGb GB</span></td>
                             <td>~@model.EstimatedMemoryUsageGb GB</td>
                             <td>
@@ -208,15 +249,39 @@
 
     protected override async Task OnInitializedAsync()
     {
+        ModelManager.OnStatusChanged += OnStatusChanged;
         AvailableModels = AiModelRegistry.GetAllModels();
         Settings = await AiConfigService.GetSettingsAsync();
         RefreshHardwareProfile();
+    }
+
+    private void OnStatusChanged()
+    {
+        InvokeAsync(() =>
+        {
+            RefreshHardwareProfile();
+            StateHasChanged();
+        });
     }
 
     private void RefreshHardwareProfile()
     {
         var modelsDir = AiConfigService.GetModelsDirectory();
         HardwareProfile = HardwareDetector.GetHardwareProfile(modelsDir);
+    }
+
+    private async Task DownloadActiveModelAsync()
+    {
+        SuccessMessage = null;
+        ErrorMessage = null;
+        try
+        {
+            await ModelManager.EnsureActiveModelReadyAsync(forceDownload: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Errore durante il download: {ex.Message}";
+        }
     }
 
     private async Task SaveSettingsAsync()
@@ -230,6 +295,12 @@
             await AiConfigService.SaveSettingsAsync(Settings);
             SuccessMessage = "Impostazioni AI aggiornate con successo.";
             RefreshHardwareProfile();
+
+            // Innesca la verifica e l'eventuale download del nuovo modello selezionato
+            if (Settings.IsEnabled)
+            {
+                _ = ModelManager.EnsureActiveModelReadyAsync(forceDownload: false);
+            }
         }
         catch (Exception ex)
         {
@@ -239,5 +310,10 @@
         {
             IsSaving = false;
         }
+    }
+
+    public void Dispose()
+    {
+        ModelManager.OnStatusChanged -= OnStatusChanged;
     }
 }

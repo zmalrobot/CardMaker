@@ -105,6 +105,9 @@ data/
 ├── CardMaker.db          # Database SQLite in modalità WAL
 ├── CardMaker.db-wal      # File WAL per letture concorrenti
 ├── CardMaker.db-shm      # File di memoria condivisa SQLite
+├── ai-settings.json      # Configurazione motore AI locale (modello attivo, parametri)
+├── models/               # Modelli LLM quantizzati GGUF (scaricati all'avvio)
+│   └── gemma-2-2b.gguf
 └── assets/               # Archivio binario content-addressed (SHA-256)
     └── ab/
         └── cd/
@@ -122,12 +125,13 @@ Per ripristinare completamente l'ambiente da zero è sufficiente eliminare la ca
 | `/` | Pubblico | Home page di benvenuto e panoramica |
 | `/cards` | Autenticato | Collezione "Le mie carte" (filtri, ricerca, duplicazione, eliminazione) |
 | `/cards/create` | Autenticato | Creazione guidata nuova carta con selettore gioco e tipo |
-| `/cards/edit/{id}` | Autenticato | Editor carta dinamico con anteprima 60 FPS ed export |
+| `/cards/edit/{id}` | Autenticato | Editor carta dinamico con anteprima 60 FPS, export e generazione testi AI |
 | `/guida` | Pubblico | Guida utente sui campi e sintassi token `{sym:...}` |
 | `/disclaimer` | Pubblico | Note legali e clausola fan-made non commerciale |
 | `/admin/content` | Admin | Gestione CRUD giochi, tipi, tratti, simboli, liste opzioni |
 | `/admin/schema/{id}` | Admin | Editor interattivo dello schema campi del tipo carta |
 | `/admin/templates/{id}` | Admin | Template Studio WYSIWYG a 3 pannelli per la composizione dei layer |
+| `/admin/ai` | Admin | Gestione motore AI: profili RAM, download modello con resume, parametri inferenza |
 | `/admin/assets` | Admin | Libreria asset con upload multiplo, filtri per gioco e safe delete |
 | `/admin/fonts` | Admin | Catalogo font con registrazione TTF/OTF per alias di ruolo |
 | `/admin/placeholders` | Admin | Generatore procedurale di frame e simboli segnaposto |

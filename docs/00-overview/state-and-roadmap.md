@@ -1,7 +1,7 @@
 # Stato del Progetto e Roadmap
 
-> **Stato Corrente**: **v2 Completata al 100% (Fasi F0 → F13)**  
-> **Test Suite**: **200 test automatici (107 rendering + 93 applicativi)** — 100% passati, 0 errori, 0 avvisi.  
+> **Stato Corrente**: **v2 & Funzionalità AI Completate al 100% (Fasi F0 → F14)**  
+> **Test Suite**: **234 test automatici (107 rendering + 127 applicativi e AI)** — 100% passati, 0 errori, 0 avvisi.  
 > **Piattaforme**: Desktop nativo (Photino.Blazor) e Web (ASP.NET Core Kestrel) operativi e verificati.
 
 ---
@@ -24,10 +24,18 @@
 | **F11** | **v2 — Pokémon TCG** | Supporto Poker Size (63 × 88 mm), seeding completo (Base, Fasi 1-2, EX, GX, V, VMAX, Trainer, Energie), simboli procedurali energia e font incorporati. | ✅ Completata |
 | **F12** | **v2 — Magic: The Gathering** | Supporto Poker Size, seeding completo (Creature, Planeswalker, Istantanei, Stregonerie, Incantesimi, Artefatti, Terre), simboli procedurali di mana ed elisir rarità. | ✅ Completata |
 | **F13** | **UX 60 FPS, Refactoring & Pulizia** | Decomposizione di `CardRenderer` in Strategy Painters, disaccoppiamento `Application -> Rendering`, offload asincrono `Task.Run`, azzeramento rumore IPC console (`SetLogVerbosity(0)`). | ✅ Completata |
+| **F14** | **Motore AI Locale (CardMaker.AI)** | Motore di inferenza on-device `llama.cpp` / LLamaSharp (modelli Gemma 2/3), rilevamento RAM e selezione hardware, download asincrono con HTTP Range resume all'avvio, banner UI live, versione motore in footer. | ✅ Completata |
 
 ---
 
 ## 2. Dettaglio Risultati Recenti
+
+### Motore AI Locale (CardMaker.AI)
+- Creazione della libreria `CardMaker.AI` con registri modelli Gemma, binding `llama.cpp` ed esecuzione su CPU senza overhead continuo (0 MB a riposo).
+- `AiModelDownloader` con download in streaming HTTP, ripresa da offset parziale (`Range: bytes={x}-`), validazione preventiva spazio su disco (`DriveInfo`), retry con backoff e controllo integrità magic bytes GGUF.
+- Coordinatore `AiModelManager` per verifica non bloccante allo startup, notifica eventi di progresso in tempo reale e cancellazione reattiva.
+- Interfaccia utente estesa con `AiModelStatusBanner` (progresso, MB/s, ETA, pulsanti Interrompi e Riprova), footer con versione del motore e progresso live, pulsante reattivo nell'editor carte e pannello `/admin/ai`.
+- Suite di test espansa a **234 test totali** con 37 nuovi test specifici per il modulo AI.
 
 ### Decomposizione Architetturale
 - `CardRenderer.cs` scorporato da una classe monolitica di oltre 1000 righe in un'architettura modulare a Strategy Painters (`ILayerPainter`), con moduli separati `RenderPostProcessor` e `RenderDrawingUtilities`.

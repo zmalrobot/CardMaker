@@ -1,6 +1,7 @@
 @page "/cards/create"
 @page "/cards/edit/{Id:guid}"
 @attribute [Authorize]
+@implements IDisposable
 
 @using CardMaker.Application.Assets
 @using CardMaker.Application.Ai
@@ -17,6 +18,7 @@
 @inject ILoadingService LoadingService
 @inject ICardDerivedValuesService DerivedValuesService
 @inject IAiConfigurationService AiConfigService
+@inject IAiModelManager ModelManager
 
 <PageTitle>@(IsNew ? "Nuova Carta" : $"Modifica {CardTitle}") — CardMaker</PageTitle>
 
@@ -140,10 +142,34 @@ else
                         <span>Informazioni Generali</span>
                         @if (IsAiEnabled)
                         {
-                            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiModal = true">
-                                <span>✨</span>
-                                <span>Genera con AI</span>
-                            </button>
+                            @if (ModelManager.CurrentStatus == AiModelReadinessStatus.Ready)
+                            {
+                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiModal = true">
+                                    <span>✨</span>
+                                    <span>Genera con AI</span>
+                                </button>
+                            }
+                            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
+                            {
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Download del modello AI in corso">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    <span>Download AI (@(ModelManager.CurrentProgress.Percentage.ToString("0"))%)</span>
+                                </button>
+                            }
+                            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentStatus == AiModelReadinessStatus.Checking)
+                            {
+                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Verifica modello in corso">
+                                    <span class="spinner-border spinner-border-sm" role="status"></span>
+                                    <span>Verifica AI...</span>
+                                </button>
+                            }
+                            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error)
+                            {
+                                <button type="button" class="btn btn-outline-warning btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="RetryModelDownloadAsync" title="@(ModelManager.CurrentProgress?.ErrorMessage ?? "Errore modello AI")">
+                                    <span>⚠️</span>
+                                    <span>Riprova AI</span>
+                                </button>
+                            }
                         }
                     </div>
                     <div class="card-body">
@@ -239,6 +265,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        ModelManager.OnStatusChanged += OnModelStatusChanged;
+
         try
         {
             IsAiEnabled = await AiConfigService.IsAiEnabledAsync();
@@ -249,6 +277,16 @@ else
         }
 
         await LoadDataAsync();
+    }
+
+    private void OnModelStatusChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RetryModelDownloadAsync()
+    {
+        await ModelManager.EnsureActiveModelReadyAsync(forceDownload: true);
     }
 
     private async Task ApplyAiGeneratedText(CardAiGenerationResultDto result)
@@ -618,5 +656,10 @@ else
         {
             Navigation.NavigateTo("/cards");
         }
+    }
+
+    public void Dispose()
+    {
+        ModelManager.OnStatusChanged -= OnModelStatusChanged;
     }
 }

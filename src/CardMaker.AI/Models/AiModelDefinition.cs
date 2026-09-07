@@ -1,7 +1,8 @@
 ﻿namespace CardMaker.AI.Models;
 
 /// <summary>
-/// Definizione immutabile dei metadati di un modello GGUF supportato da CardMaker.AI.
+/// Definizione immutabile dei metadati di un modello GGUF supportato da CardMaker.AI,
+/// comprendente parametri di inferenza, requisiti hardware e coordinate per il download e la validazione.
 /// </summary>
 public sealed record AiModelDefinition(
     string Key,
@@ -12,5 +13,10 @@ public sealed record AiModelDefinition(
     string Quantization,
     string Family,
     string DownloadUrl,
+    string DownloadUrlDirect,
+    long ExpectedSizeBytes,
     string Description,
-    int DefaultContextSize = 2048);
+    int DefaultContextSize = 2048,
+    string? ExpectedSha256 = null,
+    long MinFreeDiskSpaceBytes = 0,
+    string Version = "1.0");

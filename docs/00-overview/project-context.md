@@ -31,12 +31,13 @@ Il principio architetturale fondante è:
   - **Web**: host multiutente **ASP.NET Core / Blazor Server** con registrazione a invito, protezione CSP restrittiva e rate limiting.
 - Generatori procedurali di segnaposto grafici e glifi SVG/Skia (simboli energia Pokémon e mana MTG).
 - Esportazione in formato **PNG**, **JPEG** e **PDF** a 600 DPI, fronte singolo o fronte/retro combinato.
+- **Motore AI Generativo Locale (CardMaker.AI)**: generazione di titoli, descrizioni ed effetti per carte via `llama.cpp` (modelli Google Gemma quantizzati Q4_K_M) con inferenza 100% on-device e download automatico con resume all'avvio.
 
 ### Out of Scope (Attuale)
 - Generazione massiva/batch automatizzata da fogli CSV/Excel.
 - Social network, galleria pubblica, marketplace o condivisione tra account.
 - Motore di regole di gioco, simulatore di partite, deck building o calcolo statistiche.
-- Generazione automatica di artwork tramite modelli di intelligenza artificiale.
+- Generazione automatica di artwork/immagini tramite modelli di intelligenza artificiale (CardMaker.AI supporta attualmente testo/lore).
 - App mobile nativa (iOS/Android).
 - Preparazione per stampa offset commerciale in quadricromia CMYK o crocini di registro manuali (output rigorosamente sRGB tipografico).
 
@@ -50,10 +51,12 @@ graph TD
     UI --> CONTR[CardMaker.Contracts<br/>Layout JSON, Geometry, AST]
     APP --> DOM[CardMaker.Domain<br/>Entità EF Core, Aggregati, Identity]
     APP --> CONTR
+    APP --> AI[CardMaker.AI<br/>llama.cpp, LLamaSharp, Gemma]
     REND[CardMaker.Rendering<br/>SkiaSharp, TextEngine, Painters] --> CONTR
     INFRA[CardMaker.Infrastructure<br/>EF Core SQLite, AssetStore, Seeding] --> APP
     INFRA --> DOM
     INFRA --> REND
+    INFRA --> AI
     DESK[CardMaker.Desktop<br/>Photino.Blazor Host] --> UI
     DESK --> INFRA
     WEB[CardMaker.Web<br/>ASP.NET Core Kestrel Host] --> UI
@@ -61,13 +64,14 @@ graph TD
 ```
 
 1. **CardMaker.Domain**: Aggregati di dominio (`Card`, `Game`, `CardType`, `CardTemplate`, `Asset`, `FontAsset`, `Invitation`, `AuditLogEntry`).
-2. **CardMaker.Contracts**: Modello geometrico universale (`CardGeometry`), AST condizionale (`ConditionOps`, `ConditionGroup`), schema layout (`CardTemplateLayout`) e binder (`ValueBinder`).
-3. **CardMaker.Application**: Interfacce di servizio (*Ports*), logica applicativa, validatori (`UploadValidator`), seeder e gestione valori derivati (`CardDerivedValuesService`).
-4. **CardMaker.Rendering**: Motore grafico puro SkiaSharp. Include `CardRenderer` decomposto in 6 `ILayerPainter`, `TextEngine` con auto-fit e centraggio ottico su `CapHeight`, generatori procedurali e `PdfExporter`.
-5. **CardMaker.Infrastructure**: Implementazione persistenza (EF Core SQLite con WAL), asset store content-addressed (SHA-256), font catalog e snapshot database.
-6. **CardMaker.UI**: Libreria di componenti Razor (RCL) condivisa tra Web e Desktop, contenente pagine utente, studio template e token CSS del Design System.
-7. **CardMaker.Desktop**: Host desktop leggero multipiattaforma basato su Photino.Blazor con configurazione percorsi di sistema cross-platform.
-8. **CardMaker.Web**: Host web Kestrel con middleware di sicurezza, rate limiting sliding window e header CSP conformi.
+2. **CardMaker.Contracts**: Modello geometrico universale (`CardGeometry`), AST condizionale (`ConditionOps`, `ConditionGroup`), schema layout (`CardTemplateLayout`) e contratti DTO/AI.
+3. **CardMaker.Application**: Interfacce di servizio (*Ports*), logica applicativa, validatori (`UploadValidator`), coordinatori AI (`IAiModelManager`, `ICardTextGenerationService`).
+4. **CardMaker.AI**: Motore di inferenza locale on-device basato su `llama.cpp` e `LLamaSharp` per modelli Google Gemma quantizzati GGUF.
+5. **CardMaker.Rendering**: Motore grafico puro SkiaSharp. Include `CardRenderer` decomposto in 6 `ILayerPainter`, `TextEngine` con auto-fit e centraggio ottico su `CapHeight`, generatori procedurali e `PdfExporter`.
+6. **CardMaker.Infrastructure**: Implementazione persistenza (EF Core SQLite con WAL), asset store content-addressed (SHA-256), font catalog, downloader modelli con resume HTTP Range (`AiModelDownloader`) e snapshot database.
+7. **CardMaker.UI**: Libreria di componenti Razor (RCL) condivisa tra Web e Desktop, contenente pagine utente, studio template, banner e dialoghi AI, e token CSS del Design System.
+8. **CardMaker.Desktop**: Host desktop leggero multipiattaforma basato su Photino.Blazor con configurazione percorsi di sistema cross-platform e startup check AI.
+9. **CardMaker.Web**: Host web Kestrel con middleware di sicurezza, rate limiting sliding window e header CSP conformi.
 
 ---
 
@@ -91,15 +95,16 @@ CardMaker.slnx
 ├── src/
 │   ├── CardMaker.Domain/          # Livello più interno: entità, enum e costrutti di dominio
 │   ├── CardMaker.Contracts/       # DTO, layout JSON, geometrie millimetriche e AST
-│   ├── CardMaker.Application/     # Contratti dei servizi applicativi, validazione, seeding
+│   ├── CardMaker.Application/     # Contratti dei servizi applicativi, validazione, seeding, AI
 │   ├── CardMaker.Rendering/       # Motore di disegno SkiaSharp, Strategy Painters, TextEngine
-│   ├── CardMaker.Infrastructure/  # EF Core, SQLite, filesystem storage SHA-256, seeder grafi
-│   ├── CardMaker.UI/              # Razor Class Library con tutti i componenti grafici e stili
+│   ├── CardMaker.Infrastructure/  # EF Core, SQLite, filesystem storage SHA-256, seeder, downloader AI
+│   ├── CardMaker.AI/              # Motore AI locale, binding llama.cpp nativi, registri modelli Gemma
+│   ├── CardMaker.UI/              # Razor Class Library con tutti i componenti grafici, stili e banner AI
 │   ├── CardMaker.Desktop/         # Host Photino.Blazor per Linux, Windows e macOS
 │   └── CardMaker.Web/             # Host ASP.NET Core per pubblicazione web
 ├── tests/
 │   ├── CardMaker.Rendering.Tests/   # 107 test: geometrie, rasterizzazione, auto-fit, regressione
-│   └── CardMaker.Application.Tests/ # 93 test: lifecycle, servizi, storage, hardening, smoke DI
+│   └── CardMaker.Application.Tests/ # 127 test: lifecycle, servizi, storage, hardening, AI (downloader, manager, prompt)
 ├── scripts/                       # Script di automazione (generazione asset branding)
 └── docs/                          # Knowledge Base centrale di documentazione
 ```
@@ -112,6 +117,8 @@ CardMaker.slnx
 |---|---|---|
 | `SkiaSharp` | 4.151.1 | Rendering grafico 2D hardware-accelerated, export PNG, JPG, PDF |
 | `SkiaSharp.HarfBuzz` | 4.151.1 | Modellazione tipografica complessa e misurazione glifi |
+| `LLamaSharp` | 0.27.0 | Binding C# e astrazione per motore di inferenza `llama.cpp` |
+| `LLamaSharp.Backend.Cpu` | 0.27.0 | Libreria nativa precompilata `llama.cpp` per esecuzione su CPU |
 | `Microsoft.EntityFrameworkCore.Sqlite` | 10.0.11 | ORM e persistenza relazionale SQLite |
 | `Microsoft.AspNetCore.Identity.EntityFrameworkCore` | 10.0.11 | Gestione utenti, ruoli e token di autenticazione |
 | `Photino.Blazor` | 4.0.13 | Shell desktop cross-platform nativa senza overhead Node/Electron |
@@ -172,9 +179,9 @@ CardMaker.slnx
 
 ## 12. Testing
 
-- **Copertura Completa**: **200 test automatizzati** eseguiti con `dotnet test CardMaker.slnx`:
+- **Copertura Completa**: **234 test automatizzati** eseguiti con `dotnet test CardMaker.slnx`:
   - **`CardMaker.Rendering.Tests` (107 test)**: validazione geometrica millimetrica, mapping pixel a 150/300/600 DPI, test di regressione del `TextEngine`, rasterizzazione strategy painters, token parsing `{sym:...}`.
-  - **`CardMaker.Application.Tests` (93 test)**: ciclo di vita carte E2E, seeder multi-gioco, filtri di sicurezza upload, storage content-addressed, smoke test di dependency injection per host Desktop e Web.
+  - **`CardMaker.Application.Tests` (127 test)**: ciclo di vita carte E2E, seeder multi-gioco, filtri di sicurezza upload, storage content-addressed, smoke test di dependency injection per host Desktop e Web, oltre alla suite completa AI (downloader HTTP Range resume, manager, prompt/JSON sanitization, lifecycle).
 - **Zero Warnings**: Configurazione `TreatWarningsAsErrors = true` applicata a tutta la solution.
 
 ---

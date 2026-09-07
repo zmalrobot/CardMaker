@@ -2,7 +2,7 @@
 
 Formato: **contesto → decisione → conseguenze**. Le decisioni superate non si cancellano, si marcano con stato `Superata`.
 
-38 ADR totali (ADR-001 → ADR-038). Suddivisi in 4 file per leggibilità.
+39 ADR totali (ADR-001 → ADR-039). Suddivisi in 5 file per leggibilità.
 
 ---
 
@@ -47,6 +47,8 @@ Formato: **contesto → decisione → conseguenze**. Le decisioni superate non s
 | [ADR-036](adr-031-to-038.md#adr-036) | Disattivazione Verbosity IPC Photino e Logging Strutturato Sintetico | Accettata | F13 |
 | [ADR-037](adr-031-to-038.md#adr-037) | Ottimizzazione Asincrona UI 60 FPS e Hardware Acceleration per Blazor Desktop/Web | Accettata | F13 |
 | [ADR-038](adr-031-to-038.md#adr-038) | Transizioni di Pagina Fluide, Feedback Tattile 0ms e Barra di Progresso Reattiva | Accettata | F13 |
+| [ADR-039](adr-039.md#adr-039) | Motore AI Locale CardMaker.AI, llama.cpp, Gestione Modelli e Download Automatico | Accettata | F14 |
 
 > **Nota:** ADR-033 non esiste — la numerazione salta da ADR-032 a ADR-034.
+
 

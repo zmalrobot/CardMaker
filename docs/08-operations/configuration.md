@@ -36,9 +36,27 @@ I valori di configurazione vengono caricati con il seguente ordine di priorità 
   }
 }
 ```
-* **Significato**: Directory radice per l'archiviazione del database, degli asset binari content-addressed e dei font.
+* **Significato**: Directory radice per l'archiviazione del database (`CardMaker.db`), degli asset binari content-addressed (`assets/`), dei font (`fonts/`), dei modelli AI GGUF (`models/`) e della configurazione AI locale (`ai-settings.json`).
 * **Comportamento Desktop**: Nell'host `CardMaker.Desktop`, se non specificata, viene determinata automaticamente da `DesktopPathResolver` puntando alla cartella dati applicativa standard dell'utente (`~/.local/share/CardMaker`, `%LOCALAPPDATA%\CardMaker`, `~/Library/Application Support/CardMaker`).
 * **Variabile d'ambiente equivalente**: `Storage__DataRoot`.
+
+### Configurazione AI Locale (`ai-settings.json`)
+La configurazione del motore generativo `CardMaker.AI` è persistita automaticamente nel file `<Storage:DataRoot>/ai-settings.json`:
+```json
+{
+  "Enabled": true,
+  "SelectedModelId": "gemma-2-2b",
+  "Temperature": 0.7,
+  "MaxTokens": 256,
+  "ContextTokens": 2048,
+  "AutoDownloadOnStartup": true,
+  "ThreadCount": 4
+}
+```
+* `Enabled`: abilita/disabilita l'integrazione AI in tutta l'applicazione.
+* `SelectedModelId`: modello attivo tra quelli supportati (`gemma-2-2b`, `gemma-3-4b`, `gemma-2-9b`, `gemma-2-27b`).
+* `AutoDownloadOnStartup`: avvia il download asincrono in background all'avvio se il file `.gguf` non è ancora presente in `<Storage:DataRoot>/models/`.
+* `ThreadCount`: numero di thread CPU dedicati all'inferenza `llama.cpp` (predefinito pari al numero di core fisici disponibili).
 
 ### `Bootstrap` (Inizializzazione Amministratore)
 ```json

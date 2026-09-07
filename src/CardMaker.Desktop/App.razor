@@ -71,6 +71,20 @@ else
                 await dbInitializer.InitializeAsync();
             }
 
+            // Avvio asincrono non bloccante della verifica/download del modello AI in background
+            var aiModelManager = ServiceProvider.GetRequiredService<CardMaker.Application.Ai.IAiModelManager>();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await aiModelManager.EnsureActiveModelReadyAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CardMaker AI] Errore startup: {ex.Message}");
+                }
+            });
+
             _statusText = "Pronto!";
             StateHasChanged();
             await Task.Delay(200);

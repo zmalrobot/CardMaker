@@ -1,4 +1,4 @@
-> [!CAUTION]
+﻿> [!CAUTION]
 > ## ⚠️ ATTENZIONE: REPOSITORY DI TEST PER GEMINI 3.8 FLASH ⚠️
 >
 > **QUESTA REPOSITORY È UTILIZZATA ESCLUSIVAMENTE COME TEST PER LE ABILITÀ E LE CAPACITÀ DI GEMINI 3.8 FLASH.**
@@ -14,7 +14,7 @@
 
 **CardMaker** è una piattaforma professionale *data-driven* per la generazione, composizione, rendering e stampa di carte da gioco collezionabili (TCG).
 
-Il progetto è architettato per supportare nativamente molteplici giochi di carte (TCG standard e giapponesi), con pipeline di rendering tipografico ad altissima precisione basata su **SkiaSharp** e conformità agli standard tipografici industriali di bleed, trim, safe zone e risoluzione (150 / 300 / 600 DPI).
+Il progetto è architettato per supportare nativamente molteplici giochi di carte (TCG standard e giapponesi), con pipeline di rendering tipografico ad altissima precisione basata su **SkiaSharp**, motore di inferenza AI locale basato su **llama.cpp** e conformità agli standard tipografici industriali di bleed, trim, safe zone e risoluzione (150 / 300 / 600 DPI).
 
 ---
 
@@ -45,31 +45,20 @@ $$\text{Pixel} = \left\lfloor \frac{\text{Millimetri} \times \text{DPI}}{25.4} +
 
 ---
 
-## 🖼️ Requisiti degli Asset Grafici
+## 🤖 Generazione Titolo & Descrizione con AI Locale (`CardMaker.AI`)
 
-Tutti gli asset grafici originali sono di proprietà dei rispettivi autori. L'applicazione non distribuisce materiale protetto da copyright ed è dotata di generatori procedurali di frame e simboli segnaposto (ADR-010).
+CardMaker integra un motore di intelligenza artificiale locale e privato, **completamente offline** e senza dipendenze cloud o invio di dati all'esterno:
 
-### Formato File
-- **Immagini Frame e Simboli**: Formato PNG a 24 o 32 bit con canale Alpha trasparente (RGBA). Nessun profilo colore CMYK non standard incorporato.
-- **Finestra Artwork**: I frame devono avere la finestra dedicata all'illustrazione con canale trasparente al 100% (Alpha = 0).
-- **Font**: Formati TrueType (`.ttf`) e OpenType (`.otf`). I font web `.woff2` non sono supportati dal motore di rendering e vengono rifiutati.
-
----
-
-## 🔣 Sintassi Inline dei Simboli
-
-I campi di testo (come le descrizioni delle abilità, gli effetti e i costi di mana) supportano l'incorporamento dinamico dei glifi grafici tramite token:
-
-```
-{sym:<set-key>.<symbol-key>}
-```
-
-### Esempi Pratici
-- **Yu-Gi-Oh!**: `{sym:attributes.dark}`, `{sym:spell-properties.quick-play}`, `{sym:stars.level}`
-- **Pokémon**: `{sym:energies.fire}`, `{sym:energies.water}`, `{sym:energies.lightning}`
-- **Magic: The Gathering**: `{sym:mana.tap}`, `{sym:mana.w}`, `{sym:mana.u}`, `{sym:mana.b}`, `{sym:mana.r}`, `{sym:mana.g}`
-
-Il motore tipografico misura l'altezza ottica (*CapHeight*) del font corrente e centra verticalmente i glifi con offset geometrico pari a zero.
+- 🧠 **Motore llama.cpp nativo**: Basato su `LLamaSharp` (0.27.0) con backend CPU ottimizzato per Windows (`llama.dll`) e Linux (`libllama.so`).
+- 🖥️ **Rilevamento Hardware Automatico**: Seleziona automaticamente il modello ottimale in base alla RAM fisica del computer:
+  - **4 GB RAM**: Google Gemma 2 2B Instruct (`Q4_K_M`) — compatto e veloce.
+  - **8 GB RAM**: Google Gemma 3 4B Instruct (`Q4_K_M`) — bilanciato e raccomandato.
+  - **16 GB RAM**: Google Gemma 2 9B Instruct (`Q4_K_M`) — alta fedeltà semantica.
+  - **32 GB RAM**: Google Gemma 2 27B Instruct (`Q4_K_M`) — massima creatività e dettaglio.
+- ⚡ **Download Automatico & HTTP Range Resume**: All'avvio dell'applicazione, il modello viene verificato e, se assente, scaricato in background senza bloccare la UI, con supporto per riprendere i download interrotti (`Range: bytes=...`) e validazione automatica del formato GGUF (`GGUF` magic header).
+- 🔒 **Lifecycle & Zero RAM Waste**: Nessun consumo di memoria RAM fino a quando l'utente non apre il modal di generazione nell'editor. I pesi vengono deallocati immediatamente alla chiusura del popup.
+- 🎭 **Stili Narrativi**: Generazione su misura per gioco e stile (Classico, Epico/Mitologico, Oscuro/Gotico, Umoristico/Satirico, Tattico/Tecnico).
+- 🏷️ **Versione nel Footer**: Il footer dell'applicazione espone in tempo reale la versione del motore AI utilizzato (`llama.cpp / CardMaker.AI / LLamaSharp 0.27.0`) e lo stato di prontezza del modello.
 
 ---
 
@@ -81,13 +70,14 @@ Il progetto adotta un'architettura modulare a livelli conforme ai principi della
 CardMaker.slnx
 ├── src/CardMaker.Domain           # Entità del dominio, aggregati (Card, Template, Asset, Game), Identity e Audit
 ├── src/CardMaker.Contracts        # DTO, geometrie (CardGeometry), AST condizionale (ConditionOps) e layout JSON
-├── src/CardMaker.Application      # Interfacce di servizio (Porte), validatori, logica applicativa e seeder
+├── src/CardMaker.Application      # Interfacce di servizio (Porte), validatori, logica applicativa, seeder e AI Manager
+├── src/CardMaker.AI               # Libreria AI: binding llama.cpp (LLamaSharp), registry modelli Gemma, streaming token
 ├── src/CardMaker.Rendering        # Motore SkiaSharp: rasterizzatore, TextEngine (auto-fit), simboli procedurali, PDF
-├── src/CardMaker.Infrastructure   # Implementazioni: EF Core SQLite, IAssetStore, FontCatalog, Seeding
-├── src/CardMaker.UI               # Razor Class Library (RCL): componenti grafici, editor dinamici, TemplateStudio
+├── src/CardMaker.Infrastructure   # Implementazioni: EF Core SQLite, IAssetStore, FontCatalog, AI Downloader resiliente
+├── src/CardMaker.UI               # Razor Class Library (RCL): componenti grafici, editor dinamici, AI modal, banner, Admin
 ├── src/CardMaker.Desktop          # Host nativo multipiattaforma basato su Photino.Blazor (Linux, Windows, macOS)
 ├── src/CardMaker.Web              # Host Web ASP.NET Core: middleware di sicurezza, rate-limiting, healthcheck
-└── tests/                         # Suite automatica: 155 test di unità, integrazione e rendering (100% verdi)
+└── tests/                         # Suite automatica: 234 test di unità, integrazione, AI e rendering (100% verdi)
 ```
 
 ---
@@ -95,6 +85,7 @@ CardMaker.slnx
 ## ✨ Funzionalità Principali
 
 - 🎴 **Supporto Multi-Gioco Flessibile**: Gestione simultanea di giochi diversi con geometrie, frame e formati di testo dedicati (Yu-Gi-Oh!, Pokémon TCG, Magic: The Gathering).
+- 🤖 **Assistente Creativo AI Integrato**: Generazione assistita di nomi, abilità, regole e descrizioni TCG direttamente nell'editor con anteprima in tempo reale.
 - ⚡ **Motore di Rendering Dati-Driven (SkiaSharp)**:
   - Generazione di output raster **PNG**, **JPEG** e vettoriali **PDF**.
   - Risoluzioni calibrate: Anteprima rapida a **150 DPI**, stampa ad alta definizione a **300 DPI** e **600 DPI**.
@@ -112,7 +103,7 @@ CardMaker.slnx
   - **Web (ASP.NET Core)**: Modalità multi-utente con registrazione a invito, protezione rate limiting, Content Security Policy restrittiva e snapshot SQLite online (`VACUUM INTO`).
 - 🔕 **Logging Strutturato & Pulito**:
   - Eliminazione totale del rumore di dump IPC Base64 in console (`SetLogVerbosity(0)`).
-  - Log sintetici ad alta leggibilità per operazioni di anteprima, export, gestione carte e caricamento asset (`[Preview]`, `[Export]`, `[Card]`, `[Asset]`).
+  - Log sintetici ad alta leggibilità per anteprima, export, gestione carte, AI e caricamento asset.
 
 ---
 
@@ -155,7 +146,7 @@ Per eseguire l'intera suite di collaudo automatizzata:
 dotnet test
 ```
 
-Attualmente la suite include **200 test** (107 test di rendering/geometria e 93 test applicativi/integrazione), tutti superati con 0 errori e 0 avvisi.
+Attualmente la suite include **234 test** (104 test di rendering/geometria e 130 test applicativi/integrazione/AI), tutti superati con 0 errori e 0 avvisi.
 
 ---
 
@@ -163,7 +154,7 @@ Attualmente la suite include **200 test** (107 test di rendering/geometria e 93 
 
 Il progetto include workflow nativi al 100% per **GitHub Actions**:
 
-- ⚡ **Fast CI (`.github/workflows/ci-fast.yml`)**: Eseguito ad ogni `push` e `pull_request`. Esegue il restore con cache, la compilazione in Release con `TreatWarningsAsErrors=true`, 197 test essenziali (con esclusione dei golden test di rendering locale) e l'audit dei pacchetti NuGet vulnerabili.
+- ⚡ **Fast CI (`.github/workflows/ci-fast.yml`)**: Eseguito ad ogni `push` e `pull_request`. Esegue il restore con cache, la compilazione in Release con `TreatWarningsAsErrors=true`, 231 test essenziali (con esclusione dei golden test di rendering locale) e l'audit dei pacchetti NuGet vulnerabili.
 - 🚀 **Release Pipeline (`.github/workflows/release.yml`)**: Eseguito al push di un tag di versione (`v*`) o tramite avvio manuale (`workflow_dispatch`). Compila ed esporta binari ottimizzati per Windows e Linux, genera i checksum SHA-256 (`SHA256SUMS.txt`) e pubblica automaticamente la GitHub Release:
   - **Windows (x64)**:
     - `CardMaker-<tag>-Windows-Setup-x64.exe` — Installer desktop guidato (compilato con Inno Setup).
@@ -182,10 +173,10 @@ Nella cartella [`docs/`](docs/) è disponibile la knowledge base tecnica complet
 
 - [`docs/README.md`](docs/README.md): Indice generale della documentazione.
 - [`docs/00-overview/project-context.md`](docs/00-overview/project-context.md): Master context document — punto di partenza per nuove sessioni.
+- [`docs/01-architecture/ai-engine.md`](docs/01-architecture/ai-engine.md): Architettura del motore AI locale (llama.cpp, profili Gemma, startup download e resume).
 - [`docs/01-architecture/architecture.md`](docs/01-architecture/architecture.md): Architettura, pipeline di rendering e multi-host.
 - [`docs/03-data/data-model.md`](docs/03-data/data-model.md): Modello dati relazionale e schema JSON dei template.
 - [`docs/09-decisions/README.md`](docs/09-decisions/README.md): Registro delle decisioni architetturali (ADR-001 → ADR-038).
 - [`docs/10-reference/asset-spec.md`](docs/10-reference/asset-spec.md): Specifiche dimensionali per grafici e asset.
 - [`docs/02-development/dev-guide.md`](docs/02-development/dev-guide.md): Guida per sviluppatori, configurazione e rotte applicative.
 - [`docs/02-development/resume-prompt.md`](docs/02-development/resume-prompt.md): Prompt di ripristino contesto rapido per nuove sessioni AI.
-

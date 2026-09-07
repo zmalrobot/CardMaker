@@ -144,3 +144,51 @@ ls -la ~/.local/share/CardMaker/
 
 **Soluzione:** Se i font alias mancano, forzare il re-seeding eliminando il database e riavviando.
 
+---
+
+## 11. Errore Git: `fatal: .git/index: index file smaller than expected`
+
+**Sintomo:** VS Code o la console Git restituiscono ripetutamente:
+```bash
+> git status -z -uall
+fatal: .git/index: index file smaller than expected
+```
+
+**Causa:**
+1. L'estensione Git di VS Code esegue periodicamente controlli di stato con flag profondo `-uall` (`--untracked-files=all`).
+2. Per verificare lo stato in modo transazionale, Git scrive un file temporaneo `.git/index.lock` e poi esegue una `MoveFileEx` atomica per sostituire `.git/index`.
+3. Su **Windows NTFS**, a differenza dei sistemi POSIX, se un processo esterno ha un handle aperto sul file (anche solo in lettura o senza flag `FILE_SHARE_DELETE`), la sostituzione atomica fallisce. I tipici processi concorrenti sono:
+   - **Windows Defender** (scansione in tempo reale dei file generati da `dotnet build`/`test` o del file `index` appena toccato);
+   - Il file watcher dell'IDE che controlla le cartelle `bin/` e `obj/`;
+   - L'indicizzatore di ricerca di Windows.
+4. Quando la sostituzione fallisce a metà, Git tronca il file `.git/index` a **0 byte**. All'invocazione successiva, Git richiede un header minimo di 12 byte (`DIRC` + versione + conteggio record): trovando 0 byte, fallisce con `index file smaller than expected`.
+
+**Risoluzione Immediata:**
+Ripristinare l'indice dall'`HEAD` corrente (nessun codice o modifica nel working tree va perso):
+```powershell
+Remove-Item -Force .git\index; git reset HEAD
+```
+
+**Prevenzione Permanente:**
+1. **Configurazione Git per Windows** (già applicata al repository):
+   ```bash
+   git config core.trustctime false
+   git config core.preloadindex false
+   git config core.longpaths true
+   ```
+2. **Configurazione VS Code (`.vscode/settings.json`)**:
+   Escludere i watcher su cartelle di build e disattivare la scansione ricorsiva continua con `git.untrackedChanges: "separate"`:
+   ```json
+   {
+     "files.watcherExclude": {
+       "**/.git/objects/**": true,
+       "**/bin/**": true,
+       "**/obj/**": true,
+       "**/data/**": true
+     },
+     "git.untrackedChanges": "separate"
+   }
+   ```
+3. **Esclusione Antivirus (Raccomandata)**:
+   Aggiungere la cartella `.git` o l'intera directory del repository `CardMaker` alle esclusioni di scansione in tempo reale di **Windows Defender** (*Sicurezza di Windows* → *Protezione da virus e minacce* → *Impostazioni di protezione da virus e minacce* → *Esclusioni*).
+

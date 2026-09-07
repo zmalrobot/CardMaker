@@ -24,7 +24,8 @@ Knowledge base tecnica del progetto. Strutturata per essere utile sia agli svilu
 | Documento | Contenuto |
 |---|---|
 | [`architecture.md`](01-architecture/architecture.md) | Clean Architecture, pipeline rendering in 6 fasi, multi-host |
-| [`projects.md`](01-architecture/projects.md) | Tutti i progetti della solution (7 src + 2 test) |
+| [`ai-engine.md`](01-architecture/ai-engine.md) | Motore AI on-device CardMaker.AI, llama.cpp, modelli Gemma, download con resume |
+| [`projects.md`](01-architecture/projects.md) | Tutti i progetti della solution (8 src + 2 test) |
 | [`dependencies.md`](01-architecture/dependencies.md) | Pacchetti NuGet, dipendenze native per OS, strumenti |
 | [`branding.md`](01-architecture/branding.md) | Token CSS, palette, convenzioni UI |
 
@@ -103,11 +104,12 @@ Knowledge base tecnica del progetto. Strutturata per essere utile sia agli svilu
 
 | Documento | Contenuto |
 |---|---|
-| [`README.md`](09-decisions/README.md) | Indice di tutti i 38 ADR |
+| [`README.md`](09-decisions/README.md) | Indice di tutti i 39 ADR |
 | [`adr-001-to-010.md`](09-decisions/adr-001-to-010.md) | ADR-001 → ADR-010 (fondamenta del progetto) |
 | [`adr-011-to-020.md`](09-decisions/adr-011-to-020.md) | ADR-011 → ADR-020 (piattaforme, sicurezza, tipografia) |
 | [`adr-021-to-030.md`](09-decisions/adr-021-to-030.md) | ADR-021 → ADR-030 (layer avanzati, template, design system) |
 | [`adr-031-to-038.md`](09-decisions/adr-031-to-038.md) | ADR-031 → ADR-038 (desktop, hardening, performance UI) |
+| [`adr-039.md`](09-decisions/adr-039.md) | ADR-039 (motore AI locale, llama.cpp, gestione modelli e download) |
 
 ---
 

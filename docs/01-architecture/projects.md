@@ -1,6 +1,6 @@
 # Mappa dei Progetti della Solution
 
-La solution `CardMaker.slnx` è organizzata in 7 progetti applicativi e 2 progetti di collaudo:
+La solution `CardMaker.slnx` è organizzata in 8 progetti applicativi e 2 progetti di collaudo:
 
 ```text
 CardMaker.slnx
@@ -10,6 +10,7 @@ CardMaker.slnx
 │   ├── CardMaker.Application/
 │   ├── CardMaker.Rendering/
 │   ├── CardMaker.Infrastructure/
+│   ├── CardMaker.AI/
 │   ├── CardMaker.UI/
 │   ├── CardMaker.Desktop/
 │   └── CardMaker.Web/
@@ -120,3 +121,15 @@ CardMaker.slnx
   - Middleware di sicurezza: Content Security Policy restrittiva, X-Frame-Options, X-Content-Type-Options.
   - Endpoint `/healthz` per health check di sistema.
   - `WebAssetUriService`: controller e mapping per la fruizione degli asset via HTTP.
+
+---
+
+## 9. `CardMaker.AI`
+* **Tipo**: Class Library (`Microsoft.NET.Sdk`)
+* **Dipendenze**: `CardMaker.Contracts`, `LLamaSharp` (0.27.0), `LLamaSharp.Backend.Cpu` (0.27.0).
+* **Ruolo**: Motore AI locale basato su `llama.cpp` per inferenza on-device completamente offline.
+* **Contenuti Principali**:
+  - `AiModelRegistry`: registro dei modelli supportati (famiglia Google Gemma: 2B, 4B, 9B, 27B quantizzati Q4_K_M) con soglie minime di RAM e URL diretti Hugging Face.
+  - `AiModelDefinition`: specifica tecnica dei metadati del modello (pesi, quantizzazione, context size, requisiti disco e RAM).
+  - `LlamaEngine`: wrapper incapsulato di `LLamaSharp` e binding nativi CPU `llama.cpp`. Gestisce context, executor e inferenza a ciclo di vita effimero (0 MB RAM a riposo).
+

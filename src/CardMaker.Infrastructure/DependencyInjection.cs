@@ -85,6 +85,9 @@ public static class DependencyInjection
         });
         services.AddSingleton<CardMaker.Application.Ai.IHardwareProfileDetector, CardMaker.Infrastructure.Ai.HardwareProfileDetector>();
         services.AddSingleton<CardMaker.Application.Ai.IAiConfigurationService, CardMaker.Infrastructure.Ai.AiConfigurationService>();
+        services.AddSingleton<CardMaker.Application.Ai.IAiModelDownloader, CardMaker.Infrastructure.Ai.AiModelDownloader>();
+        services.AddSingleton<CardMaker.Application.Ai.IAiModelManager, CardMaker.Application.Ai.AiModelManager>();
+        services.AddHostedService<CardMaker.Infrastructure.Ai.AiModelStartupBackgroundService>();
         services.AddTransient<CardMaker.AI.Abstractions.ITextGenerationEngine, CardMaker.AI.Engines.LlamaCppTextEngine>();
         services.AddScoped<CardMaker.Application.Ai.ICardTextGenerationService, CardMaker.Application.Ai.CardTextGenerationService>();
 
