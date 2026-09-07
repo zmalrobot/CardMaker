@@ -1,4 +1,4 @@
-﻿namespace CardMaker.AI.Models;
+namespace CardMaker.AI.Models;
 
 /// <summary>
 /// Registro centralizzato e immutabile dei profili di modelli AI ufficialmente supportati per inferenza locale.
@@ -11,14 +11,14 @@ public static class AiModelRegistry
     public static readonly AiModelDefinition Gemma2B = new(
         Key: "gemma-2-2b",
         DisplayName: "Gemma 2 2B Instruct (Q4_K_M)",
-        FileName: "gemma-2-2b-it.Q4_K_M.gguf",
+        FileName: "gemma-2-2b-it-Q4_K_M.gguf",
         RecommendedRamGb: 4,
         EstimatedMemoryUsageGb: 1.8,
         Quantization: "Q4_K_M",
         Family: "Gemma",
         DownloadUrl: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF",
-        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it.Q4_K_M.gguf",
-        ExpectedSizeBytes: 1_714_290_000L,
+        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf",
+        ExpectedSizeBytes: 1_708_582_752L,
         Description: "Ottimizzato per macchine a basse risorse (>= 4 GB RAM). Veloce e compatto.",
         DefaultContextSize: 2048,
         MinFreeDiskSpaceBytes: 2_500_000_000L);
@@ -26,47 +26,47 @@ public static class AiModelRegistry
     public static readonly AiModelDefinition Gemma4B = new(
         Key: "gemma-3-4b",
         DisplayName: "Gemma 3 4B Instruct (Q4_K_M)",
-        FileName: "gemma-3-4b-it.Q4_K_M.gguf",
+        FileName: "google_gemma-3-4b-it-Q4_K_M.gguf",
         RecommendedRamGb: 8,
         EstimatedMemoryUsageGb: 3.2,
         Quantization: "Q4_K_M",
         Family: "Gemma",
-        DownloadUrl: "https://huggingface.co/bartowski/gemma-3-4b-it-GGUF",
-        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-3-4b-it-GGUF/resolve/main/gemma-3-4b-it.Q4_K_M.gguf",
-        ExpectedSizeBytes: 3_450_000_000L,
+        DownloadUrl: "https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF",
+        DownloadUrlDirect: "https://huggingface.co/bartowski/google_gemma-3-4b-it-GGUF/resolve/main/google_gemma-3-4b-it-Q4_K_M.gguf",
+        ExpectedSizeBytes: 2_489_758_112L,
         Description: "Profilo bilanciato consigliato per macchine standard (>= 8 GB RAM). Eccellente aderenza al formato JSON.",
         DefaultContextSize: 2048,
-        MinFreeDiskSpaceBytes: 4_500_000_000L);
+        MinFreeDiskSpaceBytes: 4_000_000_000L);
 
     public static readonly AiModelDefinition Gemma9B = new(
         Key: "gemma-2-9b",
         DisplayName: "Gemma 2 9B Instruct (Q4_K_M)",
-        FileName: "gemma-2-9b-it.Q4_K_M.gguf",
+        FileName: "gemma-2-9b-it-Q4_K_M.gguf",
         RecommendedRamGb: 16,
         EstimatedMemoryUsageGb: 6.2,
         Quantization: "Q4_K_M",
         Family: "Gemma",
         DownloadUrl: "https://huggingface.co/bartowski/gemma-2-9b-it-GGUF",
-        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it.Q4_K_M.gguf",
-        ExpectedSizeBytes: 5_800_000_000L,
+        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q4_K_M.gguf",
+        ExpectedSizeBytes: 5_761_057_728L,
         Description: "Profilo avanzato ad alta fedeltà semantica (>= 16 GB RAM). Consigliato per testi ricchi ed elaborati.",
         DefaultContextSize: 4096,
-        MinFreeDiskSpaceBytes: 7_000_000_000L);
+        MinFreeDiskSpaceBytes: 8_000_000_000L);
 
     public static readonly AiModelDefinition Gemma27B = new(
         Key: "gemma-2-27b",
         DisplayName: "Gemma 2 27B Instruct (Q4_K_M)",
-        FileName: "gemma-2-27b-it.Q4_K_M.gguf",
+        FileName: "gemma-2-27b-it-Q4_K_M.gguf",
         RecommendedRamGb: 32,
         EstimatedMemoryUsageGb: 17.5,
         Quantization: "Q4_K_M",
         Family: "Gemma",
         DownloadUrl: "https://huggingface.co/bartowski/gemma-2-27b-it-GGUF",
-        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-2-27b-it-GGUF/resolve/main/gemma-2-27b-it.Q4_K_M.gguf",
-        ExpectedSizeBytes: 16_200_000_000L,
+        DownloadUrlDirect: "https://huggingface.co/bartowski/gemma-2-27b-it-GGUF/resolve/main/gemma-2-27b-it-Q4_K_M.gguf",
+        ExpectedSizeBytes: 16_645_381_632L,
         Description: "Massima potenza e creatività per workstation e desktop potenti (>= 32 GB RAM).",
         DefaultContextSize: 4096,
-        MinFreeDiskSpaceBytes: 18_000_000_000L);
+        MinFreeDiskSpaceBytes: 24_000_000_000L);
 
     private static readonly AiModelDefinition[] AllModelsInternal =
     [

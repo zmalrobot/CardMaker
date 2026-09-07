@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Models;
+using CardMaker.AI.Models;
 using CardMaker.Contracts.Ai;
 using CardMaker.Infrastructure.Ai;
 using Microsoft.Extensions.Options;
@@ -87,7 +87,7 @@ public sealed class AiConfigurationServiceTests : IDisposable
 
         var path = await _configService.GetActiveModelPathAsync();
 
-        Assert.EndsWith("gemma-2-2b-it.Q4_K_M.gguf", path, StringComparison.OrdinalIgnoreCase);
+        Assert.EndsWith(AiModelRegistry.Gemma2B.FileName, path, StringComparison.OrdinalIgnoreCase);
         Assert.StartsWith(_modelsDir, path, StringComparison.OrdinalIgnoreCase);
     }
 

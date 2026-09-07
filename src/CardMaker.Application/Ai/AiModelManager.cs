@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Models;
+using CardMaker.AI.Models;
 using CardMaker.Contracts.Ai;
 using Microsoft.Extensions.Logging;
 
@@ -74,9 +74,11 @@ public sealed class AiModelManager : IAiModelManager, IDisposable
 
             var progressReporter = new Progress<AiModelDownloadProgress>(p =>
             {
-                CurrentProgress = p;
-                CurrentStatus = p.State;
-                NotifyStatusChanged();
+                if (CurrentStatus == AiModelReadinessStatus.Downloading)
+                {
+                    CurrentProgress = p;
+                    NotifyStatusChanged();
+                }
             });
 
             SetState(AiModelReadinessStatus.Downloading, "Avvio download del modello...", modelDef);

@@ -24,6 +24,10 @@ public sealed class AiModelDownloader : IAiModelDownloader
     public AiModelDownloader(HttpClient? httpClient = null, ILogger<AiModelDownloader>? logger = null)
     {
         _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+        if (_httpClient.DefaultRequestHeaders.UserAgent.Count == 0)
+        {
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("CardMaker/1.0 (Windows; .NET 10.0)");
+        }
         _logger = logger;
     }
 
@@ -129,6 +133,10 @@ public sealed class AiModelDownloader : IAiModelDownloader
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        if (request.Headers.UserAgent.Count == 0)
+        {
+            request.Headers.UserAgent.ParseAdd("CardMaker/1.0");
+        }
         var isResume = false;
 
         if (existingLength > 0 && (model.ExpectedSizeBytes <= 0 || existingLength < model.ExpectedSizeBytes))
@@ -150,6 +158,21 @@ public sealed class AiModelDownloader : IAiModelDownloader
             }
             existingLength = 0;
             isResume = false;
+        }
+        else if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            throw new HttpRequestException(
+                $"Accesso non autorizzato (HTTP {(int)response.StatusCode}) durante il download del modello '{model.DisplayName}'. " +
+                $"Verificare che il file e repository Hugging Face siano pubblici e privi di restrizioni: {uri}",
+                null,
+                response.StatusCode);
+        }
+        else if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            throw new HttpRequestException(
+                $"File del modello non trovato sul server remoto (HTTP 404): {uri}",
+                null,
+                response.StatusCode);
         }
         else
         {
@@ -351,8 +374,17 @@ public sealed class AiModelDownloader : IAiModelDownloader
         }
     }
 
-    private static bool IsTransientException(Exception ex) =>
-        ex is HttpRequestException ||
-        ex is TimeoutException ||
-        ex is IOException;
+    private static bool IsTransientException(Exception ex)
+    {
+        if (ex is HttpRequestException httpEx)
+        {
+            if (httpEx.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden or HttpStatusCode.NotFound)
+            {
+                return false;
+            }
+            return true;
+        }
+
+        return ex is TimeoutException || ex is IOException;
+    }
 }
