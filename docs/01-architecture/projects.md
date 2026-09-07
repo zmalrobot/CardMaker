@@ -54,10 +54,10 @@ CardMaker.slnx
 * **Dipendenze**: `CardMaker.Domain`, `CardMaker.Contracts`.
 * **Ruolo**: Logica applicativa, porte di servizio (*Port interfaces*) e validazione.
 * **Contenuti Principali**:
-  - Porte di servizio: `ICardService`, `ICardExportService`, `ICardPreviewService`, `IAssetCatalog`, `IFontCatalog`, `IAdminContentService`, `IInvitationService`, `IBackupService`.
+  - Porte di servizio: `ICardService`, `ICardExportService`, `ICardPreviewService`, `IAssetCatalog`, `IFontCatalog`, `IAdminContentService`, `IInvitationService`, `IBackupService`, `IAiModelManager`, `ICardTextGenerationService`, `ICardImageGenerationService`, `IAiConfigurationService`.
   - Servizi di calcolo: `CardDerivedValuesService` (calcolo automatico statistiche e formattazioni di testo specifiche per gioco).
   - Validazione: `UploadValidator` (filtro estensioni consentite, magic bytes immagini e blocco font non conformi come `.woff2`).
-  - Interfacce di astrazione: `IAssetStore`, `IDatabaseSnapshotProvider`, `IFileDownloadService`.
+  - Interfacce di astrazione: `IAssetStore`, `IDatabaseSnapshotProvider`, `IFileDownloadService`, `IAiModelDownloader`.
 
 ---
 
@@ -126,10 +126,12 @@ CardMaker.slnx
 
 ## 9. `CardMaker.AI`
 * **Tipo**: Class Library (`Microsoft.NET.Sdk`)
-* **Dipendenze**: `CardMaker.Contracts`, `LLamaSharp` (0.27.0), `LLamaSharp.Backend.Cpu` (0.27.0).
-* **Ruolo**: Motore AI locale basato su `llama.cpp` per inferenza on-device completamente offline.
+* **Dipendenze**: `CardMaker.Contracts`, `LLamaSharp` (0.27.0), `LLamaSharp.Backend.Cpu` (0.27.0), SkiaSharp.
+* **Ruolo**: Motore AI locale multimodale on-device per generazione testi (LLM) ed artwork/illustrazioni (Diffusione), completamente offline.
 * **Contenuti Principali**:
-  - `AiModelRegistry`: registro dei modelli supportati (famiglia Google Gemma: 2B, 4B, 9B, 27B quantizzati Q4_K_M) con soglie minime di RAM e URL diretti Hugging Face.
-  - `AiModelDefinition`: specifica tecnica dei metadati del modello (pesi, quantizzazione, context size, requisiti disco e RAM).
-  - `LlamaEngine`: wrapper incapsulato di `LLamaSharp` e binding nativi CPU `llama.cpp`. Gestisce context, executor e inferenza a ciclo di vita effimero (0 MB RAM a riposo).
+  - `AiModelRegistry`: registro centralizzato immutabile dei profili di modelli testuali (Google Gemma: 2B, 4B, 9B, 27B) e di diffusione (Stable Diffusion 1.5 Turbo, DreamShaper 8 SD 1.5 LCM, SDXL Lightning 4-Step in formato GGUF), con soglie minime di RAM, parametri di quantizzazione e URL Hugging Face.
+  - `AiModelDefinition`: metadati completi del modello (pesi, step, dimensioni, requisiti disco, RAM e VRAM stimata).
+  - `AiModelCapability`: enum per la classificazione delle capacità (`Text`, `Image`).
+  - `ITextGenerationEngine` & `LlamaCppTextEngine`: astrazione e implementazione inferenza linguistica basata su `llama.cpp` a ciclo di vita effimero (0 MB RAM a riposo).
+  - `IImageGenerationEngine` & `StableDiffusionNativeEngine`: astrazione e implementazione del motore di diffusione text-to-image locale.
 

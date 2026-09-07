@@ -31,13 +31,12 @@ Il principio architetturale fondante è:
   - **Web**: host multiutente **ASP.NET Core / Blazor Server** con registrazione a invito, protezione CSP restrittiva e rate limiting.
 - Generatori procedurali di segnaposto grafici e glifi SVG/Skia (simboli energia Pokémon e mana MTG).
 - Esportazione in formato **PNG**, **JPEG** e **PDF** a 600 DPI, fronte singolo o fronte/retro combinato.
-- **Motore AI Generativo Locale (CardMaker.AI)**: generazione di titoli, descrizioni ed effetti per carte via `llama.cpp` (modelli Google Gemma quantizzati Q4_K_M) con inferenza 100% on-device e download automatico con resume all'avvio.
+- **Motore AI Generativo Locale Multimodale (CardMaker.AI)**: generazione di titoli, descrizioni, statistiche ed effetti per carte via `llama.cpp` (modelli Google Gemma) e generazione di illustrazioni originali (artwork) tramite **Stable Diffusion** (modelli SD 1.5 Turbo, DreamShaper 8, SDXL Lightning in formato GGUF), con inferenza 100% on-device, download automatico con resume e catalogazione immediata delle immagini generate negli asset.
 
 ### Out of Scope (Attuale)
 - Generazione massiva/batch automatizzata da fogli CSV/Excel.
 - Social network, galleria pubblica, marketplace o condivisione tra account.
 - Motore di regole di gioco, simulatore di partite, deck building o calcolo statistiche.
-- Generazione automatica di artwork/immagini tramite modelli di intelligenza artificiale (CardMaker.AI supporta attualmente testo/lore).
 - App mobile nativa (iOS/Android).
 - Preparazione per stampa offset commerciale in quadricromia CMYK o crocini di registro manuali (output rigorosamente sRGB tipografico).
 
@@ -51,7 +50,7 @@ graph TD
     UI --> CONTR[CardMaker.Contracts<br/>Layout JSON, Geometry, AST]
     APP --> DOM[CardMaker.Domain<br/>Entità EF Core, Aggregati, Identity]
     APP --> CONTR
-    APP --> AI[CardMaker.AI<br/>llama.cpp, LLamaSharp, Gemma]
+    APP --> AI[CardMaker.AI<br/>llama.cpp, Gemma, Stable Diffusion GGUF]
     REND[CardMaker.Rendering<br/>SkiaSharp, TextEngine, Painters] --> CONTR
     INFRA[CardMaker.Infrastructure<br/>EF Core SQLite, AssetStore, Seeding] --> APP
     INFRA --> DOM
@@ -65,11 +64,11 @@ graph TD
 
 1. **CardMaker.Domain**: Aggregati di dominio (`Card`, `Game`, `CardType`, `CardTemplate`, `Asset`, `FontAsset`, `Invitation`, `AuditLogEntry`).
 2. **CardMaker.Contracts**: Modello geometrico universale (`CardGeometry`), AST condizionale (`ConditionOps`, `ConditionGroup`), schema layout (`CardTemplateLayout`) e contratti DTO/AI.
-3. **CardMaker.Application**: Interfacce di servizio (*Ports*), logica applicativa, validatori (`UploadValidator`), coordinatori AI (`IAiModelManager`, `ICardTextGenerationService`).
-4. **CardMaker.AI**: Motore di inferenza locale on-device basato su `llama.cpp` e `LLamaSharp` per modelli Google Gemma quantizzati GGUF.
+3. **CardMaker.Application**: Interfacce di servizio (*Ports*), logica applicativa, validatori (`UploadValidator`), coordinatori AI (`IAiModelManager`, `ICardTextGenerationService`, `ICardImageGenerationService`).
+4. **CardMaker.AI**: Motore di inferenza locale on-device per testo e immagini. Include binding `llama.cpp` per modelli Google Gemma e motore per modelli Stable Diffusion in formato GGUF.
 5. **CardMaker.Rendering**: Motore grafico puro SkiaSharp. Include `CardRenderer` decomposto in 6 `ILayerPainter`, `TextEngine` con auto-fit e centraggio ottico su `CapHeight`, generatori procedurali e `PdfExporter`.
 6. **CardMaker.Infrastructure**: Implementazione persistenza (EF Core SQLite con WAL), asset store content-addressed (SHA-256), font catalog, downloader modelli con resume HTTP Range (`AiModelDownloader`) e snapshot database.
-7. **CardMaker.UI**: Libreria di componenti Razor (RCL) condivisa tra Web e Desktop, contenente pagine utente, studio template, banner e dialoghi AI, e token CSS del Design System.
+7. **CardMaker.UI**: Libreria di componenti Razor (RCL) condivisa tra Web e Desktop, contenente pagine utente, studio template, banner e dialoghi AI (testo e immagini), e token CSS del Design System.
 8. **CardMaker.Desktop**: Host desktop leggero multipiattaforma basato su Photino.Blazor con configurazione percorsi di sistema cross-platform e startup check AI.
 9. **CardMaker.Web**: Host web Kestrel con middleware di sicurezza, rate limiting sliding window e header CSP conformi.
 
@@ -179,9 +178,9 @@ CardMaker.slnx
 
 ## 12. Testing
 
-- **Copertura Completa**: **234 test automatizzati** eseguiti con `dotnet test CardMaker.slnx`:
-  - **`CardMaker.Rendering.Tests` (107 test)**: validazione geometrica millimetrica, mapping pixel a 150/300/600 DPI, test di regressione del `TextEngine`, rasterizzazione strategy painters, token parsing `{sym:...}`.
-  - **`CardMaker.Application.Tests` (127 test)**: ciclo di vita carte E2E, seeder multi-gioco, filtri di sicurezza upload, storage content-addressed, smoke test di dependency injection per host Desktop e Web, oltre alla suite completa AI (downloader HTTP Range resume, manager, prompt/JSON sanitization, lifecycle).
+- **Copertura Completa**: **256 test automatizzati** eseguiti con `dotnet test CardMaker.slnx`:
+  - **`CardMaker.Rendering.Tests` (104 test)**: validazione geometrica millimetrica, mapping pixel a 150/300/600 DPI, test di regressione del `TextEngine`, rasterizzazione strategy painters, token parsing `{sym:...}`.
+  - **`CardMaker.Application.Tests` (152 test)**: ciclo di vita carte E2E, seeder multi-gioco, filtri di sicurezza upload, storage content-addressed, smoke test di dependency injection per host Desktop e Web, oltre alla suite completa AI (downloader HTTP Range resume, manager, prompt/JSON sanitization, lifecycle, stili e generazione immagini con registrazione asset).
 - **Zero Warnings**: Configurazione `TreatWarningsAsErrors = true` applicata a tutta la solution.
 
 ---

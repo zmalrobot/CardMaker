@@ -35,18 +35,20 @@ Copia e incolla il blocco sottostante per fornire immediatamente all'assistente 
 Stai lavorando sul progetto "CardMaker", un generatore professionale data-driven di carte collezionabili (TCG) per Yu-Gi-Oh! (classico e Rush Duel), Pokémon TCG e Magic: The Gathering.
 
 Stack e Architettura:
-- .NET 10 (C# 13), Clean Architecture modulare: Domain, Contracts, Application, Rendering, Infrastructure, UI (RCL), Desktop (Photino.Blazor), Web (ASP.NET Core).
+- .NET 10 (C# 13), Clean Architecture modulare: Domain, Contracts, Application, Rendering, Infrastructure, AI, UI (RCL), Desktop (Photino.Blazor), Web (ASP.NET Core).
 - Rendering: SkiaSharp server-side a 150/300/600 DPI, sistema full-bleed master canvas, auto-fit tipografico (shrink/condense), centraggio ottico su CapHeight e simboli procedurali per mana MTG ed energie Pokémon.
+- Motore AI Locale: Generazione testuale (modelli Google Gemma via llama.cpp) e generazione illustrazioni/artwork (modelli Stable Diffusion GGUF), completamente offline con HTTP Range resume all'avvio e catalogazione automatica negli asset SHA-256.
 - Database: SQLite in WAL mode con EF Core. Seeding automatico all'avvio con credenziali admin: admin@cardmaker.local / Admin123!456. In Desktop l'accesso admin è automatico offline.
 - Prestazioni: Rendering asincrono su Task.Run, UI a 60 FPS, verbosità Photino impostata a 0 per azzerare lo spam IPC base64 in console.
-- Test: 200 test automatizzati di unità, integrazione e rendering, tutti verdi (dotnet test CardMaker.slnx).
+- Test: 256 test automatizzati di unità, integrazione, AI e rendering, tutti verdi (dotnet test CardMaker.slnx).
 
 Knowledge Base:
 Prima di iniziare qualsiasi modifica o proporre soluzioni, consulta la documentazione centrale nella cartella `docs/`:
 - `docs/00-overview/project-context.md`: Quadro sintetico e master context.
-- `docs/00-overview/state-and-roadmap.md`: Stato attuale v2 e storico delle fasi F0-F13.
+- `docs/00-overview/state-and-roadmap.md`: Stato attuale v2 e storico delle fasi F0-F15.
 - `docs/01-architecture/architecture.md`: Pipeline di rendering e flussi a livelli.
-- `docs/01-architecture/projects.md`: Descrizione di tutti i 7 progetti della solution.
+- `docs/01-architecture/ai-engine.md`: Motore AI locale multimodale (Gemma, Stable Diffusion, resume, lifecycle).
+- `docs/01-architecture/projects.md`: Descrizione dei 9 progetti della solution.
 - `docs/03-data/data-model.md`: Modello dati, entità e schema JSON dei template.
 - `docs/09-decisions/README.md`: Registro delle 38 decisioni architetturali (ADR).
 - `docs/02-development/dev-guide.md`: Comandi operativi e rotte applicative.

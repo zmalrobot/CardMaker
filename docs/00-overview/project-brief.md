@@ -43,6 +43,7 @@ Aggiungere un nuovo gioco significa semplicemente:
 | **Stampa Professionale** | Solo spazio colore sRGB tipografico, nessun profilo CMYK né crocini di taglio |
 | **Stack** | C# 13, .NET 10, SkiaSharp, SQLite WAL |
 | **Rendering** | Server-side / in-process unificato (stesso motore per anteprima ed export) |
+| **Assistente AI Locale** | Generazione offline on-device di testi (Gemma via llama.cpp) e illustrazioni (Stable Diffusion GGUF) |
 | **Lingua UI** | Italiano |
 
 ---
@@ -52,7 +53,6 @@ Aggiungere un nuovo gioco significa semplicemente:
 - Generazione massiva da file CSV / Excel.
 - Marketplace o condivisione pubblica delle carte.
 - Motore di regole di gioco, simulazione, deck building o playtest.
-- Generazione automatica di artwork tramite intelligenza artificiale.
 - Applicazioni mobile native (iOS / Android).
 - Imposizione tipografica complessa per tipografie commerciali (fogli macchina multi-carta, crocini manuali, CMYK).
 
@@ -64,7 +64,7 @@ Aggiungere un nuovo gioco significa semplicemente:
 2. **Selezione Tipo Carta**: Sceglie la tipologia (es. Mostro Effetto, Fase 1, Creatura).
 3. **Selezione Template**: Sceglie la variante estetica o l'era del frame.
 4. **Specializzazioni**: Seleziona tratti opzionali (Tuner, Toon, Subtype).
-5. **Compilazione Form**: Inserisce titolo, carica e posiziona artwork, scrive effetti con token simboli `{sym:...}` e imposta valori numerici.
+5. **Compilazione Form**: Inserisce manualmente o genera con AI titolo, descrizione ed effetti (coerenti con il tipo carta), carica o genera con AI l'artwork originale (con preset artistici e salvataggio automatico negli asset), scrive effetti con token simboli `{sym:...}` e imposta valori numerici.
 6. **Anteprima Live**: Visualizza in tempo reale il render a 60 FPS debouncato.
 7. **Esportazione**: Scarica il file in formato PNG, JPEG o PDF a 150/300/600 DPI, con o senza abbondanza di stampa (Bleed 2 mm).
 8. **Collezione**: La carta resta salvata nel profilo utente e può essere riaperta, modificata o duplicata.
