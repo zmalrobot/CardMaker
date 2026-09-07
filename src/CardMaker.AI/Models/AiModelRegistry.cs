@@ -68,7 +68,54 @@ public static class AiModelRegistry
         DefaultContextSize: 4096,
         MinFreeDiskSpaceBytes: 24_000_000_000L);
 
-    private static readonly AiModelDefinition[] AllModelsInternal =
+    public static readonly AiModelDefinition Sd15Turbo = new(
+        Key: "sd-1.5-turbo",
+        DisplayName: "Stable Diffusion 1.5 Turbo (Q4_K_M)",
+        FileName: "sd-1.5-turbo-Q4_K_M.gguf",
+        RecommendedRamGb: 4,
+        EstimatedMemoryUsageGb: 1.2,
+        Quantization: "Q4_K_M",
+        Family: "StableDiffusion",
+        DownloadUrl: "https://huggingface.co/bartowski/sd-1.5-turbo-GGUF",
+        DownloadUrlDirect: "https://huggingface.co/bartowski/sd-1.5-turbo-GGUF/resolve/main/sd-1.5-turbo-Q4_K_M.gguf",
+        ExpectedSizeBytes: 890_000_000L,
+        Description: "Leggero e fulmineo (1-4 step). Consigliato per macchine a basse risorse (>= 4 GB RAM) ed esecuzione CPU.",
+        DefaultSteps: 4,
+        MinFreeDiskSpaceBytes: 1_500_000_000L);
+
+    public static readonly AiModelDefinition DreamShaper8 = new(
+        Key: "dreamshaper-8",
+        DisplayName: "DreamShaper 8 SD 1.5 (Q8_0)",
+        FileName: "dreamshaper-8-Q8_0.gguf",
+        RecommendedRamGb: 8,
+        EstimatedMemoryUsageGb: 2.1,
+        Quantization: "Q8_0",
+        Family: "StableDiffusion",
+        DownloadUrl: "https://huggingface.co/bartowski/dreamshaper-8-GGUF",
+        DownloadUrlDirect: "https://huggingface.co/bartowski/dreamshaper-8-GGUF/resolve/main/dreamshaper-8-Q8_0.gguf",
+        ExpectedSizeBytes: 1_850_000_000L,
+        Description: "Stile artistico fantasy/TCG eccellente. Consigliato per configurazioni standard (>= 8 GB RAM).",
+        DefaultSteps: 15,
+        MinFreeDiskSpaceBytes: 3_000_000_000L);
+
+    public static readonly AiModelDefinition SdxlLightning = new(
+        Key: "sdxl-lightning-4step",
+        DisplayName: "SDXL Lightning 4-Step (Q4_K_M)",
+        FileName: "sdxl-lightning-4step-Q4_K_M.gguf",
+        RecommendedRamGb: 16,
+        EstimatedMemoryUsageGb: 2.8,
+        Quantization: "Q4_K_M",
+        Family: "StableDiffusionXL",
+        DownloadUrl: "https://huggingface.co/bartowski/sdxl-lightning-4step-GGUF",
+        DownloadUrlDirect: "https://huggingface.co/bartowski/sdxl-lightning-4step-GGUF/resolve/main/sdxl-lightning-4step-Q4_K_M.gguf",
+        ExpectedSizeBytes: 2_200_000_000L,
+        Description: "Qualita elevata e risoluzione nativa 768x768 in 4 step. Consigliato per macchine con >= 16 GB RAM.",
+        DefaultSteps: 4,
+        DefaultWidth: 768,
+        DefaultHeight: 768,
+        MinFreeDiskSpaceBytes: 4_000_000_000L);
+
+    private static readonly AiModelDefinition[] TextModelsInternal =
     [
         Gemma2B,
         Gemma4B,
@@ -76,7 +123,29 @@ public static class AiModelRegistry
         Gemma27B
     ];
 
+    private static readonly AiModelDefinition[] ImageModelsInternal =
+    [
+        Sd15Turbo,
+        DreamShaper8,
+        SdxlLightning
+    ];
+
+    private static readonly AiModelDefinition[] AllModelsInternal =
+    [
+        Gemma2B,
+        Gemma4B,
+        Gemma9B,
+        Gemma27B,
+        Sd15Turbo,
+        DreamShaper8,
+        SdxlLightning
+    ];
+
     public static IReadOnlyList<AiModelDefinition> GetAllModels() => AllModelsInternal;
+
+    public static IReadOnlyList<AiModelDefinition> GetTextModels() => TextModelsInternal;
+
+    public static IReadOnlyList<AiModelDefinition> GetImageModels() => ImageModelsInternal;
 
     public static AiModelDefinition? FindByKey(string key)
     {
@@ -97,7 +166,7 @@ public static class AiModelRegistry
     }
 
     /// <summary>
-    /// Seleziona il profilo di modello consigliato in base alla RAM fisica totale rilevata (in byte).
+    /// Seleziona il profilo di modello testo consigliato in base alla RAM fisica totale rilevata (in byte).
     /// </summary>
     public static AiModelDefinition ResolveRecommendedModel(long totalPhysicalRamBytes)
     {
@@ -123,5 +192,25 @@ public static class AiModelRegistry
 
         // Default a 4 GB (o meno)
         return Gemma2B;
+    }
+
+    /// <summary>
+    /// Seleziona il profilo di modello immagini consigliato in base alla RAM fisica totale rilevata (in byte).
+    /// </summary>
+    public static AiModelDefinition ResolveRecommendedImageModel(long totalPhysicalRamBytes)
+    {
+        const long gb = 1024L * 1024L * 1024L;
+
+        if (totalPhysicalRamBytes >= 14L * gb)
+        {
+            return SdxlLightning;
+        }
+
+        if (totalPhysicalRamBytes >= 7L * gb)
+        {
+            return DreamShaper8;
+        }
+
+        return Sd15Turbo;
     }
 }

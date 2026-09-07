@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Abstractions;
+using CardMaker.AI.Abstractions;
 using CardMaker.Application.Ai;
 using CardMaker.Contracts.Ai;
 
@@ -102,11 +102,20 @@ public sealed class AiLifecycleTests
         public Task<bool> IsAiEnabledAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(true);
 
+        public Task<bool> IsImageGenerationEnabledAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
+
         public Task<string> GetActiveModelPathAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(ModelPath);
+
+        public Task<string> GetActiveImageModelPathAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(ModelPath);
 
         public Task<CardMaker.AI.Models.AiModelDefinition> GetActiveModelDefinitionAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(CardMaker.AI.Models.AiModelRegistry.Gemma2B);
+
+        public Task<CardMaker.AI.Models.AiModelDefinition> GetActiveImageModelDefinitionAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(CardMaker.AI.Models.AiModelRegistry.Sd15Turbo);
 
         public string GetModelsDirectory() => Path.GetTempPath();
     }

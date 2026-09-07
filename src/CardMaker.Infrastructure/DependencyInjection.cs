@@ -90,6 +90,8 @@ public static class DependencyInjection
         services.AddHostedService<CardMaker.Infrastructure.Ai.AiModelStartupBackgroundService>();
         services.AddTransient<CardMaker.AI.Abstractions.ITextGenerationEngine, CardMaker.AI.Engines.LlamaCppTextEngine>();
         services.AddScoped<CardMaker.Application.Ai.ICardTextGenerationService, CardMaker.Application.Ai.CardTextGenerationService>();
+        services.AddTransient<CardMaker.AI.Abstractions.IImageGenerationEngine, CardMaker.AI.Engines.StableDiffusionNativeEngine>();
+        services.AddScoped<CardMaker.Application.Ai.ICardImageGenerationService, CardMaker.Application.Ai.CardImageGenerationService>();
 
         return services;
     }

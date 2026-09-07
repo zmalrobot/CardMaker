@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Models;
+using CardMaker.AI.Models;
 using CardMaker.Application.Ai;
 using CardMaker.Contracts.Ai;
 
@@ -138,11 +138,20 @@ public sealed class AiModelManagerTests : IDisposable
         public Task<bool> IsAiEnabledAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(IsEnabled);
 
+        public Task<bool> IsImageGenerationEnabledAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(IsEnabled);
+
         public Task<string> GetActiveModelPathAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(ModelPath);
+
+        public Task<string> GetActiveImageModelPathAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(ModelPath);
 
         public Task<AiModelDefinition> GetActiveModelDefinitionAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(ActiveModel);
+
+        public Task<AiModelDefinition> GetActiveImageModelDefinitionAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(AiModelRegistry.Sd15Turbo);
 
         public string GetModelsDirectory() => Path.GetTempPath();
     }

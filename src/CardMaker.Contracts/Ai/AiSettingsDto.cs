@@ -1,4 +1,4 @@
-﻿namespace CardMaker.Contracts.Ai;
+namespace CardMaker.Contracts.Ai;
 
 /// <summary>
 /// Impostazioni di configurazione per la generazione assistita da intelligenza artificiale.
@@ -25,4 +25,14 @@ public sealed class AiSettingsDto
     /// Percorso personalizzato per la cartella dei modelli GGUF (se null, usa DataRoot/models).
     /// </summary>
     public string? CustomModelsDirectory { get; set; }
+
+    /// <summary>
+    /// Flag per abilitare o disabilitare la funzionalita di generazione immagini AI nell'applicazione.
+    /// </summary>
+    public bool IsImageGenerationEnabled { get; set; } = true;
+
+    /// <summary>
+    /// Chiave del modello di diffusione selezionato per la generazione immagini ("Auto" per selezione in base all'hardware).
+    /// </summary>
+    public string SelectedImageModelKey { get; set; } = "Auto";
 }

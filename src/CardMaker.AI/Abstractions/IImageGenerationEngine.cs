@@ -1,4 +1,4 @@
-﻿namespace CardMaker.AI.Abstractions;
+namespace CardMaker.AI.Abstractions;
 
 /// <summary>
 /// Contratto marcatore per future estensioni alla generazione di immagini (es. Stable Diffusion, SD.cpp).
@@ -6,5 +6,14 @@
 /// </summary>
 public interface IImageGenerationEngine : IAiModelSession
 {
-    // Riservato per future implementazioni di text-to-image (es. Stable Diffusion / SD.cpp)
+    /// <summary>
+    /// Esegue l'inferenza di generazione dell'immagine (text-to-image). Se il modello non e caricato,
+    /// viene allocato automaticamente. Se gia caricato per lo stesso percorso, la sessione viene riutilizzata all'istante.
+    /// </summary>
+    Task<ImageGenerationResult> GenerateImageAsync(
+        string modelPath,
+        ImagePromptRequest request,
+        int threads = 0,
+        IProgress<AiProgressUpdate>? progress = null,
+        CancellationToken cancellationToken = default);
 }

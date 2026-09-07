@@ -140,37 +140,47 @@ else
                 <div class="card shadow-sm mb-3">
                     <div class="card-header py-2 fw-semibold d-flex justify-content-between align-items-center">
                         <span>Informazioni Generali</span>
-                        @if (IsAiEnabled)
-                        {
-                            @if (ModelManager.CurrentStatus == AiModelReadinessStatus.Ready)
+                        <div class="d-flex align-items-center gap-1">
+                            @if (IsAiEnabled)
                             {
-                                <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiModal = true">
-                                    <span>✨</span>
-                                    <span>Genera con AI</span>
+                                @if (ModelManager.CurrentStatus == AiModelReadinessStatus.Ready)
+                                {
+                                    <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiModal = true" title="Genera Titolo, Descrizione, ATK e DEF tramite AI">
+                                        <span>✨</span>
+                                        <span>Testo AI</span>
+                                    </button>
+                                }
+                                else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Download del modello AI in corso">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        <span>Download AI (@(ModelManager.CurrentProgress.Percentage.ToString("0"))%)</span>
+                                    </button>
+                                }
+                                else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentStatus == AiModelReadinessStatus.Checking)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Verifica modello in corso">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        <span>Verifica AI...</span>
+                                    </button>
+                                }
+                                else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="RetryModelDownloadAsync" title="@(ModelManager.CurrentProgress?.ErrorMessage ?? "Errore modello AI")">
+                                        <span>⚠️</span>
+                                        <span>Riprova AI</span>
+                                    </button>
+                                }
+                            }
+
+                            @if (IsImageAiEnabled)
+                            {
+                                <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiImageModal = true" title="Genera Illustrazione con AI locale">
+                                    <span>🎨</span>
+                                    <span>Artwork AI</span>
                                 </button>
                             }
-                            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
-                            {
-                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Download del modello AI in corso">
-                                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                                    <span>Download AI (@(ModelManager.CurrentProgress.Percentage.ToString("0"))%)</span>
-                                </button>
-                            }
-                            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentStatus == AiModelReadinessStatus.Checking)
-                            {
-                                <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Verifica modello in corso">
-                                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                                    <span>Verifica AI...</span>
-                                </button>
-                            }
-                            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error)
-                            {
-                                <button type="button" class="btn btn-outline-warning btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="RetryModelDownloadAsync" title="@(ModelManager.CurrentProgress?.ErrorMessage ?? "Errore modello AI")">
-                                    <span>⚠️</span>
-                                    <span>Riprova AI</span>
-                                </button>
-                            }
-                        }
+                        </div>
                     </div>
                     <div class="card-body">
                         <div class="mb-2">
@@ -234,6 +244,14 @@ else
     CurrentTitle="@CardTitle"
     OnAccept="@ApplyAiGeneratedText" />
 
+<CardMaker.UI.Components.Cards.AiImageGenerationModal 
+    @bind-IsOpen="ShowAiImageModal"
+    GameKey="@CurrentGameKey"
+    CardTypeKey="@CurrentCardType?.Key"
+    CardTitle="@CardTitle"
+    CardDescription="@GetCardDescriptionText()"
+    OnAccept="@ApplyAiGeneratedArtwork" />
+
 @code {
     [Parameter] public Guid? Id { get; set; }
 
@@ -243,7 +261,9 @@ else
     private bool IsSaving;
     private bool ShowExportModal;
     private bool ShowAiModal;
+    private bool ShowAiImageModal;
     private bool IsAiEnabled;
+    private bool IsImageAiEnabled;
 
     private string CurrentGameKey = "yugioh";
     private Guid CurrentGameId;
@@ -273,10 +293,12 @@ else
         try
         {
             IsAiEnabled = await AiConfigService.IsAiEnabledAsync();
+            IsImageAiEnabled = await AiConfigService.IsImageGenerationEnabledAsync();
         }
         catch
         {
             IsAiEnabled = false;
+            IsImageAiEnabled = false;
         }
 
         await LoadDataAsync();
@@ -363,6 +385,58 @@ else
 
         await TriggerPreviewDebounced();
         StateHasChanged();
+    }
+
+    private async Task ApplyAiGeneratedArtwork(CardAiImageGenerationResultDto result)
+    {
+        if (result.ImageBytes == null || result.ImageBytes.Length == 0) return;
+
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+
+            using var stream = new MemoryStream(result.ImageBytes);
+            var uploadOutcome = await AssetCatalog.UploadAsync(stream, new AssetUploadRequest
+            {
+                FileName = $"ai_art_{Guid.NewGuid():N}.png",
+                Category = Domain.Assets.AssetCategory.Artwork,
+                LicenseNote = "Generata tramite AI in CardMaker",
+                GameId = CurrentCardType?.GameId,
+                UploadedByUserId = userId,
+                Kind = UploadKind.Image
+            });
+
+            if (uploadOutcome.Succeeded && uploadOutcome.Asset != null)
+            {
+                CardValues["artwork"] = CardValue.FromText(uploadOutcome.Asset.Id.ToString());
+                CardValues = new Dictionary<string, CardValue>(CardValues);
+                await TriggerPreviewDebounced();
+                SuccessMessage = "Nuova illustrazione AI applicata con successo!";
+                StateHasChanged();
+            }
+            else
+            {
+                ErrorMessage = $"Impossibile salvare l'artwork generato: {uploadOutcome.ErrorCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Errore durante il salvataggio dell'artwork AI: {ex.Message}";
+        }
+    }
+
+    private string GetCardDescriptionText()
+    {
+        if (CardValues.TryGetValue("effectText", out var val) && !string.IsNullOrWhiteSpace(val.AsText()))
+            return val.AsText();
+        if (CardValues.TryGetValue("rulesText", out val) && !string.IsNullOrWhiteSpace(val.AsText()))
+            return val.AsText();
+        if (CardValues.TryGetValue("flavorText", out val) && !string.IsNullOrWhiteSpace(val.AsText()))
+            return val.AsText();
+        if (CardValues.TryGetValue("description", out val) && !string.IsNullOrWhiteSpace(val.AsText()))
+            return val.AsText();
+        return string.Empty;
     }
 
     private async Task LoadDataAsync()

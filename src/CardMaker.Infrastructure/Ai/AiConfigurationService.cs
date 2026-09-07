@@ -115,6 +115,12 @@ public sealed class AiConfigurationService : IAiConfigurationService, IDisposabl
         return settings.IsEnabled;
     }
 
+    public async Task<bool> IsImageGenerationEnabledAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken).ConfigureAwait(false);
+        return settings.IsEnabled && settings.IsImageGenerationEnabled;
+    }
+
     public async Task<AiModelDefinition> GetActiveModelDefinitionAsync(CancellationToken cancellationToken = default)
     {
         var settings = await GetSettingsAsync(cancellationToken).ConfigureAwait(false);
@@ -140,6 +146,39 @@ public sealed class AiConfigurationService : IAiConfigurationService, IDisposabl
     {
         var settings = await GetSettingsAsync(cancellationToken).ConfigureAwait(false);
         var activeModel = await GetActiveModelDefinitionAsync(cancellationToken).ConfigureAwait(false);
+
+        var modelsDirectory = !string.IsNullOrWhiteSpace(settings.CustomModelsDirectory) && Directory.Exists(settings.CustomModelsDirectory)
+            ? settings.CustomModelsDirectory
+            : _options.ModelsDirectory;
+
+        return Path.Combine(modelsDirectory, activeModel.FileName);
+    }
+
+    public async Task<AiModelDefinition> GetActiveImageModelDefinitionAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken).ConfigureAwait(false);
+
+        if (string.IsNullOrWhiteSpace(settings.SelectedImageModelKey) ||
+            settings.SelectedImageModelKey.Equals(AiModelRegistry.AutoModelKey, StringComparison.OrdinalIgnoreCase))
+        {
+            var totalMemory = _hardwareDetector.GetTotalPhysicalMemoryBytes();
+            return AiModelRegistry.ResolveRecommendedImageModel(totalMemory);
+        }
+
+        var customModel = AiModelRegistry.FindByKey(settings.SelectedImageModelKey);
+        if (customModel != null)
+        {
+            return customModel;
+        }
+
+        var fallbackMemory = _hardwareDetector.GetTotalPhysicalMemoryBytes();
+        return AiModelRegistry.ResolveRecommendedImageModel(fallbackMemory);
+    }
+
+    public async Task<string> GetActiveImageModelPathAsync(CancellationToken cancellationToken = default)
+    {
+        var settings = await GetSettingsAsync(cancellationToken).ConfigureAwait(false);
+        var activeModel = await GetActiveImageModelDefinitionAsync(cancellationToken).ConfigureAwait(false);
 
         var modelsDirectory = !string.IsNullOrWhiteSpace(settings.CustomModelsDirectory) && Directory.Exists(settings.CustomModelsDirectory)
             ? settings.CustomModelsDirectory

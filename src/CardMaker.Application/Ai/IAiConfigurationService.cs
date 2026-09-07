@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Models;
+using CardMaker.AI.Models;
 using CardMaker.Contracts.Ai;
 
 namespace CardMaker.Application.Ai;
@@ -11,7 +11,10 @@ public interface IAiConfigurationService
     Task<AiSettingsDto> GetSettingsAsync(CancellationToken cancellationToken = default);
     Task SaveSettingsAsync(AiSettingsDto settings, CancellationToken cancellationToken = default);
     Task<bool> IsAiEnabledAsync(CancellationToken cancellationToken = default);
+    Task<bool> IsImageGenerationEnabledAsync(CancellationToken cancellationToken = default);
     Task<string> GetActiveModelPathAsync(CancellationToken cancellationToken = default);
     Task<AiModelDefinition> GetActiveModelDefinitionAsync(CancellationToken cancellationToken = default);
+    Task<string> GetActiveImageModelPathAsync(CancellationToken cancellationToken = default);
+    Task<AiModelDefinition> GetActiveImageModelDefinitionAsync(CancellationToken cancellationToken = default);
     string GetModelsDirectory();
 }

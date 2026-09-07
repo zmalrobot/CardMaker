@@ -1,4 +1,4 @@
-﻿using CardMaker.Application.Ai;
+using CardMaker.Application.Ai;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -31,6 +31,7 @@ public sealed class AiModelStartupBackgroundService : BackgroundService
         try
         {
             await _modelManager.EnsureActiveModelReadyAsync(forceDownload: false, stoppingToken).ConfigureAwait(false);
+            await _modelManager.EnsureActiveImageModelReadyAsync(forceDownload: false, stoppingToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

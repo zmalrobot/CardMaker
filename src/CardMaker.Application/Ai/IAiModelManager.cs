@@ -1,4 +1,4 @@
-﻿using CardMaker.AI.Models;
+using CardMaker.AI.Models;
 using CardMaker.Contracts.Ai;
 
 namespace CardMaker.Application.Ai;
@@ -15,8 +15,15 @@ public interface IAiModelManager
     AiModelDefinition? ActiveModel { get; }
     string? ActiveModelPath { get; }
 
+    AiModelReadinessStatus CurrentImageStatus { get; }
+    AiModelDownloadProgress? CurrentImageProgress { get; }
+    AiModelDefinition? ActiveImageModel { get; }
+    string? ActiveImageModelPath { get; }
+
     event Action? OnStatusChanged;
 
     Task EnsureActiveModelReadyAsync(bool forceDownload = false, CancellationToken cancellationToken = default);
+    Task EnsureActiveImageModelReadyAsync(bool forceDownload = false, CancellationToken cancellationToken = default);
     void CancelDownload();
+    void CancelImageDownload();
 }

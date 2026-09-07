@@ -1,4 +1,4 @@
-﻿@page "/admin/ai"
+@page "/admin/ai"
 @attribute [Authorize(Roles = "Admin")]
 @implements IDisposable
 @using CardMaker.AI.Models
@@ -18,7 +18,10 @@
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" @onclick="DownloadActiveModelAsync" disabled="@(IsSaving || ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading)">
-                <span>⬇️ Verifica / Scarica Modello</span>
+                <span>⬇️ Scarica Modello Testo</span>
+            </button>
+            <button class="btn btn-outline-primary" @onclick="DownloadActiveImageModelAsync" disabled="@(IsSaving || ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading)">
+                <span>🎨 Scarica Modello Immagini</span>
             </button>
             <button class="btn btn-primary" @onclick="SaveSettingsAsync" disabled="@IsSaving">
                 @if (IsSaving)
@@ -54,30 +57,30 @@
         <div class="col-lg-6">
             <div class="card border shadow-sm h-100">
                 <div class="card-header bg-surface-1 py-3">
-                    <h5 class="card-title mb-0 fw-semibold">⚙️ Parametri Generali AI</h5>
+                    <h5 class="card-title mb-0 fw-semibold">⚙️ Generazione Testo AI (Gemma)</h5>
                 </div>
                 <div class="card-body">
                     <div class="form-check form-switch mb-4">
                         <input class="form-check-input" type="checkbox" id="aiEnabledToggle" @bind="Settings.IsEnabled" style="cursor: pointer; transform: scale(1.2); margin-right: 0.8rem;" />
                         <label class="form-check-label fw-bold" for="aiEnabledToggle" style="cursor: pointer;">
-                            Abilita generazione AI nell'applicazione
+                            Abilita generazione testo AI nell'applicazione
                         </label>
                         <div class="form-text mt-1">
-                            Se disabilitato, il pulsante di generazione assistita viene rimosso dall'editor delle carte e nessun componente di inferenza o download viene avviato.
+                            Se disabilitato, il pulsante di generazione assistita per testo viene rimosso dall'editor delle carte.
                         </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label small fw-semibold">Selezione Modello / Override</label>
+                        <label class="form-label small fw-semibold">Selezione Modello Testo / Override</label>
                         <select class="form-select" @bind="Settings.SelectedModelKey">
                             <option value="@AiModelRegistry.AutoModelKey">🤖 Auto (Rilevamento hardware dinamico - Consigliato)</option>
-                            @foreach (var model in AvailableModels)
+                            @foreach (var model in AvailableTextModels)
                             {
                                 <option value="@model.Key">@model.DisplayName (Consiglia >= @model.RecommendedRamGb GB RAM)</option>
                             }
                         </select>
                         <div class="form-text">
-                            In modalita <code>Auto</code>, l'applicazione seleziona la versione ottimale di Gemma in base alla RAM fisica del server o del PC host.
+                            In modalita <code>Auto</code>, l'applicazione seleziona la versione ottimale di Gemma in base alla RAM fisica dell'host.
                         </div>
                     </div>
 
@@ -103,26 +106,136 @@
         <div class="col-lg-6">
             <div class="card border shadow-sm h-100">
                 <div class="card-header bg-surface-1 py-3">
-                    <h5 class="card-title mb-0 fw-semibold">🖥️ Stato del Modello & Hardware</h5>
+                    <h5 class="card-title mb-0 fw-semibold">🎨 Generazione Immagini AI (Stable Diffusion)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-switch mb-4">
+                        <input class="form-check-input" type="checkbox" id="aiImageEnabledToggle" @bind="Settings.IsImageGenerationEnabled" style="cursor: pointer; transform: scale(1.2); margin-right: 0.8rem;" />
+                        <label class="form-check-label fw-bold" for="aiImageEnabledToggle" style="cursor: pointer;">
+                            Abilita generazione immagini AI nell'applicazione
+                        </label>
+                        <div class="form-text mt-1">
+                            Se disabilitato, il pulsante 🎨 Artwork AI viene rimosso dall'editor delle carte e nessun modello di diffusione viene scaricato.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Selezione Modello Immagini / Override</label>
+                        <select class="form-select" @bind="Settings.SelectedImageModelKey">
+                            <option value="@AiModelRegistry.AutoModelKey">🤖 Auto (Rilevamento hardware dinamico - Consigliato)</option>
+                            @foreach (var model in AvailableImageModels)
+                            {
+                                <option value="@model.Key">@model.DisplayName (Consiglia >= @model.RecommendedRamGb GB RAM)</option>
+                            }
+                        </select>
+                        <div class="form-text">
+                            In modalita <code>Auto</code>, l'applicazione seleziona il modello di diffusione ottimale in base alla memoria di sistema.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Stato Modello Immagini:</label>
+                        <div>
+                            @switch (ModelManager.CurrentImageStatus)
+                            {
+                                case AiModelReadinessStatus.Ready:
+                                    <span class="badge bg-success fs-6 py-2 px-3">
+                                        ✅ Pronto all'uso (Validato)
+                                    </span>
+                                    break;
+                                case AiModelReadinessStatus.Downloading:
+                                    <span class="badge bg-primary fs-6 py-2 px-3">
+                                        ⬇️ Download in corso (@(ModelManager.CurrentImageProgress?.Percentage.ToString("0.0"))%)
+                                    </span>
+                                    break;
+                                case AiModelReadinessStatus.Validating:
+                                    <span class="badge bg-warning text-dark fs-6 py-2 px-3">
+                                        🔍 Validazione integrita in corso...
+                                    </span>
+                                    break;
+                                case AiModelReadinessStatus.Checking:
+                                    <span class="badge bg-info fs-6 py-2 px-3">
+                                        🔎 Verifica file locale...
+                                    </span>
+                                    break;
+                                case AiModelReadinessStatus.Disabled:
+                                    <span class="badge bg-secondary fs-6 py-2 px-3">
+                                        ⏸️ Generazione Immagini Disabilitata
+                                    </span>
+                                    break;
+                                case AiModelReadinessStatus.Error:
+                                    <span class="badge bg-danger fs-6 py-2 px-3">
+                                        ⚠️ Errore o modello assente
+                                    </span>
+                                    break;
+                            }
+                            @if (!string.IsNullOrEmpty(ModelManager.ActiveImageModelPath))
+                            {
+                                <div class="small text-muted mt-1">Percorso: <code>@ModelManager.ActiveImageModelPath</code></div>
+                            }
+                        </div>
+                    </div>
+
+                    @if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentImageProgress != null)
+                    {
+                        var pi = ModelManager.CurrentImageProgress;
+                        <div class="p-3 bg-surface-2 rounded mb-3">
+                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                <span>Download: <strong>@Math.Round((double)pi.BytesDownloaded / (1024*1024), 1) MB</strong> di <strong>@Math.Round((double)pi.TotalBytes / (1024*1024), 1) MB</strong></span>
+                                <span>@pi.Percentage.ToString("0.0")%</span>
+                            </div>
+                            <div class="progress" style="height: 6px;">
+                                <div class="progress-bar bg-primary" style="width: @pi.Percentage%;"></div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="alert alert-light border py-2 px-3 small mb-0">
+                        <strong>💡 Gestione della memoria (VRAM/RAM):</strong><br />
+                        I modelli di diffusione vengono caricati in memoria solo durante la generazione e rilasciati immediatamente alla chiusura del popup.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border shadow-sm">
+                <div class="card-header bg-surface-1 py-3">
+                    <h5 class="card-title mb-0 fw-semibold">🖥️ Stato Hardware & Modello Testo</h5>
                 </div>
                 <div class="card-body">
                     @if (HardwareProfile != null)
                     {
-                        <div class="d-flex align-items-center gap-3 mb-4 p-3 bg-surface-2 rounded">
-                            <span class="fs-1">🧠</span>
-                            <div>
-                                <div class="fw-bold fs-5">@HardwareProfile.TotalPhysicalMemoryGb GB RAM Totale</div>
-                                <div class="text-muted small">Memoria fisica rilevata dal sistema operativo host</div>
+                        <div class="row align-items-center mb-3">
+                            <div class="col-md-4">
+                                <div class="d-flex align-items-center gap-3 p-3 bg-surface-2 rounded">
+                                    <span class="fs-1">🧠</span>
+                                    <div>
+                                        <div class="fw-bold fs-5">@HardwareProfile.TotalPhysicalMemoryGb GB RAM Totale</div>
+                                        <div class="text-muted small">Memoria fisica rilevata dal sistema operativo</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-surface-2 rounded">
+                                    <div class="small fw-semibold text-muted">Modello Testo Consigliato:</div>
+                                    <div class="fw-bold text-primary">@HardwareProfile.RecommendedModelDisplayName</div>
+                                    <div class="small text-muted">Stato: <strong>@ModelManager.CurrentStatus</strong></div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="p-3 bg-surface-2 rounded">
+                                    <div class="small fw-semibold text-muted">Modello Immagini Consigliato:</div>
+                                    <div class="fw-bold text-primary">@(RecommendedImageModel?.DisplayName ?? "Non rilevato")</div>
+                                    <div class="small text-muted">Stato: <strong>@ModelManager.CurrentImageStatus</strong></div>
+                                </div>
                             </div>
                         </div>
 
                         <div class="mb-3">
-                            <label class="form-label small fw-semibold">Modello Consigliato per questo Hardware:</label>
-                            <div class="fw-bold text-primary fs-6">@HardwareProfile.RecommendedModelDisplayName</div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label class="form-label small fw-semibold">Stato di Disponibilita:</label>
+                            <label class="form-label small fw-semibold">Stato di Disponibilita Modello Testo:</label>
                             <div>
                                 @switch (ModelManager.CurrentStatus)
                                 {
@@ -148,7 +261,7 @@
                                         break;
                                     case AiModelReadinessStatus.Disabled:
                                         <span class="badge bg-secondary fs-6 py-2 px-3">
-                                            ⏸️ Funzionalita AI Disabilitata
+                                            ⏸️ Generazione Testo Disabilitata
                                         </span>
                                         break;
                                     case AiModelReadinessStatus.Error:
@@ -177,7 +290,7 @@
 
                         <div class="alert alert-info py-2 px-3 small mb-0">
                             <strong>💡 Download automatico:</strong><br />
-                            L'applicazione verifica e scarica automaticamente il modello necessario in background all'avvio.
+                            L'applicazione verifica e scarica automaticamente i modelli necessari in background all'avvio.
                             In caso di interruzioni, il download riprende automaticamente tramite HTTP Range.
                         </div>
                     }
@@ -192,49 +305,99 @@
         </div>
     </div>
 
-    <div class="card border shadow-sm">
-        <div class="card-header bg-surface-1 py-3">
-            <h5 class="card-title mb-0 fw-semibold">📚 Modelli della Famiglia Gemma Supportati</h5>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Modello</th>
-                        <th>File Atteso (.gguf)</th>
-                        <th>Dimensione</th>
-                        <th>RAM Minima</th>
-                        <th>Uso Stimato</th>
-                        <th>HuggingFace</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var model in AvailableModels)
-                    {
-                        var isCurrent = (Settings.SelectedModelKey == model.Key) || 
-                                        (Settings.SelectedModelKey == AiModelRegistry.AutoModelKey && HardwareProfile?.RecommendedModelKey == model.Key);
-                        <tr class="@(isCurrent ? "table-primary" : "")">
-                            <td>
-                                <strong>@model.DisplayName</strong>
-                                @if (isCurrent)
-                                {
-                                    <span class="badge bg-primary ms-2">Attivo</span>
-                                }
-                                <div class="text-muted small">@model.Description</div>
-                            </td>
-                            <td><code>@model.FileName</code></td>
-                            <td>~@Math.Round((double)model.ExpectedSizeBytes / (1024*1024*1024), 2) GB</td>
-                            <td><span class="badge bg-secondary">@model.RecommendedRamGb GB</span></td>
-                            <td>~@model.EstimatedMemoryUsageGb GB</td>
-                            <td>
-                                <a href="@model.DownloadUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
-                                    🔗 Scheda Download
-                                </a>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border shadow-sm mb-4">
+                <div class="card-header bg-surface-1 py-3">
+                    <h5 class="card-title mb-0 fw-semibold">📚 Modelli Testo della Famiglia Gemma</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Modello</th>
+                                <th>File Atteso (.gguf)</th>
+                                <th>Dimensione</th>
+                                <th>RAM Minima</th>
+                                <th>Uso Stimato</th>
+                                <th>HuggingFace</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var model in AvailableTextModels)
+                            {
+                                var isCurrent = (Settings.SelectedModelKey == model.Key) || 
+                                                (Settings.SelectedModelKey == AiModelRegistry.AutoModelKey && HardwareProfile?.RecommendedModelKey == model.Key);
+                                <tr class="@(isCurrent ? "table-primary" : "")">
+                                    <td>
+                                        <strong>@model.DisplayName</strong>
+                                        @if (isCurrent)
+                                        {
+                                            <span class="badge bg-primary ms-2">Attivo</span>
+                                        }
+                                        <div class="text-muted small">@model.Description</div>
+                                    </td>
+                                    <td><code>@model.FileName</code></td>
+                                    <td>~@Math.Round((double)model.ExpectedSizeBytes / (1024*1024*1024), 2) GB</td>
+                                    <td><span class="badge bg-secondary">@model.RecommendedRamGb GB</span></td>
+                                    <td>~@model.EstimatedMemoryUsageGb GB</td>
+                                    <td>
+                                        <a href="@model.DownloadUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                                            🔗 Scheda Download
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card border shadow-sm">
+                <div class="card-header bg-surface-1 py-3">
+                    <h5 class="card-title mb-0 fw-semibold">🎨 Modelli Immagini della Famiglia Stable Diffusion</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Modello</th>
+                                <th>File Atteso (.gguf)</th>
+                                <th>Dimensione</th>
+                                <th>RAM Minima</th>
+                                <th>Step Default</th>
+                                <th>HuggingFace</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var model in AvailableImageModels)
+                            {
+                                var isCurrent = (Settings.SelectedImageModelKey == model.Key) || 
+                                                (Settings.SelectedImageModelKey == AiModelRegistry.AutoModelKey && RecommendedImageModel?.Key == model.Key);
+                                <tr class="@(isCurrent ? "table-primary" : "")">
+                                    <td>
+                                        <strong>@model.DisplayName</strong>
+                                        @if (isCurrent)
+                                        {
+                                            <span class="badge bg-primary ms-2">Attivo</span>
+                                        }
+                                        <div class="text-muted small">@model.Description</div>
+                                    </td>
+                                    <td><code>@model.FileName</code></td>
+                                    <td>~@Math.Round((double)model.ExpectedSizeBytes / (1024*1024*1024), 2) GB</td>
+                                    <td><span class="badge bg-secondary">@model.RecommendedRamGb GB</span></td>
+                                    <td><span class="badge bg-info text-dark">@model.DefaultSteps step</span></td>
+                                    <td>
+                                        <a href="@model.DownloadUrl" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">
+                                            🔗 Scheda Download
+                                        </a>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -242,7 +405,9 @@
 @code {
     private AiSettingsDto Settings = new();
     private HardwareProfileDto? HardwareProfile;
-    private IReadOnlyList<AiModelDefinition> AvailableModels = [];
+    private IReadOnlyList<AiModelDefinition> AvailableTextModels = [];
+    private IReadOnlyList<AiModelDefinition> AvailableImageModels = [];
+    private AiModelDefinition? RecommendedImageModel;
     private bool IsSaving;
     private string? SuccessMessage;
     private string? ErrorMessage;
@@ -250,7 +415,8 @@
     protected override async Task OnInitializedAsync()
     {
         ModelManager.OnStatusChanged += OnStatusChanged;
-        AvailableModels = AiModelRegistry.GetAllModels();
+        AvailableTextModels = AiModelRegistry.GetTextModels();
+        AvailableImageModels = AiModelRegistry.GetImageModels();
         Settings = await AiConfigService.GetSettingsAsync();
         RefreshHardwareProfile();
     }
@@ -268,6 +434,8 @@
     {
         var modelsDir = AiConfigService.GetModelsDirectory();
         HardwareProfile = HardwareDetector.GetHardwareProfile(modelsDir);
+        var ramBytes = HardwareDetector.GetTotalPhysicalMemoryBytes();
+        RecommendedImageModel = AiModelRegistry.ResolveRecommendedImageModel(ramBytes);
     }
 
     private async Task DownloadActiveModelAsync()
@@ -280,7 +448,21 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Errore durante il download: {ex.Message}";
+            ErrorMessage = $"Errore durante il download del modello testo: {ex.Message}";
+        }
+    }
+
+    private async Task DownloadActiveImageModelAsync()
+    {
+        SuccessMessage = null;
+        ErrorMessage = null;
+        try
+        {
+            await ModelManager.EnsureActiveImageModelReadyAsync(forceDownload: true);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Errore durante il download del modello immagini: {ex.Message}";
         }
     }
 
@@ -296,10 +478,13 @@
             SuccessMessage = "Impostazioni AI aggiornate con successo.";
             RefreshHardwareProfile();
 
-            // Innesca la verifica e l'eventuale download del nuovo modello selezionato
             if (Settings.IsEnabled)
             {
                 _ = ModelManager.EnsureActiveModelReadyAsync(forceDownload: false);
+            }
+            if (Settings.IsImageGenerationEnabled)
+            {
+                _ = ModelManager.EnsureActiveImageModelReadyAsync(forceDownload: false);
             }
         }
         catch (Exception ex)
