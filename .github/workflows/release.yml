@@ -134,11 +134,7 @@ jobs:
           PORTABLE_DIR="$(mktemp -d)"
           cp -a publish/linux-x64/. "${PORTABLE_DIR}/"
           chmod 755 "${PORTABLE_DIR}/CardMaker"
-          cat << 'EOF' > "${PORTABLE_DIR}/run.sh"
-#!/usr/bin/env bash
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "${SCRIPT_DIR}/CardMaker" "$@"
-EOF
+          cp packaging/linux/run.sh "${PORTABLE_DIR}/run.sh"
           chmod +x "${PORTABLE_DIR}/run.sh"
           tar -czvf "dist/CardMaker-${RAW_VERSION}-Linux-x64.tar.gz" -C "${PORTABLE_DIR}" .
 
