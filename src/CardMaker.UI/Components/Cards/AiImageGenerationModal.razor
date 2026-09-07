@@ -1,0 +1,396 @@
+﻿@using CardMaker.AI.Abstractions
+@using CardMaker.AI.Models
+@using CardMaker.Application.Ai
+@using CardMaker.Contracts.Ai
+@implements IAsyncDisposable
+@inject ICardImageGenerationService ImageGenService
+@inject IAiConfigurationService AiConfigService
+
+@if (IsOpen)
+{
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-surface-1">
+                    <h5 class="modal-title fw-bold d-flex align-items-center gap-2">
+                        <span>🎨</span>
+                        <span>Genera Illustrazione con AI</span>
+                    </h5>
+                    <button type="button" class="btn-close" aria-label="Chiudi" @onclick="CloseAsync" disabled="@(CurrentStage == AiProgressStage.LoadingModel)"></button>
+                </div>
+
+                <div class="modal-body">
+                    @if (ErrorMessage != null)
+                    {
+                        <div class="alert alert-danger shadow-sm mb-3">
+                            <div class="fw-semibold mb-1">⚠️ Errore durante la generazione</div>
+                            <div class="small" style="white-space: pre-line;">@ErrorMessage</div>
+                        </div>
+                    }
+
+                    @if (CurrentStage == AiProgressStage.Idle || CurrentStage == AiProgressStage.Error)
+                    {
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Soggetto o tema dell'illustrazione:</label>
+                            <textarea class="form-control" rows="3" 
+                                      placeholder="Es. Guerriero alato con spada di fiamme dorate in posa epica..."
+                                      @bind="UserPrompt" 
+                                      @bind:event="oninput"></textarea>
+                            <div class="form-text">
+                                Gioco: <strong>@FormatGameName(GameKey)</strong> 
+                                @if (!string.IsNullOrWhiteSpace(CardTitle))
+                                {
+                                    <span> | Titolo carta: <strong>@CardTitle</strong></span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Stile Artistico TCG</label>
+                                <select class="form-select" @bind="SelectedStyleKey">
+                                    @foreach (var style in AvailableStyles)
+                                    {
+                                        <option value="@style.Key">@style.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold">Modello immagini attivo</label>
+                                <input type="text" class="form-control bg-light" readonly value="@(ActiveModel?.DisplayName ?? "Rilevamento in corso...")" />
+                            </div>
+                        </div>
+
+                        <div class="accordion mb-3" id="advancedOptionsAccordion">
+                            <div class="accordion-item border rounded">
+                                <h2 class="accordion-header" id="headingAdvanced">
+                                    <button class="accordion-button collapsed py-2 small" type="button" 
+                                            @onclick="() => ShowAdvancedOptions = !ShowAdvancedOptions">
+                                        ⚙️ Opzioni Avanzate (Dimensioni, Seed, Negative Prompt)
+                                    </button>
+                                </h2>
+                                @if (ShowAdvancedOptions)
+                                {
+                                    <div class="p-3 bg-surface-2">
+                                        <div class="row g-3 mb-2">
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold">Larghezza</label>
+                                                <select class="form-select form-select-sm" @bind="SelectedWidth">
+                                                    <option value="512">512 px (Quadrato)</option>
+                                                    <option value="768">768 px (Alta def)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold">Altezza</label>
+                                                <select class="form-select form-select-sm" @bind="SelectedHeight">
+                                                    <option value="512">512 px (Quadrato)</option>
+                                                    <option value="768">768 px (Verticale)</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small fw-semibold">Seed (-1 = Casuale)</label>
+                                                <input type="number" class="form-control form-control-sm" @bind="CustomSeed" />
+                                            </div>
+                                        </div>
+                                        <div class="mb-0">
+                                            <label class="form-label small fw-semibold">Negative Prompt Aggiuntivo</label>
+                                            <input type="text" class="form-control form-control-sm" placeholder="Elementi da evitare (opzionale)..." @bind="CustomNegativePrompt" />
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (CurrentStage == AiProgressStage.LoadingModel || CurrentStage == AiProgressStage.Generating || CurrentStage == AiProgressStage.Preparing)
+                    {
+                        <div class="py-4 text-center">
+                            <div class="spinner-border text-primary mb-3" role="status" style="width: 3.5rem; height: 3.5rem;"></div>
+                            <h5 class="fw-bold mb-2">@StatusMessage</h5>
+                            <p class="text-muted small mb-3">
+                                L'inferenza del modello di diffusione viene eseguita localmente sul tuo hardware.
+                            </p>
+
+                            <div class="progress mx-auto mb-3" style="max-width: 450px; height: 18px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                     role="progressbar" 
+                                     style="width: @(CurrentPercentage)%">
+                                    @(CurrentPercentage > 10 ? $"{CurrentPercentage}%" : "")
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-outline-danger btn-sm" @onclick="CancelGeneration">
+                                    ⏹️ Interrompi Generazione
+                                </button>
+                            </div>
+                        </div>
+                    }
+                    else if (CurrentStage == AiProgressStage.Completed && GeneratedImageBytes != null)
+                    {
+                        <div class="alert alert-success d-flex align-items-center justify-content-between py-2 px-3 mb-3">
+                            <div class="small">
+                                <span>✅ Illustrazione generata in <strong>@LastDurationMs ms</strong></span>
+                                <span class="text-muted ms-2">(Seed: @LastSeedUsed | @SelectedWidth x @SelectedHeight px)</span>
+                            </div>
+                        </div>
+
+                        <div class="text-center p-2 bg-surface-2 rounded border mb-3">
+                            <img src="@($"data:image/png;base64,{Convert.ToBase64String(GeneratedImageBytes)}")" 
+                                 class="img-fluid rounded shadow-sm" 
+                                 style="max-height: 380px; object-fit: contain;" 
+                                 alt="Artwork generato" />
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer bg-surface-1">
+                    @if (CurrentStage == AiProgressStage.Completed)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseAsync">Annulla</button>
+                        <button type="button" class="btn btn-outline-primary" @onclick="GenerateAlternativeAsync" disabled="@IsProcessing">
+                            🔄 Genera Alternativa
+                        </button>
+                        <button type="button" class="btn btn-success" @onclick="AcceptAndApplyAsync">
+                            ✔️ Applica alla Carta
+                        </button>
+                    }
+                    else if (CurrentStage == AiProgressStage.Idle || CurrentStage == AiProgressStage.Error)
+                    {
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseAsync">Chiudi</button>
+                        <button type="button" class="btn btn-primary" @onclick="StartGenerationAsync" disabled="@(string.IsNullOrWhiteSpace(UserPrompt) || IsProcessing)">
+                            🎨 Genera con AI
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string GameKey { get; set; } = string.Empty;
+    [Parameter] public string CardTypeKey { get; set; } = string.Empty;
+    [Parameter] public string CardTitle { get; set; } = string.Empty;
+    [Parameter] public string CardDescription { get; set; } = string.Empty;
+    [Parameter] public EventCallback<CardAiImageGenerationResultDto> OnAccept { get; set; }
+
+    private IReadOnlyList<AiImageStyleDto> AvailableStyles = [];
+    private string SelectedStyleKey = "anime-tcg";
+    private string UserPrompt = string.Empty;
+    private AiModelDefinition? ActiveModel;
+
+    private int SelectedWidth = 512;
+    private int SelectedHeight = 512;
+    private long CustomSeed = -1;
+    private string? CustomNegativePrompt;
+    private bool ShowAdvancedOptions;
+
+    private AiProgressStage CurrentStage = AiProgressStage.Idle;
+    private string StatusMessage = "Pronto";
+    private int CurrentPercentage;
+    private string? ErrorMessage;
+
+    private byte[]? GeneratedImageBytes;
+    private long LastDurationMs;
+    private long LastSeedUsed;
+    private string LastModelUsed = string.Empty;
+
+    private bool IsProcessing => CurrentStage == AiProgressStage.LoadingModel || CurrentStage == AiProgressStage.Generating || CurrentStage == AiProgressStage.Preparing;
+    private CancellationTokenSource? _cts;
+    private bool _hasInitialized;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsOpen && !_hasInitialized)
+        {
+            _hasInitialized = true;
+            AvailableStyles = ImageGenService.GetAvailableStyles();
+            if (AvailableStyles.Count > 0)
+            {
+                SelectedStyleKey = AvailableStyles[0].Key;
+            }
+
+            try
+            {
+                ActiveModel = await AiConfigService.GetActiveImageModelDefinitionAsync();
+                if (ActiveModel != null)
+                {
+                    SelectedWidth = ActiveModel.DefaultWidth;
+                    SelectedHeight = ActiveModel.DefaultHeight;
+                }
+            }
+            catch
+            {
+                // Tollerante
+            }
+
+            if (string.IsNullOrWhiteSpace(UserPrompt) && !string.IsNullOrWhiteSpace(CardTitle) && !CardTitle.StartsWith("Nuova", StringComparison.OrdinalIgnoreCase))
+            {
+                UserPrompt = $"Illustrazione epica e dinamica di '{CardTitle}'";
+            }
+        }
+        else if (!IsOpen)
+        {
+            _hasInitialized = false;
+        }
+    }
+
+    private async Task StartGenerationAsync()
+    {
+        ErrorMessage = null;
+        CurrentStage = AiProgressStage.Preparing;
+        StatusMessage = "Preparazione sessione di diffusione...";
+        CurrentPercentage = 0;
+
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+
+        var progress = new Progress<AiProgressUpdate>(update =>
+        {
+            InvokeAsync(() =>
+            {
+                CurrentStage = update.Stage;
+                StatusMessage = update.StatusMessage;
+
+                // Estrai percentuale se presente nel messaggio
+                if (update.StatusMessage.Contains('%'))
+                {
+                    var parts = update.StatusMessage.Split('%')[0].Split('-');
+                    if (parts.Length > 1 && int.TryParse(parts[^1].Trim(), out var pct))
+                    {
+                        CurrentPercentage = Math.Clamp(pct, 0, 100);
+                    }
+                }
+                else if (update.Stage == AiProgressStage.Completed)
+                {
+                    CurrentPercentage = 100;
+                }
+
+                StateHasChanged();
+            });
+        });
+
+        try
+        {
+            var request = new CardAiImageGenerationRequestDto
+            {
+                GameKey = GameKey,
+                CardTypeKey = CardTypeKey,
+                CardTitle = CardTitle,
+                CardDescriptionOrLore = CardDescription,
+                UserPrompt = UserPrompt,
+                StyleKey = SelectedStyleKey,
+                NegativePrompt = CustomNegativePrompt,
+                Width = SelectedWidth,
+                Height = SelectedHeight,
+                Steps = ActiveModel?.DefaultSteps ?? 20,
+                Seed = CustomSeed
+            };
+
+            var result = await ImageGenService.GenerateArtworkAsync(request, progress, _cts.Token);
+
+            GeneratedImageBytes = result.ImageBytes;
+            LastDurationMs = result.DurationMs;
+            LastSeedUsed = result.SeedUsed;
+            LastModelUsed = result.ModelUsed;
+            CurrentStage = AiProgressStage.Completed;
+            CurrentPercentage = 100;
+        }
+        catch (OperationCanceledException)
+        {
+            CurrentStage = AiProgressStage.Idle;
+            StatusMessage = "Operazione interrotta.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+            CurrentStage = AiProgressStage.Error;
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateAlternativeAsync()
+    {
+        // Genera con un nuovo seed casuale
+        CustomSeed = -1;
+        await StartGenerationAsync();
+    }
+
+    private void CancelGeneration()
+    {
+        _cts?.Cancel();
+    }
+
+    private async Task AcceptAndApplyAsync()
+    {
+        if (GeneratedImageBytes == null) return;
+
+        var result = new CardAiImageGenerationResultDto
+        {
+            ImageBytes = GeneratedImageBytes,
+            ContentType = "image/png",
+            Width = SelectedWidth,
+            Height = SelectedHeight,
+            SeedUsed = LastSeedUsed,
+            DurationMs = LastDurationMs,
+            ModelUsed = LastModelUsed
+        };
+
+        await OnAccept.InvokeAsync(result);
+        await CloseAsync();
+    }
+
+    private async Task CloseAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        CurrentStage = AiProgressStage.Idle;
+        ErrorMessage = null;
+        GeneratedImageBytes = null;
+
+        // Rilascia le risorse native della sessione di diffusione per azzerare l'impronta di memoria
+        try
+        {
+            await ImageGenService.UnloadModelAsync();
+        }
+        catch
+        {
+            // Tollerante agli errori in chiusura
+        }
+
+        IsOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private static string FormatGameName(string? key) => (key ?? string.Empty).ToLowerInvariant() switch
+    {
+        "yugioh" => "Yu-Gi-Oh!",
+        "pokemon" => "Pokémon",
+        "mtg" => "Magic: The Gathering",
+        _ => "Generico"
+    };
+
+    public async ValueTask DisposeAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+
+        try
+        {
+            await ImageGenService.UnloadModelAsync();
+        }
+        catch
+        {
+            // Ignora eccezioni in fase di teardown
+        }
+    }
+}
