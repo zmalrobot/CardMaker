@@ -20,10 +20,20 @@ public interface IAiModelManager
     AiModelDefinition? ActiveImageModel { get; }
     string? ActiveImageModelPath { get; }
 
+    /// <summary>Stato combinato globale dei modelli AI abilitati (Ready, PartiallyReady, Downloading, ecc.).</summary>
+    AiModelReadinessStatus OverallStatus { get; }
+
+    /// <summary>Avanzamento del download attualmente in corso (testo o immagine), se attivo.</summary>
+    AiModelDownloadProgress? ActiveProgress { get; }
+
+    /// <summary>Riepilogo testuale conciso dello stato dei modelli per la UI (es. footer e banner).</summary>
+    string OverallStatusSummary { get; }
+
     event Action? OnStatusChanged;
 
     Task EnsureActiveModelReadyAsync(bool forceDownload = false, CancellationToken cancellationToken = default);
     Task EnsureActiveImageModelReadyAsync(bool forceDownload = false, CancellationToken cancellationToken = default);
+    Task EnsureAllActiveModelsReadyAsync(bool forceDownload = false, CancellationToken cancellationToken = default);
     void CancelDownload();
     void CancelImageDownload();
 }

@@ -21,7 +21,10 @@ public static class AiModelRegistry
         ExpectedSizeBytes: 1_708_582_752L,
         Description: "Ottimizzato per macchine a basse risorse (>= 4 GB RAM). Veloce e compatto.",
         DefaultContextSize: 2048,
-        MinFreeDiskSpaceBytes: 2_500_000_000L);
+        MinFreeDiskSpaceBytes: 2_500_000_000L,
+        Capability: AiModelCapability.Text,
+        Format: "GGUF",
+        RecommendedHardware: "CPU x64 / ARM64 (>= 4 GB RAM)");
 
     public static readonly AiModelDefinition Gemma4B = new(
         Key: "gemma-3-4b",
@@ -36,7 +39,10 @@ public static class AiModelRegistry
         ExpectedSizeBytes: 2_489_758_112L,
         Description: "Profilo bilanciato consigliato per macchine standard (>= 8 GB RAM). Eccellente aderenza al formato JSON.",
         DefaultContextSize: 2048,
-        MinFreeDiskSpaceBytes: 4_000_000_000L);
+        MinFreeDiskSpaceBytes: 4_000_000_000L,
+        Capability: AiModelCapability.Text,
+        Format: "GGUF",
+        RecommendedHardware: "CPU x64 / ARM64 (>= 8 GB RAM)");
 
     public static readonly AiModelDefinition Gemma9B = new(
         Key: "gemma-2-9b",
@@ -51,7 +57,10 @@ public static class AiModelRegistry
         ExpectedSizeBytes: 5_761_057_728L,
         Description: "Profilo avanzato ad alta fedeltà semantica (>= 16 GB RAM). Consigliato per testi ricchi ed elaborati.",
         DefaultContextSize: 4096,
-        MinFreeDiskSpaceBytes: 8_000_000_000L);
+        MinFreeDiskSpaceBytes: 8_000_000_000L,
+        Capability: AiModelCapability.Text,
+        Format: "GGUF",
+        RecommendedHardware: "CPU x64 multi-core / AVX2 (>= 16 GB RAM)");
 
     public static readonly AiModelDefinition Gemma27B = new(
         Key: "gemma-2-27b",
@@ -66,7 +75,10 @@ public static class AiModelRegistry
         ExpectedSizeBytes: 16_645_381_632L,
         Description: "Massima potenza e creatività per workstation e desktop potenti (>= 32 GB RAM).",
         DefaultContextSize: 4096,
-        MinFreeDiskSpaceBytes: 24_000_000_000L);
+        MinFreeDiskSpaceBytes: 24_000_000_000L,
+        Capability: AiModelCapability.Text,
+        Format: "GGUF",
+        RecommendedHardware: "Workstation CPU multi-threaded / GPU acceleration (>= 32 GB RAM)");
 
     public static readonly AiModelDefinition Sd15Turbo = new(
         Key: "sd-1.5-turbo",
@@ -81,7 +93,11 @@ public static class AiModelRegistry
         ExpectedSizeBytes: 890_000_000L,
         Description: "Leggero e fulmineo (1-4 step). Consigliato per macchine a basse risorse (>= 4 GB RAM) ed esecuzione CPU.",
         DefaultSteps: 4,
-        MinFreeDiskSpaceBytes: 1_500_000_000L);
+        MinFreeDiskSpaceBytes: 1_500_000_000L,
+        Capability: AiModelCapability.Image,
+        Format: "GGUF",
+        RecommendedVramGb: 2.0,
+        RecommendedHardware: "CPU x64 / Vulkan / CUDA (>= 4 GB RAM)");
 
     public static readonly AiModelDefinition DreamShaper8 = new(
         Key: "dreamshaper-8",
@@ -96,7 +112,11 @@ public static class AiModelRegistry
         ExpectedSizeBytes: 1_850_000_000L,
         Description: "Stile artistico fantasy/TCG eccellente. Consigliato per configurazioni standard (>= 8 GB RAM).",
         DefaultSteps: 15,
-        MinFreeDiskSpaceBytes: 3_000_000_000L);
+        MinFreeDiskSpaceBytes: 3_000_000_000L,
+        Capability: AiModelCapability.Image,
+        Format: "GGUF",
+        RecommendedVramGb: 4.0,
+        RecommendedHardware: "GPU CUDA / DirectML / Metal (>= 8 GB RAM)");
 
     public static readonly AiModelDefinition SdxlLightning = new(
         Key: "sdxl-lightning-4step",
@@ -113,7 +133,11 @@ public static class AiModelRegistry
         DefaultSteps: 4,
         DefaultWidth: 768,
         DefaultHeight: 768,
-        MinFreeDiskSpaceBytes: 4_000_000_000L);
+        MinFreeDiskSpaceBytes: 4_000_000_000L,
+        Capability: AiModelCapability.Image,
+        Format: "GGUF",
+        RecommendedVramGb: 6.0,
+        RecommendedHardware: "GPU dedicata CUDA / DirectML (>= 16 GB RAM)");
 
     private static readonly AiModelDefinition[] TextModelsInternal =
     [

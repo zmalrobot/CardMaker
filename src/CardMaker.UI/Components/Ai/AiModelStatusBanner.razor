@@ -1,11 +1,11 @@
-﻿@using CardMaker.Application.Ai
+@using CardMaker.Application.Ai
 @using CardMaker.Contracts.Ai
 @implements IDisposable
 @inject IAiModelManager ModelManager
 
-@if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
+@if (ModelManager.ActiveProgress != null && (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading || ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading))
 {
-    var p = ModelManager.CurrentProgress;
+    var p = ModelManager.ActiveProgress;
     var speedMb = Math.Round(p.BytesPerSecond / (1024.0 * 1024.0), 1);
     var downloadedMb = Math.Round((double)p.BytesDownloaded / (1024.0 * 1024.0), 1);
     var totalMb = Math.Round((double)p.TotalBytes / (1024.0 * 1024.0), 1);
@@ -48,19 +48,21 @@
         </div>
     </div>
 }
-else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating)
+else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentImageStatus == AiModelReadinessStatus.Validating)
 {
     <div class="alert alert-warning shadow-sm mb-3 py-2 d-flex align-items-center gap-2">
         <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
         <span>Validazione e verifica dell'integrita del file GGUF in corso...</span>
     </div>
 }
-else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error && ModelManager.CurrentProgress?.ErrorMessage != null)
+else if ((ModelManager.CurrentStatus == AiModelReadinessStatus.Error && ModelManager.CurrentProgress?.ErrorMessage != null) ||
+         (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Error && ModelManager.CurrentImageProgress?.ErrorMessage != null))
 {
+    var err = ModelManager.CurrentProgress?.ErrorMessage ?? ModelManager.CurrentImageProgress?.ErrorMessage;
     <div class="alert alert-danger shadow-sm mb-3 d-flex align-items-center justify-content-between py-2">
         <div class="d-flex align-items-center gap-2 small">
             <span>⚠️</span>
-            <span>@ModelManager.CurrentProgress.ErrorMessage</span>
+            <span>@err</span>
         </div>
         <button type="button" class="btn btn-danger btn-sm py-0 px-2" @onclick="RetryDownloadAsync">
             🔄 Riprova Download
@@ -82,11 +84,12 @@ else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error && ModelMana
     private void CancelDownload()
     {
         ModelManager.CancelDownload();
+        ModelManager.CancelImageDownload();
     }
 
     private async Task RetryDownloadAsync()
     {
-        await ModelManager.EnsureActiveModelReadyAsync(forceDownload: true);
+        await ModelManager.EnsureAllActiveModelsReadyAsync(forceDownload: true);
     }
 
     private static string FormatEta(TimeSpan eta)

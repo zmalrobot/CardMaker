@@ -30,6 +30,112 @@ public sealed class AiModelManager : IAiModelManager, IDisposable
     public AiModelDefinition? ActiveImageModel { get; private set; }
     public string? ActiveImageModelPath { get; private set; }
 
+    public AiModelDownloadProgress? ActiveProgress
+    {
+        get
+        {
+            if (CurrentStatus == AiModelReadinessStatus.Downloading && CurrentProgress != null)
+            {
+                return CurrentProgress;
+            }
+            if (CurrentImageStatus == AiModelReadinessStatus.Downloading && CurrentImageProgress != null)
+            {
+                return CurrentImageProgress;
+            }
+            return CurrentProgress ?? CurrentImageProgress;
+        }
+    }
+
+    public AiModelReadinessStatus OverallStatus
+    {
+        get
+        {
+            var textStatus = CurrentStatus;
+            var imageStatus = CurrentImageStatus;
+
+            // Se entrambi disabilitati o non richiesti
+            if ((textStatus == AiModelReadinessStatus.Disabled || textStatus == AiModelReadinessStatus.NotRequired) &&
+                (imageStatus == AiModelReadinessStatus.Disabled || imageStatus == AiModelReadinessStatus.NotRequired))
+            {
+                return AiModelReadinessStatus.Disabled;
+            }
+
+            var textEnabled = textStatus != AiModelReadinessStatus.Disabled && textStatus != AiModelReadinessStatus.NotRequired;
+            var imageEnabled = imageStatus != AiModelReadinessStatus.Disabled && imageStatus != AiModelReadinessStatus.NotRequired;
+
+            if (textEnabled && !imageEnabled)
+            {
+                return textStatus;
+            }
+
+            if (!textEnabled && imageEnabled)
+            {
+                return imageStatus;
+            }
+
+            if (textStatus == AiModelReadinessStatus.Ready && imageStatus == AiModelReadinessStatus.Ready)
+            {
+                return AiModelReadinessStatus.Ready;
+            }
+
+            if (textStatus == AiModelReadinessStatus.Ready || imageStatus == AiModelReadinessStatus.Ready)
+            {
+                return AiModelReadinessStatus.PartiallyReady;
+            }
+
+            if (textStatus == AiModelReadinessStatus.Downloading || imageStatus == AiModelReadinessStatus.Downloading)
+            {
+                return AiModelReadinessStatus.Downloading;
+            }
+
+            if (textStatus == AiModelReadinessStatus.Validating || imageStatus == AiModelReadinessStatus.Validating)
+            {
+                return AiModelReadinessStatus.Validating;
+            }
+
+            if (textStatus == AiModelReadinessStatus.Error || imageStatus == AiModelReadinessStatus.Error)
+            {
+                return AiModelReadinessStatus.Error;
+            }
+
+            return AiModelReadinessStatus.Checking;
+        }
+    }
+
+    public string OverallStatusSummary
+    {
+        get
+        {
+            var overall = OverallStatus;
+            return overall switch
+            {
+                AiModelReadinessStatus.Ready => "Tutti i modelli AI pronti",
+                AiModelReadinessStatus.Disabled => "AI disabilitata",
+                AiModelReadinessStatus.PartiallyReady => CurrentStatus == AiModelReadinessStatus.Ready
+                    ? $"Testo pronto · Immagini: {GetStatusLabel(CurrentImageStatus)}"
+                    : $"Testo: {GetStatusLabel(CurrentStatus)} · Immagini pronte",
+                AiModelReadinessStatus.Downloading => ActiveProgress != null
+                    ? $"Download {ActiveProgress.ModelDisplayName} ({ActiveProgress.Percentage:0.0}%)"
+                    : "Download in corso...",
+                AiModelReadinessStatus.Validating => "Validazione file in corso...",
+                AiModelReadinessStatus.Checking => "Verifica modelli locali...",
+                AiModelReadinessStatus.Error => "Errore nei modelli AI",
+                _ => overall.ToString()
+            };
+        }
+    }
+
+    private static string GetStatusLabel(AiModelReadinessStatus status) => status switch
+    {
+        AiModelReadinessStatus.Ready => "Pronto",
+        AiModelReadinessStatus.Downloading => "In download",
+        AiModelReadinessStatus.Validating => "Validazione",
+        AiModelReadinessStatus.Checking => "Verifica",
+        AiModelReadinessStatus.Disabled => "Disabilitato",
+        AiModelReadinessStatus.Error => "Errore",
+        _ => status.ToString()
+    };
+
     public event Action? OnStatusChanged;
 
     public AiModelManager(
@@ -207,6 +313,16 @@ public sealed class AiModelManager : IAiModelManager, IDisposable
         {
             _imageSemaphore.Release();
         }
+    }
+
+    public async Task EnsureAllActiveModelsReadyAsync(bool forceDownload = false, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+
+        _logger?.LogInformation("Avvio verifica centralizzata all'avvio dei modelli AI attivi...");
+        await EnsureActiveModelReadyAsync(forceDownload, cancellationToken).ConfigureAwait(false);
+        await EnsureActiveImageModelReadyAsync(forceDownload, cancellationToken).ConfigureAwait(false);
+        _logger?.LogInformation("Verifica centralizzata modelli AI completata. Stato complessivo: {OverallStatus}", OverallStatus);
     }
 
     public void CancelDownload()

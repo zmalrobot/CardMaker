@@ -27,11 +27,10 @@ public sealed class AiModelStartupBackgroundService : BackgroundService
         // Breve ritardo iniziale per consentire il completamento del bootstrap del frame Blazor/Host
         await Task.Delay(500, stoppingToken).ConfigureAwait(false);
 
-        _logger?.LogInformation("AiModelStartupBackgroundService avviato: esecuzione verifica e predisposizione modello AI...");
+        _logger?.LogInformation("AiModelStartupBackgroundService avviato: esecuzione verifica e predisposizione centralizzata modelli AI...");
         try
         {
-            await _modelManager.EnsureActiveModelReadyAsync(forceDownload: false, stoppingToken).ConfigureAwait(false);
-            await _modelManager.EnsureActiveImageModelReadyAsync(forceDownload: false, stoppingToken).ConfigureAwait(false);
+            await _modelManager.EnsureAllActiveModelsReadyAsync(forceDownload: false, stoppingToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {

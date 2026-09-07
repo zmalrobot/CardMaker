@@ -22,4 +22,10 @@ public sealed record AiModelDefinition(
     string Version = "1.0",
     int DefaultSteps = 20,
     int DefaultWidth = 512,
-    int DefaultHeight = 512);
+    int DefaultHeight = 512,
+    AiModelCapability Capability = AiModelCapability.Text,
+    string Format = "GGUF",
+    double RecommendedVramGb = 0,
+    string? RecommendedHardware = null,
+    IReadOnlyList<string>? AdditionalFiles = null,
+    IReadOnlyList<string>? Dependencies = null);

@@ -6,34 +6,47 @@
 
 <footer class="cm-footer border-top mt-auto bg-surface-1">
     <div class="container-fluid d-flex justify-content-between align-items-center px-3 text-muted">
-        <!-- Sinistra: Stato compatto Modello AI -->
+        <!-- Sinistra: Stato compatto Modelli AI (Testo e Immagini) -->
         <div class="cm-footer-item overflow-hidden text-truncate me-2">
-            @if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
+            @if (ModelManager.OverallStatus == AiModelReadinessStatus.Downloading && ModelManager.ActiveProgress != null)
             {
-                var p = ModelManager.CurrentProgress;
+                var p = ModelManager.ActiveProgress;
+                var isImage = (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading);
                 <span class="spinner-border spinner-border-sm text-primary me-1" style="width: 0.65rem; height: 0.65rem; border-width: 1.5px;" role="status"></span>
-                <span class="text-primary fw-medium">Download AI (@p.ModelDisplayName): @(p.Percentage.ToString("0.0"))%</span>
+                <span class="text-primary fw-medium">Download AI @(isImage ? "Immagini" : "Testo") (@p.ModelDisplayName): @(p.Percentage.ToString("0.0"))%</span>
                 <span class="opacity-75 ms-1">(@Math.Round((double)p.BytesDownloaded / (1024 * 1024), 0)/@Math.Round((double)p.TotalBytes / (1024 * 1024), 0) MB)</span>
             }
-            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating)
+            else if (ModelManager.OverallStatus == AiModelReadinessStatus.Validating)
             {
+                var isImage = (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Validating);
                 <span class="spinner-border spinner-border-sm text-warning me-1" style="width: 0.65rem; height: 0.65rem; border-width: 1.5px;" role="status"></span>
-                <span class="text-warning fw-medium">Validazione modello AI...</span>
+                <span class="text-warning fw-medium">Validazione modello AI @(isImage ? "Immagini" : "Testo")...</span>
             }
-            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Ready)
+            else if (ModelManager.OverallStatus == AiModelReadinessStatus.Checking)
             {
-                <span class="cm-status-indicator bg-success me-1" title="Modello AI pronto per l'inferenza"></span>
-                <span class="text-success fw-medium">AI: @(ModelManager.ActiveModel?.DisplayName ?? "Pronto")</span>
+                <span class="spinner-border spinner-border-sm text-info me-1" style="width: 0.65rem; height: 0.65rem; border-width: 1.5px;" role="status"></span>
+                <span class="text-info fw-medium">Verifica modelli AI locali...</span>
             }
-            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error)
+            else if (ModelManager.OverallStatus == AiModelReadinessStatus.Ready)
             {
-                <span class="cm-status-indicator bg-danger me-1" title="Errore modello AI"></span>
-                <span class="text-danger fw-medium" title="@(ModelManager.CurrentProgress?.ErrorMessage ?? "Errore modello AI")">AI: Errore</span>
+                <span class="cm-status-indicator bg-success me-1" title="Tutti i modelli AI abilitati sono pronti per l'inferenza"></span>
+                <span class="text-success fw-medium">AI: @GetReadyModelsLabel()</span>
+            }
+            else if (ModelManager.OverallStatus == AiModelReadinessStatus.PartiallyReady)
+            {
+                <span class="cm-status-indicator bg-info me-1" title="AI parzialmente pronta"></span>
+                <span class="text-info fw-medium">AI: Parzialmente pronto (@ModelManager.OverallStatusSummary)</span>
+            }
+            else if (ModelManager.OverallStatus == AiModelReadinessStatus.Error)
+            {
+                var err = ModelManager.CurrentProgress?.ErrorMessage ?? ModelManager.CurrentImageProgress?.ErrorMessage ?? "Errore modelli AI";
+                <span class="cm-status-indicator bg-danger me-1" title="@err"></span>
+                <span class="text-danger fw-medium" title="@err">AI: Errore</span>
             }
             else
             {
-                <span class="cm-status-indicator bg-secondary opacity-50 me-1" title="AI disabilitata"></span>
-                <span class="opacity-75">AI disabilitata</span>
+                <span class="cm-status-indicator bg-secondary opacity-50 me-1" title="Funzionalita AI disabilitate"></span>
+                <span class="opacity-75">AI: Disabilitata</span>
             }
         </div>
 
@@ -43,7 +56,7 @@
             <span class="cm-footer-sep">·</span>
             <span title="Versione motore grafico SkiaSharp">Render v@_renderingVersion</span>
             <span class="cm-footer-sep">·</span>
-            <span title="@_aiEngineTooltip">@_aiEngineLabel</span>
+            <span title="@_aiEngineTooltip">CardMaker.AI v@_cardMakerAiVersion</span>
             <span class="cm-footer-sep">·</span>
             <a href="disclaimer" class="text-decoration-none text-muted hover-underline">Note legali</a>
         </div>
@@ -53,7 +66,7 @@
 @code {
     private static readonly string _appVersion = GetAppVersion();
     private static readonly string _renderingVersion = GetRenderingVersion();
-    private static readonly string _aiEngineLabel = "llama.cpp 0.27.0";
+    private static readonly string _cardMakerAiVersion = GetCardMakerAiVersion();
     private static readonly string _aiEngineTooltip = GetAiEngineTooltip();
 
     protected override void OnInitialized()
@@ -69,6 +82,26 @@
     public void Dispose()
     {
         ModelManager.OnStatusChanged -= OnStatusChanged;
+    }
+
+    private string GetReadyModelsLabel()
+    {
+        var textReady = ModelManager.CurrentStatus == AiModelReadinessStatus.Ready;
+        var imageReady = ModelManager.CurrentImageStatus == AiModelReadinessStatus.Ready;
+
+        if (textReady && imageReady)
+        {
+            return "Pronto (Testo & Immagini)";
+        }
+        if (textReady)
+        {
+            return $"Pronto (Testo: {ModelManager.ActiveModel?.DisplayName ?? "Gemma"})";
+        }
+        if (imageReady)
+        {
+            return $"Pronto (Immagini: {ModelManager.ActiveImageModel?.DisplayName ?? "SD"})";
+        }
+        return "Pronto";
     }
 
     private static string GetAppVersion()
@@ -101,18 +134,28 @@
         }
     }
 
-    private static string GetAiEngineTooltip()
+    private static string GetCardMakerAiVersion()
     {
         try
         {
-            var asm = typeof(CardMaker.AI.Engines.LlamaCppTextEngine).Assembly;
+            var asm = typeof(CardMaker.AI.Models.AiModelRegistry).Assembly;
+            var infoVer = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(infoVer))
+            {
+                var plusIdx = infoVer.IndexOf('+');
+                return plusIdx > 0 ? infoVer[..plusIdx] : infoVer;
+            }
             var ver = asm.GetName().Version;
-            var verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "1.0.0";
-            return $"Motore AI: llama.cpp (CardMaker.AI {verStr} / LLamaSharp 0.27.0)";
+            return ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "1.0.0";
         }
         catch
         {
-            return "Motore AI: llama.cpp / LLamaSharp 0.27.0";
+            return "1.0.0";
         }
+    }
+
+    private static string GetAiEngineTooltip()
+    {
+        return $"CardMaker.AI v{_cardMakerAiVersion} (llama.cpp 0.27.0 [Gemma] + stable-diffusion.cpp [SD/SDXL] / SkiaSharp)";
     }
 }
