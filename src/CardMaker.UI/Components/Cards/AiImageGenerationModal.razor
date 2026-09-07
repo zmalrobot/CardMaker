@@ -1,10 +1,11 @@
-﻿@using CardMaker.AI.Abstractions
+@using CardMaker.AI.Abstractions
 @using CardMaker.AI.Models
 @using CardMaker.Application.Ai
 @using CardMaker.Contracts.Ai
 @implements IAsyncDisposable
 @inject ICardImageGenerationService ImageGenService
 @inject IAiConfigurationService AiConfigService
+@inject IAiModelManager ModelManager
 
 @if (IsOpen)
 {
@@ -25,6 +26,67 @@
                         <div class="alert alert-danger shadow-sm mb-3">
                             <div class="fw-semibold mb-1">⚠️ Errore durante la generazione</div>
                             <div class="small" style="white-space: pre-line;">@ErrorMessage</div>
+                            @if (ActiveModel != null && (ErrorMessage.Contains(".safetensors", StringComparison.OrdinalIgnoreCase) || ErrorMessage.Contains(".onnx", StringComparison.OrdinalIgnoreCase)))
+                            {
+                                <div class="mt-2 pt-2 border-top border-danger-subtle small">
+                                    <strong>Modello richiesto:</strong> <code>@ActiveModel.FileName</code><br />
+                                    Puoi scaricare il file da: 
+                                    <a href="@ActiveModel.DownloadUrl" target="_blank" rel="noopener noreferrer" class="alert-link">
+                                        @ActiveModel.DownloadUrl
+                                    </a><br />
+                                    e collocarlo nella cartella: <code>@AiConfigService.GetModelsDirectory()</code>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentImageProgress != null)
+                    {
+                        var pi = ModelManager.CurrentImageProgress;
+                        var speedMb = Math.Round(pi.BytesPerSecond / (1024.0 * 1024.0), 1);
+                        var downloadedMb = Math.Round((double)pi.BytesDownloaded / (1024.0 * 1024.0), 1);
+                        var totalMb = Math.Round((double)pi.TotalBytes / (1024.0 * 1024.0), 1);
+
+                        <div class="alert alert-info shadow-sm mb-3 border-info-subtle">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-semibold small d-flex align-items-center gap-2">
+                                    <span class="spinner-border spinner-border-sm text-primary" role="status"></span>
+                                    <span>Download modello immagini (@pi.ModelDisplayName) in corso...</span>
+                                </span>
+                                <span class="badge bg-primary">@(pi.Percentage.ToString("0.0"))%</span>
+                            </div>
+                            <div class="progress mb-2" style="height: 8px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                                     role="progressbar" 
+                                     style="width: @(pi.Percentage.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture))%;">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between small text-muted">
+                                <span>@downloadedMb MB / @totalMb MB (@(pi.Percentage.ToString("0.0"))%)</span>
+                                @if (speedMb > 0)
+                                {
+                                    <span>⚡ @speedMb MB/s</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentImageStatus == AiModelReadinessStatus.Checking)
+                    {
+                        <div class="alert alert-warning shadow-sm mb-3 py-2 d-flex align-items-center gap-2 small">
+                            <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+                            <span>Verifica e validazione del modello immagini in corso...</span>
+                        </div>
+                    }
+                    else if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Error)
+                    {
+                        <div class="alert alert-danger shadow-sm mb-3 d-flex align-items-center justify-content-between py-2 small">
+                            <div class="d-flex align-items-center gap-2">
+                                <span>⚠️</span>
+                                <span>@(ModelManager.CurrentImageProgress?.ErrorMessage ?? "Modello immagini non disponibile o errore di download.")</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" @onclick="() => ModelManager.EnsureActiveImageModelReadyAsync(forceDownload: true)">
+                                🔄 Riprova Download
+                            </button>
                         </div>
                     }
 
@@ -157,7 +219,7 @@
                     else if (CurrentStage == AiProgressStage.Idle || CurrentStage == AiProgressStage.Error)
                     {
                         <button type="button" class="btn btn-outline-secondary" @onclick="CloseAsync">Chiudi</button>
-                        <button type="button" class="btn btn-primary" @onclick="StartGenerationAsync" disabled="@(string.IsNullOrWhiteSpace(UserPrompt) || IsProcessing)">
+                        <button type="button" class="btn btn-primary" @onclick="StartGenerationAsync" disabled="@(string.IsNullOrWhiteSpace(UserPrompt) || IsProcessing || ModelManager.CurrentImageStatus != AiModelReadinessStatus.Ready)">
                             🎨 Genera con AI
                         </button>
                     }
@@ -200,6 +262,16 @@
     private bool IsProcessing => CurrentStage == AiProgressStage.LoadingModel || CurrentStage == AiProgressStage.Generating || CurrentStage == AiProgressStage.Preparing;
     private CancellationTokenSource? _cts;
     private bool _hasInitialized;
+
+    protected override void OnInitialized()
+    {
+        ModelManager.OnStatusChanged += OnModelStatusChanged;
+    }
+
+    private void OnModelStatusChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnParametersSetAsync()
     {
@@ -380,6 +452,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        ModelManager.OnStatusChanged -= OnModelStatusChanged;
         _cts?.Cancel();
         _cts?.Dispose();
         _cts = null;

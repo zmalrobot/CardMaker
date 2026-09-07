@@ -9,12 +9,13 @@
     var speedMb = Math.Round(p.BytesPerSecond / (1024.0 * 1024.0), 1);
     var downloadedMb = Math.Round((double)p.BytesDownloaded / (1024.0 * 1024.0), 1);
     var totalMb = Math.Round((double)p.TotalBytes / (1024.0 * 1024.0), 1);
+    var isImage = (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading);
 
     <div class="alert alert-info shadow-sm mb-3 border-info-subtle d-flex flex-column gap-2" role="status">
         <div class="d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-2">
                 <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
-                <strong>Download Modello AI in corso:</strong>
+                <strong>Download Modello AI @(isImage ? "Immagini" : "Testo") in corso:</strong>
                 <span class="badge bg-primary">@p.ModelDisplayName</span>
             </div>
             <div class="small text-muted d-flex align-items-center gap-3">
@@ -50,9 +51,10 @@
 }
 else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentImageStatus == AiModelReadinessStatus.Validating)
 {
+    var isImage = (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Validating);
     <div class="alert alert-warning shadow-sm mb-3 py-2 d-flex align-items-center gap-2">
         <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
-        <span>Validazione e verifica dell'integrita del file GGUF in corso...</span>
+        <span>Validazione e verifica dell'integrita del modello AI @(isImage ? "immagini" : "testo") in corso...</span>
     </div>
 }
 else if ((ModelManager.CurrentStatus == AiModelReadinessStatus.Error && ModelManager.CurrentProgress?.ErrorMessage != null) ||

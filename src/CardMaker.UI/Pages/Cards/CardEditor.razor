@@ -175,10 +175,34 @@ else
 
                             @if (IsImageAiEnabled)
                             {
-                                <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiImageModal = true" title="Genera Illustrazione con AI locale">
-                                    <span>🎨</span>
-                                    <span>Artwork AI</span>
-                                </button>
+                                @if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Ready)
+                                {
+                                    <button type="button" class="btn btn-outline-success btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="() => ShowAiImageModal = true" title="Genera Illustrazione con AI locale">
+                                        <span>🎨</span>
+                                        <span>Artwork AI</span>
+                                    </button>
+                                }
+                                else if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentImageProgress != null)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Download del modello immagini AI in corso">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        <span>Download Immagini (@(ModelManager.CurrentImageProgress.Percentage.ToString("0"))%)</span>
+                                    </button>
+                                }
+                                else if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Validating || ModelManager.CurrentImageStatus == AiModelReadinessStatus.Checking)
+                                {
+                                    <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 d-flex align-items-center gap-1" disabled title="Verifica modello immagini in corso">
+                                        <span class="spinner-border spinner-border-sm" role="status"></span>
+                                        <span>Verifica Immagini...</span>
+                                    </button>
+                                }
+                                else if (ModelManager.CurrentImageStatus == AiModelReadinessStatus.Error)
+                                {
+                                    <button type="button" class="btn btn-outline-warning btn-sm py-0 px-2 d-flex align-items-center gap-1" @onclick="RetryImageModelDownloadAsync" title="@(ModelManager.CurrentImageProgress?.ErrorMessage ?? "Errore modello immagini AI")">
+                                        <span>⚠️</span>
+                                        <span>Riprova Immagini</span>
+                                    </button>
+                                }
                             }
                         </div>
                     </div>
@@ -312,6 +336,11 @@ else
     private async Task RetryModelDownloadAsync()
     {
         await ModelManager.EnsureActiveModelReadyAsync(forceDownload: true);
+    }
+
+    private async Task RetryImageModelDownloadAsync()
+    {
+        await ModelManager.EnsureActiveImageModelReadyAsync(forceDownload: true);
     }
 
     private static bool CardTypeSupportsAttack(CardTypeDetailDto? ct) =>
