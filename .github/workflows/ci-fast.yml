@@ -1,0 +1,44 @@
+name: Fast CI
+
+on:
+  push:
+    branches: [ main, 'feature/**', 'fix/**' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Fast Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+          cache: true
+
+      - name: Install SkiaSharp Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfontconfig1 libfreetype6 fonts-dejavu-core
+
+      - name: Restore Dependencies
+        run: dotnet restore CardMaker.slnx
+
+      - name: Build Solution (TreatWarningsAsErrors)
+        run: dotnet build CardMaker.slnx --no-restore -c Release
+
+      - name: Run Core Tests
+        run: dotnet test CardMaker.slnx --no-build -c Release --filter "FullyQualifiedName!~GoldenImageTests" --verbosity normal
+
+      - name: Audit Vulnerable Packages
+        run: dotnet list package --vulnerable --include-transitive
+

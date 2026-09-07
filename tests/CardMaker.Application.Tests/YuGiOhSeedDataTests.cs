@@ -288,6 +288,6 @@ public class YuGiOhSeedDataTests
         Assert.True(result.HeightPx > 0);
         Assert.NotEmpty(result.Content);
 
-        File.WriteAllBytes("/tmp/rendered_card.png", result.Content);
+        File.WriteAllBytes(Path.Combine(Path.GetTempPath(), "rendered_card.png"), result.Content);
     }
 }

@@ -1,0 +1,195 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release Tag (es. v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+        type: string
+      is_prerelease:
+        description: 'Segna come prerelease'
+        required: false
+        default: false
+        type: boolean
+      is_draft:
+        description: 'Crea come bozza (Draft)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build & Package (Windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Determine Version
+        shell: pwsh
+        run: |
+          $rawVersion = "${{ github.ref_name }}"
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+              $rawVersion = "${{ inputs.tag_name }}"
+          }
+          $version = $rawVersion.TrimStart('v')
+          echo "VERSION=$version" >> $env:GITHUB_ENV
+          echo "RAW_VERSION=$rawVersion" >> $env:GITHUB_ENV
+          Write-Host "Building version: $version (Tag: $rawVersion)"
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress
+
+      - name: Publish Windows Self-Contained
+        run: |
+          dotnet publish src/CardMaker.Desktop/CardMaker.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o publish/win-x64-sc
+
+      - name: Publish Windows Framework-Dependent
+        run: |
+          dotnet publish src/CardMaker.Desktop/CardMaker.Desktop.csproj -c Release -r win-x64 --self-contained false -p:PublishSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o publish/win-x64-fdd
+
+      - name: Build Inno Setup Installer
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+              $iscc = (Get-Command iscc.exe).Source
+          }
+          & $iscc /DAppVersion=$env:VERSION /DSourceDir="..\..\publish\win-x64-sc" packaging\windows\installer.iss
+          Move-Item dist\CardMaker-Setup-x64.exe "dist\CardMaker-$env:RAW_VERSION-Windows-Setup-x64.exe"
+
+      - name: Package Portable Zips
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish\win-x64-sc\* -DestinationPath "dist\CardMaker-$env:RAW_VERSION-Windows-Portable-x64.zip"
+          Compress-Archive -Path publish\win-x64-fdd\* -DestinationPath "dist\CardMaker-$env:RAW_VERSION-Windows-FDD-x64.zip"
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: dist/*
+          if-no-files-found: error
+
+  build-linux:
+    name: Build & Package (Linux)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Determine Version
+        run: |
+          RAW_VERSION="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              RAW_VERSION="${{ inputs.tag_name }}"
+          fi
+          VERSION="${RAW_VERSION#v}"
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "RAW_VERSION=${RAW_VERSION}" >> $GITHUB_ENV
+          echo "Building version: ${VERSION} (Tag: ${RAW_VERSION})"
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install SkiaSharp Linux Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libfontconfig1 libfreetype6 fonts-dejavu-core
+
+      - name: Publish Linux Desktop (Self-Contained)
+        run: |
+          dotnet publish src/CardMaker.Desktop/CardMaker.Desktop.csproj -c Release -r linux-x64 --self-contained true -p:PublishSingleFile=false -p:DebugType=none -p:DebugSymbols=false -o publish/linux-x64
+
+      - name: Publish Linux Web Host
+        run: |
+          dotnet publish src/CardMaker.Web/CardMaker.Web.csproj -c Release -o publish/web
+          mkdir -p dist
+          (cd publish/web && zip -r "../../dist/CardMaker-${RAW_VERSION}-Web-Standalone.zip" .)
+
+      - name: Build Debian Package (.deb)
+        run: |
+          chmod +x packaging/linux/build-deb.sh
+          ./packaging/linux/build-deb.sh "${VERSION}" "publish/linux-x64" "dist"
+          mv dist/cardmaker_${VERSION}_amd64.deb "dist/CardMaker-${RAW_VERSION}-Linux-amd64.deb"
+
+      - name: Build Portable Tarball (.tar.gz)
+        run: |
+          PORTABLE_DIR="$(mktemp -d)"
+          cp -a publish/linux-x64/. "${PORTABLE_DIR}/"
+          chmod 755 "${PORTABLE_DIR}/CardMaker"
+          cat << 'EOF' > "${PORTABLE_DIR}/run.sh"
+#!/usr/bin/env bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "${SCRIPT_DIR}/CardMaker" "$@"
+EOF
+          chmod +x "${PORTABLE_DIR}/run.sh"
+          tar -czvf "dist/CardMaker-${RAW_VERSION}-Linux-x64.tar.gz" -C "${PORTABLE_DIR}" .
+
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: dist/*
+          if-no-files-found: error
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [ build-windows, build-linux ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Release Tag
+        run: |
+          RAW_VERSION="${{ github.ref_name }}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              RAW_VERSION="${{ inputs.tag_name }}"
+          fi
+          echo "RELEASE_TAG=${RAW_VERSION}" >> $GITHUB_ENV
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-packages
+          path: release-assets
+
+      - name: Download Linux Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: release-assets
+
+      - name: Generate Checksums (SHA256)
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          echo "Generated SHA256 Checksums:"
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: CardMaker ${{ env.RELEASE_TAG }}
+          files: release-assets/*
+          generate_release_notes: true
+          draft: ${{ github.event.inputs.is_draft || false }}
+          prerelease: ${{ github.event.inputs.is_prerelease || false }}
+

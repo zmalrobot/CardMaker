@@ -201,7 +201,7 @@ public class MtgSeedDataTests
         Assert.True(result.HeightPx > 0);
         Assert.NotEmpty(result.Content);
 
-        File.WriteAllBytes("/tmp/rendered_mtg_card.png", result.Content);
+        File.WriteAllBytes(Path.Combine(Path.GetTempPath(), "rendered_mtg_card.png"), result.Content);
     }
 
     [Fact]

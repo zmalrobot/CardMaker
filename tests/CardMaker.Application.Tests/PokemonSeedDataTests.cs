@@ -204,7 +204,7 @@ public class PokemonSeedDataTests
         Assert.True(result.HeightPx > 0);
         Assert.NotEmpty(result.Content);
 
-        File.WriteAllBytes("/tmp/rendered_pokemon_card.png", result.Content);
+        File.WriteAllBytes(Path.Combine(Path.GetTempPath(), "rendered_pokemon_card.png"), result.Content);
     }
 
     [Fact]
