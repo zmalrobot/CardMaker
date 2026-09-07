@@ -1,45 +1,51 @@
-﻿@using System.Reflection
+@using System.Reflection
 @using CardMaker.Application.Ai
 @using CardMaker.Contracts.Ai
 @implements IDisposable
 @inject IAiModelManager ModelManager
 
-<footer class="cm-footer border-top py-2 mt-auto bg-surface-1">
-    <div class="container-fluid d-flex flex-wrap justify-content-between align-items-center gap-3 px-4 small text-muted">
-        <div>
+<footer class="cm-footer border-top mt-auto bg-surface-1">
+    <div class="container-fluid d-flex justify-content-between align-items-center px-3 text-muted">
+        <!-- Sinistra: Stato compatto Modello AI -->
+        <div class="cm-footer-item overflow-hidden text-truncate me-2">
             @if (ModelManager.CurrentStatus == AiModelReadinessStatus.Downloading && ModelManager.CurrentProgress != null)
             {
                 var p = ModelManager.CurrentProgress;
-                <div class="d-flex align-items-center gap-2 text-primary fw-semibold">
-                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                    <span>Download Modello AI (@p.ModelDisplayName): @(p.Percentage.ToString("0.0"))%</span>
-                    <span class="text-muted fw-normal">(@Math.Round((double)p.BytesDownloaded / (1024 * 1024), 1) MB / @Math.Round((double)p.TotalBytes / (1024 * 1024), 1) MB)</span>
-                </div>
+                <span class="spinner-border spinner-border-sm text-primary me-1" style="width: 0.65rem; height: 0.65rem; border-width: 1.5px;" role="status"></span>
+                <span class="text-primary fw-medium">Download AI (@p.ModelDisplayName): @(p.Percentage.ToString("0.0"))%</span>
+                <span class="opacity-75 ms-1">(@Math.Round((double)p.BytesDownloaded / (1024 * 1024), 0)/@Math.Round((double)p.TotalBytes / (1024 * 1024), 0) MB)</span>
             }
             else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Validating)
             {
-                <div class="d-flex align-items-center gap-2 text-warning fw-semibold">
-                    <span class="spinner-border spinner-border-sm" role="status"></span>
-                    <span>Validazione file modello in corso...</span>
-                </div>
+                <span class="spinner-border spinner-border-sm text-warning me-1" style="width: 0.65rem; height: 0.65rem; border-width: 1.5px;" role="status"></span>
+                <span class="text-warning fw-medium">Validazione modello AI...</span>
             }
             else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Ready)
             {
-                <span class="text-success d-flex align-items-center gap-1">
-                    <span>✅</span>
-                    <span>Modello AI Pronto: @(ModelManager.ActiveModel?.DisplayName ?? "Caricato")</span>
-                </span>
+                <span class="cm-status-indicator bg-success me-1" title="Modello AI pronto per l'inferenza"></span>
+                <span class="text-success fw-medium">AI: @(ModelManager.ActiveModel?.DisplayName ?? "Pronto")</span>
+            }
+            else if (ModelManager.CurrentStatus == AiModelReadinessStatus.Error)
+            {
+                <span class="cm-status-indicator bg-danger me-1" title="Errore modello AI"></span>
+                <span class="text-danger fw-medium" title="@(ModelManager.CurrentProgress?.ErrorMessage ?? "Errore modello AI")">AI: Errore</span>
+            }
+            else
+            {
+                <span class="cm-status-indicator bg-secondary opacity-50 me-1" title="AI disabilitata"></span>
+                <span class="opacity-75">AI disabilitata</span>
             }
         </div>
 
-        <div class="d-flex flex-wrap justify-content-end align-items-center gap-3">
+        <!-- Destra: Versioni concise e link legali su una riga -->
+        <div class="cm-footer-item flex-shrink-0">
+            <span title="Versione applicativo desktop">App v@_appVersion</span>
+            <span class="cm-footer-sep">·</span>
+            <span title="Versione motore grafico SkiaSharp">Render v@_renderingVersion</span>
+            <span class="cm-footer-sep">·</span>
+            <span title="@_aiEngineTooltip">@_aiEngineLabel</span>
+            <span class="cm-footer-sep">·</span>
             <a href="disclaimer" class="text-decoration-none text-muted hover-underline">Note legali</a>
-            <span class="text-secondary opacity-50">·</span>
-            <span>Versione applicativo desktop: @_appVersion</span>
-            <span class="text-secondary opacity-50">·</span>
-            <span>Versione motore di rendering: @_renderingVersion</span>
-            <span class="text-secondary opacity-50">·</span>
-            <span>Versione motore AI: @_aiEngineVersion</span>
         </div>
     </div>
 </footer>
@@ -47,7 +53,8 @@
 @code {
     private static readonly string _appVersion = GetAppVersion();
     private static readonly string _renderingVersion = GetRenderingVersion();
-    private static readonly string _aiEngineVersion = GetAiEngineVersion();
+    private static readonly string _aiEngineLabel = "llama.cpp 0.27.0";
+    private static readonly string _aiEngineTooltip = GetAiEngineTooltip();
 
     protected override void OnInitialized()
     {
@@ -94,18 +101,18 @@
         }
     }
 
-    private static string GetAiEngineVersion()
+    private static string GetAiEngineTooltip()
     {
         try
         {
             var asm = typeof(CardMaker.AI.Engines.LlamaCppTextEngine).Assembly;
             var ver = asm.GetName().Version;
             var verStr = ver != null ? $"{ver.Major}.{ver.Minor}.{ver.Build}" : "1.0.0";
-            return $"llama.cpp (CardMaker.AI {verStr} / LLamaSharp 0.27.0)";
+            return $"Motore AI: llama.cpp (CardMaker.AI {verStr} / LLamaSharp 0.27.0)";
         }
         catch
         {
-            return "llama.cpp / LLamaSharp 0.27.0";
+            return "Motore AI: llama.cpp / LLamaSharp 0.27.0";
         }
     }
 }

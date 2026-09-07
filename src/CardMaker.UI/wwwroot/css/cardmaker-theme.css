@@ -629,5 +629,37 @@ a:hover {
     }
 }
 
+/* ==========================================================================
+   Compact App Footer / Status Bar
+   ========================================================================== */
+.cm-footer {
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    font-size: 0.72rem;
+    line-height: 1.35;
+    user-select: none;
+}
+
+.cm-footer-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    white-space: nowrap;
+}
+
+.cm-footer-sep {
+    opacity: 0.35;
+    font-size: 0.65rem;
+    margin: 0 0.15rem;
+}
+
+.cm-status-indicator {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+    flex-shrink: 0;
+}
+
 
 
