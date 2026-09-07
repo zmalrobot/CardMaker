@@ -71,13 +71,13 @@ else
                 await dbInitializer.InitializeAsync();
             }
 
-            // Avvio asincrono non bloccante della verifica/download del modello AI in background
+            // Avvio asincrono non bloccante della verifica/download dei modelli AI (testo e immagini) in background
             var aiModelManager = ServiceProvider.GetRequiredService<CardMaker.Application.Ai.IAiModelManager>();
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await aiModelManager.EnsureActiveModelReadyAsync();
+                    await aiModelManager.EnsureAllActiveModelsReadyAsync();
                 }
                 catch (Exception ex)
                 {

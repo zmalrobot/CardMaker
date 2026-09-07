@@ -320,8 +320,10 @@ public sealed class AiModelManager : IAiModelManager, IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         _logger?.LogInformation("Avvio verifica centralizzata all'avvio dei modelli AI attivi...");
-        await EnsureActiveModelReadyAsync(forceDownload, cancellationToken).ConfigureAwait(false);
-        await EnsureActiveImageModelReadyAsync(forceDownload, cancellationToken).ConfigureAwait(false);
+        await Task.WhenAll(
+            EnsureActiveModelReadyAsync(forceDownload, cancellationToken),
+            EnsureActiveImageModelReadyAsync(forceDownload, cancellationToken)
+        ).ConfigureAwait(false);
         _logger?.LogInformation("Verifica centralizzata modelli AI completata. Stato complessivo: {OverallStatus}", OverallStatus);
     }
 
